@@ -11,7 +11,7 @@
  *  - Sinh ID ổn định (cùng một map luôn ra cùng ID để chống trùng)
  *  - Dựng songEntry đúng chuẩn dbManager.saveBeatmap
  *  - Kiểm tra trùng trong IndexedDB và lưu
- *  - (tuỳ chọn) upload audio/video/background lên Firebase Storage
+ *  - Đồng bộ metadata beatmap lên MySQL (Laravel API) — nguồn sự thật của dự án
  *
  * UI (App.jsx, AstroSongSelect.jsx) chỉ cần gọi importFiles() và hiển thị kết quả.
  */
@@ -20,7 +20,7 @@ import { importPackage } from './packageImporter.js';
 import { parseOsu } from './osuParser.js';
 import { parseMaimai } from './maimaiParser.js';
 import { dbManager } from '../storage/db.js';
-import { uploadBeatmapAssets } from '../online/storageService.js';
+import { apiClient } from '../api/client.js';
 
 const AUDIO_REGEX = /\.(mp3|ogg|wav|m4a|aac|flac)$/i;
 const IMAGE_REGEX = /\.(jpg|jpeg|png|webp)$/i;
@@ -131,6 +131,39 @@ export function buildSongEntry({ kind, charts, primary, assets = {}, fileName = 
   };
 }
 
+/**
+ * Chuyển songEntry (IndexedDB) sang payload MySQL của Laravel MapController.
+ */
+export function songEntryToMapPayload(songEntry) {
+  const beatmap = songEntry?.beatmap || {};
+  return {
+    song_id: songEntry.id,
+    title: songEntry.title,
+    artist: songEntry.artist,
+    creator: songEntry.creator,
+    source: songEntry.source || 'maimai',
+    bpm: beatmap.timingPoints?.[0]?.bpm || 120,
+    preview_time: beatmap.metadata?.previewTime || 0,
+    cover_url: songEntry.backgroundSource || null,
+    audio_url: songEntry.audioSource || null,
+    video_url: songEntry.videoSource || null,
+    difficulties: (songEntry.difficulties || []).map((d) => ({
+      difficultyName: d.difficultyName,
+      difficultyLevel: d.difficultyLevel,
+      noteCount: d.noteCount
+    })),
+    metadata: beatmap.metadata || {}
+  };
+}
+
+/**
+ * Đồng bộ payload map lên MySQL. Bỏ qua an toàn khi chạy ngoài trình duyệt (test/SSR).
+ */
+async function defaultSaveMap(payload) {
+  if (typeof window === 'undefined' || typeof fetch !== 'function') return null;
+  return apiClient.saveMap(payload);
+}
+
 function assetsFromFiles(fileList) {
   const files = Array.from(fileList || []);
   const audio = files.find((f) => f?.type?.startsWith('audio/') || AUDIO_REGEX.test(f?.name || '')) || null;
@@ -200,15 +233,15 @@ export async function parseFiles(fileList, options = {}) {
 }
 
 /**
- * Nhập và lưu map vào IndexedDB (và tuỳ chọn đồng bộ asset lên Storage).
+ * Nhập và lưu map vào IndexedDB (và đồng bộ metadata lên MySQL).
  *
  * @param {FileList|File[]} fileList
  * @param {Object} options
  * @param {'twoFingers'|string} [options.preset]
  * @param {boolean} [options.autoSlide]
  * @param {Object} [options.db] - inject fake DB khi test
- * @param {boolean} [options.syncAssets=true]
- * @param {Function|null} [options.uploadAssets] - inject fake uploader khi test
+ * @param {boolean} [options.syncMap=true] - đồng bộ metadata lên Laravel API
+ * @param {Function|null} [options.saveMap] - inject fake saver khi test
  * @returns {Promise<{status: 'saved'|'duplicate', songEntry: Object, kind: string, difficultyCount: number}>}
  */
 export async function importFiles(fileList, options = {}) {
@@ -216,8 +249,8 @@ export async function importFiles(fileList, options = {}) {
     preset = 'twoFingers',
     autoSlide = false,
     db = dbManager,
-    syncAssets = true,
-    uploadAssets = uploadBeatmapAssets
+    syncMap = true,
+    saveMap = defaultSaveMap
   } = options;
 
   const parsed = await parseFiles(fileList, { preset, autoSlide });
@@ -241,19 +274,12 @@ export async function importFiles(fileList, options = {}) {
 
   await db.saveBeatmap(songEntry);
 
-  // Đồng bộ asset lên Firebase Storage (chạy nền, không chặn UI)
-  if (syncAssets && typeof uploadAssets === 'function') {
+  // Đồng bộ metadata map lên MySQL (Laravel API, chạy nền không chặn UI)
+  if (syncMap && typeof saveMap === 'function') {
     try {
-      const cloudAssets = await uploadAssets(songEntry.id, {
-        audioBlob: songEntry.audioBlob,
-        backgroundBlob: songEntry.backgroundBlob,
-        videoBlob: songEntry.videoBlob
-      });
-      if (cloudAssets) {
-        await db.saveBeatmap({ ...songEntry, cloudAssets });
-      }
+      await saveMap(songEntryToMapPayload(songEntry));
     } catch (err) {
-      console.warn('[Import] Đồng bộ asset lên cloud thất bại:', err.message);
+      console.warn('[Import] Đồng bộ map lên MySQL thất bại:', err.message);
     }
   }
 

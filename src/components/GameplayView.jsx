@@ -64,7 +64,7 @@ export default function GameplayView({
     const offEnd = gameEvents.on('songEnd', async ({ summary }) => {
       setIsPlaying(false);
 
-      // Tính Star Rating / PP và lưu kết quả (IndexedDB + Firestore nếu có cấu hình)
+      // Tính Star Rating / PP và lưu kết quả (IndexedDB + MySQL)
       try {
         const beatmap = engine.beatmap || initialChart?.beatmap || initialChart || {};
         const stars = calculateStars(beatmap);
@@ -91,11 +91,11 @@ export default function GameplayView({
           pp
         });
 
-        // Hiển thị kết quả ngay, không chờ đồng bộ cloud
+        // Hiển thị kết quả ngay, không chờ đồng bộ MySQL
         setGameResult({ ...summary, score: record.score, stars, pp });
 
-        const { cloud } = await persistScoreResult(record);
-        setGameResult((prev) => (prev ? { ...prev, cloud } : prev));
+        const { mysql } = await persistScoreResult(record);
+        setGameResult((prev) => (prev ? { ...prev, sync: mysql } : prev));
       } catch (err) {
         console.warn('Lỗi lưu điểm số:', err);
         setGameResult(summary);

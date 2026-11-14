@@ -10,7 +10,6 @@ import RingPreview from './components/RingPreview.jsx';
 import { dbManager } from './core/storage/db.js';
 import { initializeDefaultData } from './core/storage/seedData.js';
 import { importFiles } from './core/parser/index.js';
-import { restoreSession, logoutUser } from './core/online/authService.js';
 import { apiClient } from './core/api/client.js';
 import { TRI_RING_LAYOUT } from './config/layout.config.js';
 
@@ -66,15 +65,14 @@ export default function App() {
         return maps.find((m) => m.id === prev.id) || maps[0] || null;
       });
 
-      // Khôi phục phiên đăng nhập (Laravel API hoặc local session)
+      // Khôi phục phiên đăng nhập từ Laravel API
       try {
         const meRes = await apiClient.me();
         if (meRes?.user) {
           setCurrentUser(meRes.user);
         }
       } catch (_) {
-        const user = await restoreSession();
-        if (user) setCurrentUser(user);
+        setCurrentUser(null);
       }
 
       // Nạp cài đặt đã lưu và tự động hòa trộn phím tắt mặc định mới nhất
@@ -127,7 +125,6 @@ export default function App() {
     try {
       await apiClient.logout();
     } catch (_) {}
-    await logoutUser();
     setCurrentUser(null);
   };
 

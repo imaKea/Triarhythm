@@ -3,7 +3,8 @@
  * Giao tiếp trực tiếp với Laravel Backend & MySQL Database (/api/*)
  */
 
-const API_BASE = '/api';
+const API_BASE =
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) || '/api';
 
 class ApiClient {
   constructor() {

@@ -192,28 +192,7 @@ export default function AstroSongSelect({
         return;
       }
 
-      if (result.songEntry) {
-        try {
-          await apiClient.saveMap({
-            song_id: result.songEntry.id,
-            title: result.songEntry.title,
-            artist: result.songEntry.artist,
-            creator: result.songEntry.creator,
-            source: result.songEntry.source || 'maimai',
-            bpm: result.songEntry.beatmap?.timingPoints?.[0]?.bpm || 120,
-            preview_time: result.songEntry.beatmap?.metadata?.previewTime || 0,
-            cover_url: result.songEntry.backgroundSource || null,
-            audio_url: result.songEntry.audioSource || null,
-            video_url: result.songEntry.videoSource || null,
-            difficulties: result.songEntry.difficulties?.map((d) => ({
-              difficultyName: d.difficultyName,
-              difficultyLevel: d.difficultyLevel,
-              noteCount: d.noteCount,
-            })) || [],
-          });
-        } catch (_) {}
-      }
-
+      // importFiles() đã tự đồng bộ metadata lên MySQL (saveMap)
       if (onReloadBeatmaps) await onReloadBeatmaps();
       if (onSelectBeatmap && result.songEntry) onSelectBeatmap(result.songEntry);
 

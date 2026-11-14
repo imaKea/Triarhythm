@@ -6,16 +6,13 @@
 import { dbManager } from './db.js';
 import { SAMPLE_BEATMAP } from '../beatmap/sampleChart.js';
 import { parseOsu } from '../parser/index.js';
-import { isFirebaseConfigured } from '../../config/firebase.js';
 
 export async function initializeDefaultData() {
   try {
-    // 1. Tài khoản demo chỉ tạo khi chạy offline (Firebase Auth quản lý user khi đã cấu hình)
-    if (!isFirebaseConfigured) {
-      const users = await dbManager.getAllUsers();
-      if (users.length === 0) {
-        await dbManager.registerUser('player1', '123456', 'Triarhythm Master');
-      }
+    // 1. Tài khoản demo cục bộ (chỉ dùng khi offline; auth chính nằm ở Laravel/MySQL)
+    const users = await dbManager.getAllUsers();
+    if (users.length === 0) {
+      await dbManager.registerUser('player1', '123456', 'Triarhythm Master');
     }
 
     // 2. Kiểm tra danh sách bài hát

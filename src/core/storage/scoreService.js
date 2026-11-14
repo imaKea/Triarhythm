@@ -1,16 +1,17 @@
 /**
  * Dịch vụ lưu kết quả chơi (score flow)
  * - buildScoreRecord: chuyển summary của engine thành bản ghi thuần (testable)
- * - persistScoreResult: lưu IndexedDB + đồng bộ Firestore (nếu cấu hình)
+ * - persistScoreResult: lưu IndexedDB + đồng bộ lên MySQL (Laravel API)
+ *
+ * IndexedDB là cache offline; MySQL (Laravel) là nguồn sự thật của dự án.
  */
 
 import { dbManager } from './db.js';
-import { submitScoreToCloud } from '../online/scoreService.js';
 import { apiClient } from '../api/client.js';
 
 /**
  * Chuẩn hóa summary + thông tin bài hát thành record lưu DB.
- * Không phụ thuộc IndexedDB / Firebase để có thể unit-test.
+ * Không phụ thuộc IndexedDB / Laravel để có thể unit-test.
  */
 export function buildScoreRecord({
   summary,
@@ -54,15 +55,33 @@ export function buildScoreRecord({
   };
 }
 
+function toMysqlPayload(record) {
+  return {
+    song_id: record.beatmapId,
+    difficulty_name: record.difficultyName,
+    score: record.score,
+    accuracy: record.accuracy,
+    max_combo: record.maxCombo,
+    rank: record.rank,
+    critical_perfect: record.counts?.criticalPerfect ?? record.counts?.CRITICAL_PERFECT ?? 0,
+    perfect: record.counts?.perfect ?? record.counts?.PERFECT ?? 0,
+    great: record.counts?.great ?? record.counts?.GREAT ?? 0,
+    good: record.counts?.good ?? record.counts?.GOOD ?? 0,
+    miss: record.counts?.miss ?? record.counts?.MISS ?? 0,
+    pp: record.pp || 0,
+    mods: { isAutoplay: record.isAutoplay }
+  };
+}
+
 /**
- * Lưu điểm vào IndexedDB và (tuỳ chọn) Firestore.
- * `deps` cho phép inject fake DB / fake cloud trong unit test.
+ * Lưu điểm vào IndexedDB rồi đồng bộ lên MySQL.
+ * `deps` cho phép inject fake DB / fake API trong unit test.
  *
- * @returns {Promise<{localId: any, cloud: {synced: boolean, reason?: string, id?: string}}>}
+ * @returns {Promise<{localId: any, mysql: {synced: boolean, reason?: string, rankPosition?: number|null, user?: object|null}}>}
  */
 export async function persistScoreResult(record, deps = {}) {
   const db = deps.db || dbManager;
-  const sync = deps.sync || submitScoreToCloud;
+  const api = deps.api || apiClient;
 
   if (!record || typeof record !== 'object') {
     throw new Error('Record điểm không hợp lệ.');
@@ -70,35 +89,22 @@ export async function persistScoreResult(record, deps = {}) {
 
   const localId = await db.saveScore(record);
 
-  let cloud = { synced: false, reason: 'not-attempted' };
-  try {
-    cloud = await sync(record);
-  } catch (err) {
-    cloud = { synced: false, reason: err?.message || 'cloud-sync-failed' };
-  }
+  // Chỉ gọi API khi ở trình duyệt, hoặc khi test inject API giả.
+  const canSync = deps.sync !== false && (typeof window !== 'undefined' || Boolean(deps.api));
+  let mysql = { synced: false, reason: 'not-attempted' };
 
-  // Đồng bộ lên Laravel MySQL Backend (trong môi trường trình duyệt)
-  let mysql = null;
-  if (typeof window !== 'undefined' && typeof fetch === 'function' && !deps.sync) {
+  if (canSync) {
     try {
-      const api = deps.apiClient || apiClient;
-      mysql = await api.submitScore({
-        song_id: record.beatmapId,
-        difficulty_name: record.difficultyName,
-        score: record.score,
-        accuracy: record.accuracy,
-        max_combo: record.maxCombo,
-        rank: record.rank,
-        critical_perfect: record.counts?.CRITICAL_PERFECT || 0,
-        perfect: record.counts?.PERFECT || 0,
-        great: record.counts?.GREAT || 0,
-        good: record.counts?.GOOD || 0,
-        miss: record.counts?.MISS || 0,
-        pp: record.pp || 0,
-        mods: { isAutoplay: record.isAutoplay }
-      });
-    } catch (_) {}
+      const res = await api.submitScore(toMysqlPayload(record));
+      mysql = {
+        synced: true,
+        rankPosition: res?.rank_position ?? null,
+        user: res?.user ?? null
+      };
+    } catch (err) {
+      mysql = { synced: false, reason: err?.message || 'mysql-sync-failed' };
+    }
   }
 
-  return { localId, cloud, mysql };
+  return { localId, mysql };
 }

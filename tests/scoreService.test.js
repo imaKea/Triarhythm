@@ -79,40 +79,57 @@ describe('buildScoreRecord', () => {
 });
 
 describe('persistScoreResult', () => {
-  it('lưu IndexedDB và đồng bộ cloud thành công', async () => {
+  it('lưu IndexedDB và đồng bộ MySQL thành công', async () => {
     const db = { saveScore: vi.fn(async () => 'local-42') };
-    const sync = vi.fn(async () => ({ synced: true, id: 'cloud-1' }));
+    const api = { submitScore: vi.fn(async () => ({ rank_position: 3, user: { id: 1 } })) };
 
     const record = buildScoreRecord({ summary, chart });
-    const result = await persistScoreResult(record, { db, sync });
+    const result = await persistScoreResult(record, { db, api });
 
     expect(db.saveScore).toHaveBeenCalledWith(record);
-    expect(sync).toHaveBeenCalledWith(record);
+    expect(api.submitScore).toHaveBeenCalledTimes(1);
     expect(result.localId).toBe('local-42');
-    expect(result.cloud).toEqual({ synced: true, id: 'cloud-1' });
+    expect(result.mysql.synced).toBe(true);
+    expect(result.mysql.rankPosition).toBe(3);
   });
 
-  it('vẫn giữ điểm local khi cloud lỗi', async () => {
-    const db = { saveScore: vi.fn(async () => 'local-7') };
-    const sync = vi.fn(async () => {
-      throw new Error('offline');
-    });
+  it('gửi đúng payload MySQL (snake_case + counts)', async () => {
+    const db = { saveScore: vi.fn(async () => 'local-1') };
+    const api = { submitScore: vi.fn(async () => ({})) };
 
-    const result = await persistScoreResult(buildScoreRecord({ summary, chart }), { db, sync });
+    await persistScoreResult(buildScoreRecord({ summary, chart }), { db, api });
+
+    const payload = api.submitScore.mock.calls[0][0];
+    expect(payload.song_id).toBe('song-1');
+    expect(payload.difficulty_name).toBe('Master');
+    expect(payload.score).toBe(987654);
+    expect(payload.critical_perfect).toBe(900);
+    expect(payload.miss).toBe(1);
+  });
+
+  it('vẫn giữ điểm local khi MySQL lỗi', async () => {
+    const db = { saveScore: vi.fn(async () => 'local-7') };
+    const api = {
+      submitScore: vi.fn(async () => {
+        throw new Error('offline');
+      })
+    };
+
+    const result = await persistScoreResult(buildScoreRecord({ summary, chart }), { db, api });
 
     expect(result.localId).toBe('local-7');
-    expect(result.cloud.synced).toBe(false);
-    expect(result.cloud.reason).toBe('offline');
+    expect(result.mysql.synced).toBe(false);
+    expect(result.mysql.reason).toBe('offline');
   });
 
-  it('vẫn giữ điểm local khi cloud trả về chưa cấu hình', async () => {
-    const db = { saveScore: vi.fn(async () => 'local-8') };
-    const sync = vi.fn(async () => ({ synced: false, reason: 'firebase-not-configured' }));
+  it('bỏ qua đồng bộ khi không có API (ngoài trình duyệt)', async () => {
+    const db = { saveScore: vi.fn(async () => 'local-9') };
 
-    const result = await persistScoreResult(buildScoreRecord({ summary, chart }), { db, sync });
+    const result = await persistScoreResult(buildScoreRecord({ summary, chart }), { db });
 
-    expect(result.localId).toBe('local-8');
-    expect(result.cloud.reason).toBe('firebase-not-configured');
+    expect(result.localId).toBe('local-9');
+    expect(result.mysql.synced).toBe(false);
+    expect(result.mysql.reason).toBe('not-attempted');
   });
 
   it('ném lỗi khi record không hợp lệ', async () => {

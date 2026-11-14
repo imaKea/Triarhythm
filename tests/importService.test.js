@@ -147,7 +147,7 @@ describe('importFiles', () => {
     const result = await importFiles([makeOsuFile()], {
       preset: 'twoFingers',
       db,
-      syncAssets: false
+      syncMap: false
     });
 
     expect(result.status).toBe('saved');
@@ -160,37 +160,39 @@ describe('importFiles', () => {
 
   it('phát hiện map trùng theo ID ổn định', async () => {
     const db = makeFakeDb();
-    const first = await importFiles([makeOsuFile()], { db, syncAssets: false });
-    const second = await importFiles([makeOsuFile()], { db, syncAssets: false });
+    const first = await importFiles([makeOsuFile()], { db, syncMap: false });
+    const second = await importFiles([makeOsuFile()], { db, syncMap: false });
 
     expect(second.status).toBe('duplicate');
     expect(second.songEntry.id).toBe(first.songEntry.id);
     expect(db.saveBeatmap).toHaveBeenCalledTimes(1);
   });
 
-  it('đồng bộ asset lên cloud khi được cấu hình và lưu cloudAssets', async () => {
+  it('đồng bộ metadata map lên MySQL qua saveMap', async () => {
     const db = makeFakeDb();
-    const uploadAssets = vi.fn(async () => ({ audio: 'https://cdn/audio.ogg' }));
+    const saveMap = vi.fn(async () => ({ success: true }));
 
     const result = await importFiles([makeOsuFile()], {
       db,
-      syncAssets: true,
-      uploadAssets
+      syncMap: true,
+      saveMap
     });
 
-    expect(uploadAssets).toHaveBeenCalledTimes(1);
-    expect(result.songEntry.id).toBeTruthy();
-    const stored = db.store.get(result.songEntry.id);
-    expect(stored.cloudAssets).toEqual({ audio: 'https://cdn/audio.ogg' });
+    expect(saveMap).toHaveBeenCalledTimes(1);
+    const payload = saveMap.mock.calls[0][0];
+    expect(payload.song_id).toBe(result.songEntry.id);
+    expect(payload.title).toBe(result.songEntry.title);
+    expect(Array.isArray(payload.difficulties)).toBe(true);
+    expect(payload.difficulties.length).toBe(1);
   });
 
-  it('không chặn import khi upload cloud thất bại', async () => {
+  it('không chặn import khi đồng bộ MySQL thất bại', async () => {
     const db = makeFakeDb();
-    const uploadAssets = vi.fn(async () => {
-      throw new Error('storage down');
+    const saveMap = vi.fn(async () => {
+      throw new Error('mysql down');
     });
 
-    const result = await importFiles([makeOsuFile()], { db, syncAssets: true, uploadAssets });
+    const result = await importFiles([makeOsuFile()], { db, syncMap: true, saveMap });
     expect(result.status).toBe('saved');
     expect(db.store.has(result.songEntry.id)).toBe(true);
   });

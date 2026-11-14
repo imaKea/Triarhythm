@@ -11,7 +11,7 @@ describe('GĐ2 Unit Tests - Parser .osu / .osz', () => {
     '2025310 SDMNE - Beyond The Aexis',
     'SDMNE - Beyond The Aexis (ERA Akiri) [Soulless Wanderers].osu'
   );
-  const zipPath = path.resolve(__dirname, '../test/fixtures/2025310 SDMNE - Beyond The Aexis.zip');
+  const zipPath = path.resolve(__dirname, 'fixtures/2025310 SDMNE - Beyond The Aexis.zip');
 
   const osuContent = fs.readFileSync(osuPath, 'utf8');
 
