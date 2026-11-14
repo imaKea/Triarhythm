@@ -30,7 +30,15 @@ class ScoreController extends Controller
             'miss' => 'nullable|integer|min:0',
             'pp' => 'nullable|numeric|min:0',
             'mods' => 'nullable|array',
+            'mods.isAutoplay' => 'nullable|boolean',
         ]);
+
+        if ($request->boolean('mods.isAutoplay')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không thể nộp điểm khi bật Autoplay.',
+            ], 422);
+        }
 
         // Xác thực người dùng qua API token
         $user = $request->user();

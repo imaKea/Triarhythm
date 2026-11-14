@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import JSZip from 'jszip';
 import {
   slugify,
   inferDifficultyLevel,
@@ -103,7 +104,10 @@ describe('buildSongEntry', () => {
       kind: 'package',
       charts: [{ difficultyName: 'Master', difficultyLevel: '13', beatmap, noteCount: 1 }],
       primary: beatmap,
-      fileName: 'My Song.osz'
+      fileName: 'My Song.osz',
+      sourcePackageBlob: new Blob(['package']),
+      sourceText: 'original map text',
+      sourceFileName: 'My Song.osz'
     });
 
     expect(entry.source).toBe('osu');
@@ -114,6 +118,9 @@ describe('buildSongEntry', () => {
     expect(entry.beatmap).toBe(beatmap);
     expect(entry.audioBlob).toBeNull();
     expect(entry.audioSource).toBeNull();
+    expect(entry.sourcePackageBlob).toBeInstanceOf(Blob);
+    expect(entry.sourceText).toBe('original map text');
+    expect(entry.sourceFileName).toBe('My Song.osz');
   });
 
   it('ném lỗi khi không có beatmap', () => {
@@ -122,6 +129,35 @@ describe('buildSongEntry', () => {
 });
 
 describe('parseFiles', () => {
+  it('keeps the original maimai zip and its filename when importing a package', async () => {
+    const zip = new JSZip();
+    zip.file('maidata.txt', '&title=Song\n&inote_1=8,E\n');
+    zip.file('pv.mp4', 'video bytes');
+    const packageFile = await zip.generateAsync({ type: 'blob' });
+    Object.defineProperty(packageFile, 'name', { value: 'song-package.zip' });
+
+    const parsed = await parseFiles([packageFile]);
+
+    expect(parsed.sourcePackageBlob).toBe(packageFile);
+    expect(parsed.sourceFileName).toBe('song-package.zip');
+  });
+
+  it('keeps all selected maimai files together in a zip package', async () => {
+    const maidata = new Blob(['&title=Song\n&inote_1=8,E\n'], { type: 'text/plain' });
+    Object.defineProperty(maidata, 'name', { value: 'maidata.txt' });
+    const video = new Blob(['video bytes'], { type: 'video/mp4' });
+    Object.defineProperties(video, {
+      name: { value: 'pv.mp4' },
+      webkitRelativePath: { value: 'Song/pv.mp4' }
+    });
+
+    const parsed = await parseFiles([maidata, video]);
+    const zip = await JSZip.loadAsync(parsed.sourcePackageBlob);
+
+    expect(await zip.file('maidata.txt').async('text')).toContain('&title=Song');
+    expect(await zip.file('Song/pv.mp4').async('text')).toBe('video bytes');
+  });
+
   it('phân tích file .osu đơn lẻ', async () => {
     const parsed = await parseFiles([makeOsuFile()], { preset: 'twoFingers' });
     expect(parsed.kind).toBe('osu');
@@ -129,6 +165,8 @@ describe('parseFiles', () => {
     expect(parsed.charts[0].difficultyName).toBeTruthy();
     expect(parsed.primary.metadata.title).toBe('Beyond The Æxis');
     expect(parsed.primary.notes.length).toBeGreaterThan(0);
+    expect(parsed.sourceText).toBe(osuContent);
+    expect(parsed.sourceFileName).toMatch(/\.osu$/i);
   });
 
   it('báo lỗi khi không nhận diện được file', async () => {
@@ -154,6 +192,7 @@ describe('importFiles', () => {
     expect(result.kind).toBe('osu');
     expect(result.difficultyCount).toBe(1);
     expect(result.songEntry.title).toBe('Beyond The Æxis');
+    expect(result.songEntry.sourceText).toBe(osuContent);
     expect(db.saveBeatmap).toHaveBeenCalledTimes(1);
     expect(db.store.has(result.songEntry.id)).toBe(true);
   });

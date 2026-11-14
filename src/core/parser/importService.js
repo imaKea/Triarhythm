@@ -19,6 +19,7 @@
 import { importPackage } from './packageImporter.js';
 import { parseOsu } from './osuParser.js';
 import { parseMaimai } from './maimaiParser.js';
+import JSZip from 'jszip';
 import { dbManager } from '../storage/db.js';
 import { apiClient } from '../api/client.js';
 
@@ -100,7 +101,17 @@ function chartToDifficulty(chart, idx) {
 /**
  * Dựng bản ghi lưu IndexedDB từ kết quả parse.
  */
-export function buildSongEntry({ kind, charts, primary, assets = {}, fileName = '', difficultyName = '' }) {
+export function buildSongEntry({
+  kind,
+  charts,
+  primary,
+  assets = {},
+  fileName = '',
+  difficultyName = '',
+  sourcePackageBlob = null,
+  sourceText = null,
+  sourceFileName = ''
+}) {
   const normalizedCharts = (charts || []).map(chartToDifficulty);
   const primaryBeatmap = primary || normalizedCharts[0]?.beatmap;
   if (!primaryBeatmap) throw new Error('Không có beatmap hợp lệ để lưu.');
@@ -127,6 +138,9 @@ export function buildSongEntry({ kind, charts, primary, assets = {}, fileName = 
     videoBlob: assets.video || null,
     videoSource: makeObjectUrl(assets.video),
     hitsounds: assets.hitsounds || null,
+    sourcePackageBlob,
+    sourceText,
+    sourceFileName,
     updatedAt: Date.now()
   };
 }
@@ -198,6 +212,24 @@ function assetsFromFiles(fileList) {
   return { audio, background, video, audioBuffer: null, hitsounds: null };
 }
 
+function safeArchivePath(file) {
+  const rawPath = file?.webkitRelativePath || file?.name || '';
+  const parts = String(rawPath)
+    .replace(/\\/g, '/')
+    .split('/')
+    .filter((part) => part && part !== '.' && part !== '..')
+    .map((part) => part.replace(/[:\x00-\x1F]/g, '_'));
+  return parts.join('/') || 'file';
+}
+
+async function zipFiles(files) {
+  const zip = new JSZip();
+  for (const file of files) {
+    zip.file(safeArchivePath(file), file);
+  }
+  return zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+}
+
 /**
  * Parse danh sách File thành dữ liệu beatmap (chưa lưu DB).
  */
@@ -215,7 +247,9 @@ export async function parseFiles(fileList, options = {}) {
       charts: pkg.charts,
       primary: pkg.primaryBeatmap,
       assets: pkg.assets || {},
-      fileName: packageFile.name
+      fileName: packageFile.name,
+      sourceFileName: packageFile.name,
+      sourcePackageBlob: packageFile
     };
   }
 
@@ -233,7 +267,10 @@ export async function parseFiles(fileList, options = {}) {
       charts,
       primary: parsed.primaryBeatmap || charts[charts.length - 1]?.beatmap || charts[0]?.beatmap,
       assets: assetsFromFiles(files),
-      fileName: maidataFile.name
+      fileName: maidataFile.name,
+      sourcePackageBlob: await zipFiles(files),
+      sourceText: text,
+      sourceFileName: maidataFile.name
     };
   }
 
@@ -251,7 +288,9 @@ export async function parseFiles(fileList, options = {}) {
       }],
       primary: parsed.beatmap,
       assets: assetsFromFiles(files),
-      fileName: osuFile.name
+      fileName: osuFile.name,
+      sourceText: text,
+      sourceFileName: osuFile.name
     };
   }
 
@@ -292,7 +331,10 @@ export async function importFiles(fileList, options = {}) {
     charts: parsed.charts,
     primary: parsed.primary,
     assets: parsed.assets,
-    fileName: parsed.fileName
+    fileName: parsed.fileName,
+    sourcePackageBlob: parsed.sourcePackageBlob || null,
+    sourceText: parsed.sourceText || null,
+    sourceFileName: parsed.sourceFileName || ''
   });
 
   const existing = await db.getBeatmap(songEntry.id);

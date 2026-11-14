@@ -51,16 +51,17 @@ export class ScoreManager {
     let noteCount = 0;
 
     for (const note of notes) {
+      const scoreType = note.isBreakHold ? 'break' : note.type;
       if (note.type === 'typing' && Array.isArray(note.chars)) {
         const charWeight = JUDGEMENT_CONFIG.weights.typing || 1;
         this.totalBaseWeight += note.chars.length * charWeight;
         noteCount += note.chars.length;
       } else {
-        const w = JUDGEMENT_CONFIG.weights[note.type] || 1;
+        const w = JUDGEMENT_CONFIG.weights[scoreType] || 1;
         this.totalBaseWeight += w;
         noteCount++;
       }
-      if (note.type === 'break') {
+      if (scoreType === 'break') {
         this.totalBreakCount++;
       }
     }

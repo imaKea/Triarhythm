@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Map;
+use App\Models\Score;
 use App\Models\User;
 use App\Services\PpCalculator;
 use Illuminate\Support\Facades\Hash;
@@ -28,6 +29,39 @@ class AuthAndPermissionTest extends TestCase
             'rank' => 'SSS',
         ]);
         $response->assertStatus(401);
+    }
+
+    public function test_autoplay_score_submission_is_rejected(): void
+    {
+        $token = Str::random(40);
+        $user = User::create([
+            'name' => 'Autoplay User',
+            'username' => 'autoplay_' . Str::random(8),
+            'email' => Str::random(8) . '@example.com',
+            'password' => Hash::make('password'),
+            'role' => 'user',
+            'api_token' => hash('sha256', $token),
+        ]);
+
+        $scoreCount = Score::count();
+        try {
+            $response = $this->withHeader('Authorization', "Bearer {$token}")
+                ->postJson('/api/scores', [
+                    'song_id' => 'test_song',
+                    'difficulty_name' => 'Normal',
+                    'score' => 1000000,
+                    'accuracy' => 100.0,
+                    'max_combo' => 500,
+                    'rank' => 'SSS',
+                    'mods' => ['isAutoplay' => true],
+                ]);
+
+            $response->assertStatus(422)
+                ->assertJsonPath('success', false);
+            $this->assertSame($scoreCount, Score::count());
+        } finally {
+            $user->delete();
+        }
     }
 
     public function test_server_calculates_pp_independently(): void

@@ -27,7 +27,7 @@ export function buildScoreRecord({
   }
 
   const beatmap = chart?.beatmap || chart || {};
-  const beatmapId = beatmap.metadata?.id || chart?.metadata?.id || chart?.id || 'unknown';
+  const beatmapId = chart?.id || beatmap.metadata?.id || chart?.metadata?.id || 'unknown';
   const beatmapTitle = beatmap.metadata?.title || chart?.title || 'Unknown Track';
   const difficultyName =
     beatmap.metadata?.difficultyName || chart?.difficultyName || 'Normal';
@@ -86,6 +86,13 @@ export async function persistScoreResult(record, deps = {}) {
 
   if (!record || typeof record !== 'object') {
     throw new Error('Record điểm không hợp lệ.');
+  }
+
+  if (record.isAutoplay) {
+    return {
+      localId: null,
+      mysql: { synced: false, reason: 'autoplay-disabled' }
+    };
   }
 
   const localId = await db.saveScore(record);

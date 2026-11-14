@@ -89,6 +89,11 @@
   width: 7px;
   height: 7px;
 }
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #ff85a2 rgba(255, 241, 245, 0.7);
+  scrollbar-gutter: stable;
+}
 .custom-scrollbar::-webkit-scrollbar-track {
   background: rgba(255, 241, 245, 0.7);
   border-radius: 9999px;

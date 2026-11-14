@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { dbManager } from '../core/storage/db.js';
 import { importFiles } from '../core/parser/index.js';
+import { exportBeatmapFile } from '../core/parser/exportService.js';
 import { apiClient } from '../core/api/client.js';
+import { resolveDifficultyBeatmap } from '../core/beatmap/difficulty.js';
 import {
   Button,
   IconButton,
@@ -155,7 +157,8 @@ export default function AstroSongSelect({
   }, [current]);
 
   const selectedDiff = diffList[selectedDiffIndex] || diffList[0] || null;
-  const currentNotes = selectedDiff?.beatmap?.notes || current?.beatmap?.notes || [];
+  const selectedChart = resolveDifficultyBeatmap(current, selectedDiff);
+  const currentNotes = selectedChart?.notes || [];
 
   // Note breakdown by type
   const noteStats = useMemo(() => {
@@ -310,12 +313,16 @@ export default function AstroSongSelect({
 
   const handlePlaySelected = () => {
     if (!current) return;
+    if (!selectedChart) {
+      toast.error('Không tìm thấy chart hợp lệ cho độ khó đang chọn.');
+      return;
+    }
     playClick();
     if (audioRef.current) audioRef.current.pause();
 
     const chartToPlay = {
       ...current,
-      beatmap: selectedDiff?.beatmap || current.beatmap,
+      beatmap: selectedChart,
       difficultyName: selectedDiff?.difficultyName || 'Normal',
       difficultyLevel: selectedDiff?.difficultyLevel || '10',
       stars: selectedDiff?.stars || current.stars,
@@ -356,6 +363,21 @@ export default function AstroSongSelect({
       y: e.clientY,
       beatmap: bm
     });
+  };
+
+  const handleExportBeatmap = async (bm) => {
+    try {
+      const { blob, filename } = await exportBeatmapFile(bm);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      anchor.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast.success(`Đã xuất ${filename}`);
+    } catch (error) {
+      toast.error(`Không thể xuất map: ${error.message}`);
+    }
   };
 
   // Hoàn tác xóa bài hát vừa xóa (Undo / Ctrl+Z)
@@ -899,6 +921,15 @@ export default function AstroSongSelect({
                 handlePlaySelected();
               }
             }
+          },
+          { divider: true },
+          {
+            label: contextMenu.beatmap?.source === 'maimai'
+              || contextMenu.beatmap?.beatmap?.metadata?.source === 'maimai'
+              ? 'Xuất maidata.txt'
+              : 'Xuất map .osz (osu!)',
+            icon: '⬇',
+            onClick: () => handleExportBeatmap(contextMenu.beatmap)
           },
           { divider: true },
           {

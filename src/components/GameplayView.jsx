@@ -154,9 +154,14 @@ export default function GameplayView({
       try {
         const beatmap = engine.beatmap || initialChart?.beatmap || initialChart || {};
         const stars = calculateStars(beatmap);
+        if (engine.isAutoplay) {
+          setGameResult({ ...summary, stars, pp: 0 });
+          return;
+        }
+
         const missCount = summary?.counts?.miss || 0;
         const noteCount = beatmap?.notes?.length || 0;
-        const pp = engine.isAutoplay ? 0 : calculatePP({
+        const pp = calculatePP({
           stars,
           achievement: summary?.achievement || 0,
           missCount,
@@ -172,17 +177,27 @@ export default function GameplayView({
             title: initialChart?.title,
             difficultyName: initialChart?.difficultyName
           },
-          isAutoplay: engine.isAutoplay,
+          isAutoplay: false,
           stars,
           pp
         });
 
         setGameResult({ ...summary, score: record.score, stars, pp });
 
-        const { mysql } = await persistScoreResult(record);
-        setGameResult((prev) => (prev ? { ...prev, sync: mysql } : prev));
+        const persisted = await persistScoreResult(record);
+        setGameResult((prev) => (prev ? {
+          ...prev,
+          sync: {
+            ...persisted.mysql,
+            localSaved: persisted.localId !== null && persisted.localId !== undefined
+          }
+        } : prev));
       } catch (err) {
         console.warn('Lỗi lưu điểm số:', err);
+        setGameResult((prev) => (prev ? {
+          ...prev,
+          sync: { synced: false, localSaved: false, reason: err.message }
+        } : prev));
       }
     });
 

@@ -136,6 +136,9 @@ export function validateBeatmap(beatmap) {
         if (typeof note.endTime !== 'number' || isNaN(note.endTime) || note.endTime <= note.time) {
           errors.push(`${prefix} endTime (${note.endTime}) phải lớn hơn time (${note.time}).`);
         }
+        if (note.isBreakHold !== undefined && typeof note.isBreakHold !== 'boolean') {
+          errors.push(`${prefix} isBreakHold phải là boolean.`);
+        }
         break;
       }
 
@@ -208,6 +211,11 @@ export function validateBeatmap(beatmap) {
 
       case 'ring': {
         // Nốt Ring mở rộng kích thước như game outline (bằng cả ring), nhấn phím SPACE
+        if (note.isHold) {
+          if (typeof note.endTime !== 'number' || isNaN(note.endTime) || note.endTime <= note.time) {
+            errors.push(`${prefix} endTime (${note.endTime}) phải lớn hơn time (${note.time}) cho Ring Hold.`);
+          }
+        }
         break;
       }
 

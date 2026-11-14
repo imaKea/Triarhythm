@@ -1,0 +1,10 @@
+{
+  "description": "A cute Vietnamese rhythm game for music lovers, with song selection, live play, performance results, leaderboards, and customizable settings.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

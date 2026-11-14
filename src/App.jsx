@@ -193,9 +193,11 @@ export default function App() {
     }
   };
 
+  const isViewportScreen = currentScreen === 'UI_KIT';
+
   return (
     <div
-      className="min-h-screen text-white flex flex-col items-center justify-start select-none font-sans"
+      className={`${isViewportScreen ? 'h-dvh overflow-hidden' : 'min-h-screen'} text-white flex flex-col items-center justify-start select-none font-sans`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -237,7 +239,7 @@ export default function App() {
       )}
 
       {/* Main Screen Router */}
-      <main className="w-full flex-1 flex flex-col items-center justify-start">
+      <main className={`w-full flex-1 min-h-0 flex flex-col items-center justify-start ${isViewportScreen ? 'overflow-hidden' : ''}`}>
         {/* MÀN HÌNH 1: SONG SELECT (RhythmTyper Beatmap Browser) */}
         {currentScreen === 'SONG_SELECT' && (
           <AstroSongSelect
@@ -299,7 +301,9 @@ export default function App() {
 
         {/* MÀN HÌNH 6: UI KIT (DEBUG OSU! LAZER DESIGN SYSTEM) */}
         {currentScreen === 'UI_KIT' && (
-          <UIKitScreen onBack={() => setCurrentScreen('SONG_SELECT')} />
+          <div className="mt-[50px] h-[calc(100dvh-50px)] min-h-0 w-full sm:mb-6 sm:mt-[54px] sm:h-[calc(100dvh-78px)]">
+            <UIKitScreen onBack={() => setCurrentScreen('SONG_SELECT')} />
+          </div>
         )}
 
         {/* MÀN HÌNH 7: ADMIN PANEL (Quản trị viên) */}

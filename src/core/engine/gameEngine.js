@@ -562,7 +562,7 @@ export class GameEngine {
               this.particleSystem.spawnRipple(pix.x, pix.y, '#ffd54f', 60, 0.35, 2.5, false);
               this.particleSystem.spawnBurst(pix.x, pix.y, '#ffea00', 18, 140);
             }
-            this.audioEngine.playHitsound('normal', 0.9);
+            this.audioEngine.playHitsound(note.isBreakHold ? 'break' : 'normal', 0.9);
           }
         } else if (note.type === 'ring' || note.type === 'slide') {
           const isHoldRing = Boolean(note.isHold && note.endTime && note.endTime > note.time);
@@ -663,7 +663,7 @@ export class GameEngine {
                 this.particleSystem.spawnRipple(pix.x, pix.y, '#ffd54f', 60, 0.35, 2.5, false);
                 this.particleSystem.spawnBurst(pix.x, pix.y, '#ffea00', 18, 140);
               }
-              this.audioEngine.playHitsound('normal', 0.9);
+              this.audioEngine.playHitsound(note.isBreakHold ? 'break' : 'normal', 0.9);
             }
           }
         } else if (note.type === 'ring' || note.type === 'slide') {
@@ -973,7 +973,7 @@ export class GameEngine {
       holdNote.state = 'MISSED';
       this.holdingNotes.delete(lane);
 
-      this.scoreManager.registerJudgement('MISS', 'hold', 150);
+      this.scoreManager.registerJudgement('MISS', holdNote.isBreakHold ? 'break' : 'hold', 150);
       const targetLane = getTapLane(lane);
       if (targetLane) {
         const pix = layoutToPixels(targetLane.x, targetLane.y, this.canvas.width, this.canvas.height);
@@ -988,7 +988,8 @@ export class GameEngine {
       note.state = judgement === 'MISS' ? 'MISSED' : 'JUDGED';
     }
 
-    const res = this.scoreManager.registerJudgement(judgement, note.type, deltaMs);
+    const scoreType = note.isBreakHold ? 'break' : note.type;
+    const res = this.scoreManager.registerJudgement(judgement, scoreType, deltaMs);
 
     const targetLane = getTapLane(note.lane);
     if (targetLane) {
@@ -996,7 +997,7 @@ export class GameEngine {
       this.renderer.addJudgementPopup(judgement, deltaMs, pix.x, pix.y);
 
       if (judgement !== 'MISS') {
-        if (note.type === 'break') {
+        if (scoreType === 'break') {
           // Sóng kích nổ kép màu cam đỏ rực rỡ + pháo hoa ngôi sao maimai Break
           this.particleSystem.spawnRipple(pix.x, pix.y, '#ff3d00', 85, 0.45, 4.0, true);
           this.particleSystem.spawnRipple(pix.x, pix.y, '#ffea00', 55, 0.32, 2.5, false);

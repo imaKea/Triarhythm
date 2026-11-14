@@ -52,7 +52,7 @@ export default function UIKitScreen({ onBack }) {
   };
 
   return (
-    <div className="w-full min-h-screen bg-[#fff5f8] text-[#5b2a47] p-8 custom-scrollbar overflow-y-auto pb-24 osu-screen-transition">
+    <div className="h-full min-h-0 w-full overflow-y-auto overscroll-contain custom-scrollbar bg-[#fff5f8] p-3 pb-5 text-[#5b2a47] osu-screen-transition sm:p-4 md:p-5 lg:p-6">
       {/* Header */}
       <div className="max-w-6xl mx-auto flex items-center justify-between pb-6 mb-8 border-b border-[#f3dbe4]">
         <div>
@@ -75,9 +75,9 @@ export default function UIKitScreen({ onBack }) {
         )}
       </div>
 
-      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-4 md:grid-cols-2 lg:gap-6">
         {/* Section 1: Typography & Vietnamese support */}
-        <div className="bg-white/80 border border-[#f3dbe4] rounded-2xl p-6 flex flex-col gap-4 shadow-sm">
+        <div className="bg-white/80 border border-[#f3dbe4] rounded-2xl p-4 md:p-5 lg:p-6 flex flex-col gap-4 shadow-sm">
           <h2 className="text-sm font-bold tracking-widest text-[#ff4d80] uppercase flex items-center gap-1.5">
             <span>1. Typography & Phông chữ Tiếng Việt</span>
             <span>🐰</span>
@@ -97,7 +97,7 @@ export default function UIKitScreen({ onBack }) {
         </div>
 
         {/* Section 2: WebAudio UI Sounds */}
-        <div className="bg-white/80 border border-[#f3dbe4] rounded-2xl p-6 flex flex-col gap-4 shadow-sm">
+        <div className="bg-white/80 border border-[#f3dbe4] rounded-2xl p-4 md:p-5 lg:p-6 flex flex-col gap-4 shadow-sm">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold tracking-widest text-[#ff4d80] uppercase flex items-center gap-1.5">
               <span>2. Âm thanh Web Audio UI (Không tải file)</span>
@@ -132,7 +132,7 @@ export default function UIKitScreen({ onBack }) {
         </div>
 
         {/* Section 3: Buttons & IconButtons */}
-        <div className="bg-white/80 border border-[#f3dbe4] rounded-2xl p-6 flex flex-col gap-4 shadow-sm">
+        <div className="bg-white/80 border border-[#f3dbe4] rounded-2xl p-4 md:p-5 lg:p-6 flex flex-col gap-4 shadow-sm">
           <h2 className="text-sm font-bold tracking-widest text-[#ff4d80] uppercase flex items-center gap-1.5">
             <span>3. Buttons & Icon Buttons</span>
             <span>🎀</span>
@@ -178,7 +178,7 @@ export default function UIKitScreen({ onBack }) {
         </div>
 
         {/* Section 4: Form Controls */}
-        <div className="bg-white/80 border border-[#f3dbe4] rounded-2xl p-6 flex flex-col gap-4 shadow-sm">
+        <div className="bg-white/80 border border-[#f3dbe4] rounded-2xl p-4 md:p-5 lg:p-6 flex flex-col gap-4 shadow-sm">
           <h2 className="text-sm font-bold tracking-widest text-[#ff4d80] uppercase flex items-center gap-1.5">
             <span>4. Form Controls (Toggles, Sliders, Dropdowns)</span>
             <span>⚙</span>
@@ -230,7 +230,7 @@ export default function UIKitScreen({ onBack }) {
         </div>
 
         {/* Section 5: Tabs & Navigation */}
-        <div className="bg-white/80 border border-[#f3dbe4] rounded-2xl p-6 flex flex-col gap-4 shadow-sm">
+        <div className="bg-white/80 border border-[#f3dbe4] rounded-2xl p-4 md:p-5 lg:p-6 flex flex-col gap-4 shadow-sm">
           <h2 className="text-sm font-bold tracking-widest text-[#ff4d80] uppercase flex items-center gap-1.5">
             <span>5. Tabs & Status Indicators</span>
             <span>✨</span>
@@ -262,7 +262,7 @@ export default function UIKitScreen({ onBack }) {
         </div>
 
         {/* Section 6: StarRating & Rank Badges */}
-        <div className="bg-white/80 border border-[#f3dbe4] rounded-2xl p-6 flex flex-col gap-4 shadow-sm">
+        <div className="bg-white/80 border border-[#f3dbe4] rounded-2xl p-4 md:p-5 lg:p-6 flex flex-col gap-4 shadow-sm">
           <h2 className="text-sm font-bold tracking-widest text-[#ff4d80] uppercase flex items-center gap-1.5">
             <span>6. osu! Star Rating & Rank Badges</span>
             <span>⭐</span>
@@ -303,7 +303,7 @@ export default function UIKitScreen({ onBack }) {
         </div>
 
         {/* Section 7: Overlays, Modals & Toasts */}
-        <div className="bg-white/80 border border-[#f3dbe4] rounded-2xl p-6 flex flex-col gap-4 shadow-sm lg:col-span-2">
+        <div className="bg-white/80 border border-[#f3dbe4] rounded-2xl p-4 md:col-span-2 md:p-5 lg:p-6 flex flex-col gap-4 shadow-sm">
           <h2 className="text-sm font-bold tracking-widest text-[#ff4d80] uppercase flex items-center gap-1.5">
             <span>7. Modals, Confirm Dialog, Context Menu & Toasts</span>
             <span>🎀</span>

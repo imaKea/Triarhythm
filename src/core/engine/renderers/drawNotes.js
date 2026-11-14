@@ -52,6 +52,8 @@ export function drawNotes(renderer, notes, songTime, travelTime, scale, width, h
     let noteColor = '#ff6f99'; // Kawaii Pink
     if (note.isEach) {
       noteColor = '#ffd76f'; // Vàng "each"
+    } else if (note.type === 'hold' && note.isBreakHold) {
+      noteColor = '#e8284f';
     } else if (note.type === 'hold') {
       noteColor = '#ff9d62'; // Hold cam vàng
     } else if (note.type === 'break') {
@@ -175,6 +177,9 @@ export function drawNotes(renderer, notes, songTime, travelTime, scale, width, h
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 2;
       ctx.stroke();
+      if (note.isBreakHold) {
+        drawBreakStar(ctx, 0, 0, radius * 0.55);
+      }
     }
 
     ctx.restore();

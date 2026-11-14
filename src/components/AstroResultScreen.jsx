@@ -173,7 +173,7 @@ export default function AstroResultScreen({
   }, []);
 
   // Fetch Personal Best from IndexedDB
-  const beatmapId = beatmap?.metadata?.id || initialChart?.id || 'sample_beatmap';
+  const beatmapId = initialChart?.id || beatmap?.metadata?.id || 'sample_beatmap';
   useEffect(() => {
     let active = true;
     const fetchPB = async () => {
@@ -397,7 +397,7 @@ export default function AstroResultScreen({
               <span className="text-[10px] font-mono font-bold text-[#ff4d80] tracking-wider uppercase">
                 PERSONAL RECORD
               </span>
-              {pbComparison.isNewRecord && (
+              {pbComparison.isNewRecord && !isAutoplay && (
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-gradient-to-r from-amber-400 to-[#ff4d80] text-white shadow-sm">
                   ★ NEW RECORD!
                 </span>
@@ -442,11 +442,22 @@ export default function AstroResultScreen({
                       {pbComparison.ppDiff >= 0 ? `+${pbComparison.ppDiff.toFixed(0)}pp` : `${pbComparison.ppDiff.toFixed(0)}pp`}
                     </div>
                   )}
+                  {result?.sync && (
+                    <div className={`mt-3 text-[10px] font-mono ${result.sync.synced ? 'text-emerald-700' : 'text-amber-700'}`}>
+                      {result.sync.localSaved
+                        ? result.sync.synced
+                          ? 'Saved on this device and synced to leaderboard.'
+                          : `Saved on this device; leaderboard sync failed: ${result.sync.reason || 'unknown error'}`
+                        : `Score could not be saved: ${result.sync.reason || 'unknown error'}`}
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
               <div className="text-xs text-[#a8556f] font-mono">
-                First time clearing this chart! Record saved.
+                {isAutoplay
+                  ? 'Autoplay run: result was not saved.'
+                  : 'First time clearing this chart! Record saved.'}
               </div>
             )}
           </div>

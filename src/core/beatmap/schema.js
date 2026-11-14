@@ -84,6 +84,8 @@ export const BEATMAP_JSON_SCHEMA = {
           time: { type: 'number', minimum: 0 },
           lane: { type: 'integer', minimum: 0, maximum: 8 },
           endTime: { type: 'number', minimum: 0 },
+          isHold: { type: 'boolean' },
+          isBreakHold: { type: 'boolean' },
           path: {
             type: 'array',
             minItems: 2,

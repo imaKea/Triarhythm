@@ -67,6 +67,20 @@ describe('buildScoreRecord', () => {
     expect(record.pp).toBe(0);
   });
 
+  it('dùng song ID của map thay vì ID riêng của difficulty để đồng bộ leaderboard', () => {
+    const record = buildScoreRecord({
+      summary,
+      chart: {
+        id: 'song-set-1',
+        beatmap: {
+          metadata: { id: 'chart-difficulty-1', title: 'Test Song', difficultyName: 'Master' }
+        }
+      }
+    });
+
+    expect(record.beatmapId).toBe('song-set-1');
+  });
+
   it('hỗ trợ chart là beatmap trực tiếp', () => {
     const record = buildScoreRecord({ summary, chart: chart.beatmap });
     expect(record.beatmapId).toBe('song-1');
@@ -130,6 +144,21 @@ describe('persistScoreResult', () => {
     expect(result.localId).toBe('local-9');
     expect(result.mysql.synced).toBe(false);
     expect(result.mysql.reason).toBe('not-attempted');
+  });
+
+  it('không lưu cục bộ hoặc gửi API khi record dùng autoplay', async () => {
+    const db = { saveScore: vi.fn(async () => 'local-autoplay') };
+    const api = { submitScore: vi.fn(async () => ({})) };
+    const record = buildScoreRecord({ summary, chart, isAutoplay: true });
+
+    const result = await persistScoreResult(record, { db, api });
+
+    expect(db.saveScore).not.toHaveBeenCalled();
+    expect(api.submitScore).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      localId: null,
+      mysql: { synced: false, reason: 'autoplay-disabled' }
+    });
   });
 
   it('ném lỗi khi record không hợp lệ', async () => {

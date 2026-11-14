@@ -3,10 +3,18 @@
  * Tất cả tọa độ dựa trên đơn vị lưới: tam giác đều cạnh 2, tâm tại (0,0), trục y hướng xuống.
  */
 
+const PLAYFIELD_ORIGIN_Y = 0.10;
+const PLAYFIELD_SPREAD_X = 1.10;
+const PLAYFIELD_SPREAD_Y = 1.03;
+const spreadFromSpawn = (x, y) => ({
+  x: x * PLAYFIELD_SPREAD_X,
+  y: PLAYFIELD_ORIGIN_Y + (y - PLAYFIELD_ORIGIN_Y) * PLAYFIELD_SPREAD_Y
+});
+
 export const TRI_RING_LAYOUT = {
   id: 'triRing9',
   name: 'Triangle Ring 9',
-  origin: { x: 0, y: 0.10 }, // Tâm xuất hiện nốt được dời xuống một chút (y = 0.10) ở chính giữa tam giác bo cong
+  origin: { x: 0, y: PLAYFIELD_ORIGIN_Y }, // Tâm xuất hiện nốt được dời xuống một chút (y = 0.10) ở chính giữa tam giác bo cong
   noteRadius: 0.10,
   spawnFrac: 0.18,
   
@@ -24,23 +32,23 @@ export const TRI_RING_LAYOUT = {
 
   // 3 đỉnh của tam giác
   vertices: {
-    TL: { x: -1.0, y: -0.577 }, // Trên - Trái
-    TR: { x: 1.0, y: -0.577 },  // Trên - Phải
-    B:  { x: 0.0, y: 1.155 }    // Đáy
+    TL: spreadFromSpawn(-1.0, -0.577), // Trên - Trái
+    TR: spreadFromSpawn(1.0, -0.577),  // Trên - Phải
+    B:  spreadFromSpawn(0.0, 1.155)    // Đáy
   },
 
   // Điểm điều khiển uốn cong cho cả 3 cạnh (Bowed Edges - bo tròn khu vực chơi ra nhiều hơn)
   curveControl: {
-    top:   { x: 0.0, y: -0.85 },    // Cạnh trên (TL -> TR) bo cong vòm tròn rõ nét lên trên
-    left:  { x: -0.98, y: 0.48 },   // Cạnh trái (TL -> B) bo cong tròn mở rộng ra ngoài
-    right: { x: 0.98, y: 0.48 }     // Cạnh phải (TR -> B) bo cong tròn mở rộng ra ngoài
+    top:   spreadFromSpawn(0.0, -0.85),    // Cạnh trên (TL -> TR) bo cong vòm tròn rõ nét lên trên
+    left:  spreadFromSpawn(-0.98, 0.48),   // Cạnh trái (TL -> B) bo cong tròn mở rộng ra ngoài
+    right: spreadFromSpawn(0.98, 0.48)     // Cạnh phải (TR -> B) bo cong tròn mở rộng ra ngoài
   },
 
   // 3 Slide Node (lục giác đỉnh hướng lên)
   slideNodes: [
-    { id: 0, label: 'S0', name: 'Top-Left', x: -1.0, y: -0.577, radius: 0.15 },
-    { id: 1, label: 'S1', name: 'Top-Right', x: 1.0, y: -0.577, radius: 0.15 },
-    { id: 2, label: 'S2', name: 'Bottom', x: 0.0, y: 1.155, radius: 0.15 }
+    { id: 0, label: 'S0', name: 'Top-Left', ...spreadFromSpawn(-1.0, -0.577), radius: 0.15 },
+    { id: 1, label: 'S1', name: 'Top-Right', ...spreadFromSpawn(1.0, -0.577), radius: 0.15 },
+    { id: 2, label: 'S2', name: 'Bottom', ...spreadFromSpawn(0.0, 1.155), radius: 0.15 }
   ],
 
   // Kích thước ô Tap hình tròn (Circular Judgement Targets)
@@ -53,19 +61,19 @@ export const TRI_RING_LAYOUT = {
   // 9 ô Tap hình tròn trên 3 cạnh tam giác (được sắp xếp đúng theo số thứ tự lane 0..8)
   tapLanes: [
     // Hàng 1 - Cạnh trên: Phím 4/5 (trái), 6/7 (giữa), 8/9 (phải)
-    { lane: 0, defaultKey: '4/5', label: '4·5', edge: 'top', t: 0.22, x: -0.5600, y: -0.6707, angle: -0.1517, a: 0.135, b: 0.135 },
-    { lane: 1, defaultKey: '6/7', label: '6·7', edge: 'top', t: 0.50, x: 0.0000,  y: -0.7135, angle: 0.0000,  a: 0.135, b: 0.135 },
-    { lane: 2, defaultKey: '8/9', label: '8·9', edge: 'top', t: 0.78, x: 0.5600,  y: -0.6707, angle: 0.1517,  a: 0.135, b: 0.135 },
+    { lane: 0, defaultKey: '4/5', label: '4·5', edge: 'top', t: 0.22, ...spreadFromSpawn(-0.5600, -0.6707), angle: -0.1517, a: 0.135, b: 0.135 },
+    { lane: 1, defaultKey: '6/7', label: '6·7', edge: 'top', t: 0.50, ...spreadFromSpawn(0.0000, -0.7135), angle: 0.0000,  a: 0.135, b: 0.135 },
+    { lane: 2, defaultKey: '8/9', label: '8·9', edge: 'top', t: 0.78, ...spreadFromSpawn(0.5600, -0.6707), angle: 0.1517, a: 0.135, b: 0.135 },
 
     // Cạnh trái: R (trên), F (giữa), V (dưới)
-    { lane: 3, defaultKey: 'R',   label: 'R',   edge: 'left',  t: 0.22, x: -0.9447, y: -0.1304, angle: 1.3375, a: 0.135, b: 0.135 },
-    { lane: 4, defaultKey: 'F',   label: 'F',   edge: 'left',  t: 0.50, x: -0.7400, y: 0.3845,  angle: 1.0472, a: 0.135, b: 0.135 },
-    { lane: 5, defaultKey: 'V',   label: 'V',   edge: 'left',  t: 0.78, x: -0.3847, y: 0.8395,  angle: 0.7790, a: 0.135, b: 0.135 },
+    { lane: 3, defaultKey: 'R',   label: 'R',   edge: 'left',  t: 0.22, ...spreadFromSpawn(-0.9447, -0.1304), angle: 1.3375, a: 0.135, b: 0.135 },
+    { lane: 4, defaultKey: 'F',   label: 'F',   edge: 'left',  t: 0.50, ...spreadFromSpawn(-0.7400, 0.3845),  angle: 1.0472, a: 0.135, b: 0.135 },
+    { lane: 5, defaultKey: 'V',   label: 'V',   edge: 'left',  t: 0.78, ...spreadFromSpawn(-0.3847, 0.8395),  angle: 0.7790, a: 0.135, b: 0.135 },
 
     // Cạnh phải: I (trên), J (giữa), N (dưới)
-    { lane: 6, defaultKey: 'I',   label: 'I',   edge: 'right', t: 0.22, x: 0.9447,  y: -0.1304, angle: 1.8041, a: 0.135, b: 0.135 },
-    { lane: 7, defaultKey: 'J',   label: 'J',   edge: 'right', t: 0.50, x: 0.7400,  y: 0.3845,  angle: 2.0944, a: 0.135, b: 0.135 },
-    { lane: 8, defaultKey: 'N',   label: 'N',   edge: 'right', t: 0.78, x: 0.3847,  y: 0.8395,  angle: 2.3626, a: 0.135, b: 0.135 }
+    { lane: 6, defaultKey: 'I',   label: 'I',   edge: 'right', t: 0.22, ...spreadFromSpawn(0.9447, -0.1304), angle: 1.8041, a: 0.135, b: 0.135 },
+    { lane: 7, defaultKey: 'J',   label: 'J',   edge: 'right', t: 0.50, ...spreadFromSpawn(0.7400, 0.3845),  angle: 2.0944, a: 0.135, b: 0.135 },
+    { lane: 8, defaultKey: 'N',   label: 'N',   edge: 'right', t: 0.78, ...spreadFromSpawn(0.3847, 0.8395),  angle: 2.3626, a: 0.135, b: 0.135 }
   ],
 
   // Perimeter order: V F R (4/5) (6/7) (8/9) I J N
