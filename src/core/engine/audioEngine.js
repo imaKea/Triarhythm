@@ -135,6 +135,10 @@ export class AudioEngine {
     return (base + output) * 1000;
   }
 
+  getDuration() {
+    return this.musicBuffer?.duration || 0;
+  }
+
   getSongTimeMs() {
     if (!this.isPlaying) return this.pausedAt * 1000;
     if (!this.audioCtx) {

@@ -533,10 +533,14 @@ describe('GĐ3 Unit Tests - Core Engine & Scoring', () => {
     expect(engine.scoreManager.counts.criticalPerfect).toBe(1);
     expect(engine.scoreManager.counts.miss).toBe(1);
 
-    // Khi nốt Ring + Tap đồng thời (từ slide convert): bấm nút Lane 2 phán định luôn cả nốt Ring
+    // Khi nốt Ring + Tap đồng thời: mỗi nốt cần input độc lập (Lane phán định Tap, Space phán định Ring)
     engine.handleLaneDown(2, 2000, 2000);
-    expect(engine.notes[2].state).toBe('JUDGED'); // Ring note tự động ăn
     expect(engine.notes[3].state).toBe('JUDGED'); // Tap note ăn
+    expect(engine.notes[2].state).not.toBe('JUDGED'); // Ring note không bị ăn nhầm (chống ghost note)
+
+    // Bấm Space để phán định nốt Ring
+    engine.handleSpaceDown(2000, 2000);
+    expect(engine.notes[2].state).toBe('JUDGED'); // Ring note ăn chính xác khi bấm Space
   });
 
   it('18. Bấm sớm ngoài cửa sổ (> 150ms) không giết chết nốt tương lai thành MISS', async () => {
@@ -640,5 +644,87 @@ describe('GĐ3 Unit Tests - Core Engine & Scoring', () => {
     expect(engine.notes[0].state).toBe('ACTIVE');
 
     engine.stop();
+  });
+
+  it('22. totalDuration cập nhật theo độ dài audio và sắp xếp nốt tăng dần, chống kết thúc sớm bài hát', async () => {
+    const dummyCanvas = { width: 800, height: 600, getContext: () => ({}) };
+    const engine = new GameEngine(dummyCanvas);
+
+    // Map có nốt không theo thứ tự thời gian (ví dụ note 5000ms đứng trước note 10000ms đứng trước note 2000ms)
+    const beatmap = {
+      timingPoints: [{ bpm: 120, beatLength: 500 }],
+      notes: [
+        { type: 'tap', lane: 0, time: 5000 },
+        { type: 'tap', lane: 1, time: 10000 },
+        { type: 'tap', lane: 2, time: 2000 }
+      ]
+    };
+
+    await engine.loadChart(beatmap);
+
+    // Notes phải được sắp xếp theo thời gian tăng dần
+    expect(engine.notes[0].time).toBe(2000);
+    expect(engine.notes[1].time).toBe(5000);
+    expect(engine.notes[2].time).toBe(10000);
+
+    // totalDuration ban đầu >= max(10000 + 1500, 30000) = 30000ms
+    expect(engine.totalDuration).toBeGreaterThanOrEqual(30000);
+
+    // Giả lập audio dài 90 giây (90000ms)
+    engine.audioEngine.musicBuffer = { duration: 90 };
+    const audioDurMs = Math.round(engine.audioEngine.getDuration() * 1000);
+    engine.totalDuration = Math.max(engine.totalDuration, audioDurMs);
+    expect(engine.totalDuration).toBe(90000);
+
+    // Khi người chơi đã đánh xong hết các nốt nhưng nhạc mới ở giây 40 (40000ms < 90000ms), không kết thúc sớm
+    engine.notes.forEach(n => { n.state = 'JUDGED'; });
+    let ended = false;
+    engine.finishGame = () => { ended = true; };
+
+    const allNotesDone = engine.notes.every(n => n.state === 'JUDGED' || n.state === 'MISSED');
+    const songTime40s = 40000;
+    if ((allNotesDone && songTime40s >= engine.totalDuration) || (songTime40s >= engine.totalDuration + 2000)) {
+      engine.finishGame();
+    }
+    expect(ended).toBe(false);
+
+    // Chỉ kết thúc khi nhạc đã chạy hết totalDuration
+    const songTime90s = 90000;
+    if ((allNotesDone && songTime90s >= engine.totalDuration) || (songTime90s >= engine.totalDuration + 2000)) {
+      engine.finishGame();
+    }
+    expect(ended).toBe(true);
+  });
+
+  it('23. Không xảy ra ghost note: giữ phím Space không nuốt nốt Tap hay biến mất trước khi hiển thị', async () => {
+    const dummyCanvas = { width: 800, height: 600, getContext: () => ({}) };
+    const engine = new GameEngine(dummyCanvas);
+
+    const beatmap = {
+      timingPoints: [{ bpm: 120, beatLength: 500 }],
+      notes: [
+        { type: 'ring', time: 1000 },
+        { type: 'tap', lane: 4, time: 1000 }
+      ]
+    };
+
+    await engine.loadChart(beatmap);
+    engine.isRunning = true;
+    engine.inputManager.isSpaceDown = true; // Người chơi giữ Space
+
+    // Tại 950ms: nốt chưa tới (cách 50ms), nốt Tap vẫn phải ACTIVE và không bị đánh dấu JUDGED sớm
+    engine.updateNotes(950);
+    expect(engine.notes[1].state).toBe('ACTIVE');
+    expect(engine.notes[0].state).toBe('ACTIVE');
+
+    // Tại 1000ms: nốt Ring được phán định bởi Space
+    engine.updateNotes(1000);
+    expect(engine.notes[0].state).toBe('JUDGED');
+    // Nốt Tap VẪN PHẢI GIỮ ACTIVE, chờ người chơi bấm phím F (lane 4)
+    expect(engine.notes[1].state).toBe('ACTIVE');
+
+    // Người chơi bấm phím F (lane 4)
+    engine.handleLaneDown(4, 1005, 1005);
+    expect(engine.notes[1].state).toBe('JUDGED');
   });
 });

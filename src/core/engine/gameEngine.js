@@ -200,7 +200,9 @@ export class GameEngine {
     const isMaimai = beatmap.metadata?.source === 'maimai' || beatmap.source === 'maimai';
 
     // Maimai giữ 100% nốt theo chuẩn chart gốc; osu mania áp dụng bộ lọc 2 ngón tay
-    const sanitizedNotes = isMaimai ? (beatmap.notes || []) : this.enforceTwoFingerConstraint(beatmap.notes || [], beatLength);
+    const rawNotes = isMaimai ? (beatmap.notes || []) : this.enforceTwoFingerConstraint(beatmap.notes || [], beatLength);
+    // Sắp xếp các nốt theo trình tự thời gian tăng dần
+    const sanitizedNotes = [...rawNotes].sort((a, b) => (a.time || 0) - (b.time || 0));
 
     // Nhận diện các cặp nốt đồng thời (cách nhau <= 1ms) để đổi màu "Each" vàng
     const processed = sanitizedNotes.map((n, idx) => {
@@ -246,10 +248,10 @@ export class GameEngine {
     this.notes = processed;
     this.scoreManager.initChart(this.notes);
 
-    // Tính tổng thời lượng bài
+    // Tính tổng thời lượng bài dựa trên nốt kết thúc muộn nhất
     if (this.notes.length > 0) {
-      const lastNote = this.notes[this.notes.length - 1];
-      this.totalDuration = Math.max(lastNote.endTime || lastNote.time + 1500, 30000);
+      const maxNoteEndTime = this.notes.reduce((max, n) => Math.max(max, n.endTime || n.time || 0), 0);
+      this.totalDuration = Math.max(maxNoteEndTime + 1500, 30000);
     } else {
       this.totalDuration = 30000;
     }
@@ -302,6 +304,12 @@ export class GameEngine {
       // Map khác khi không kèm file audio: tự động sinh nhạc Synth theo đúng BPM của map đó
       const bpm = beatmap.timingPoints?.[0]?.bpm || 140;
       this.audioEngine.generateProceduralMusic(bpm, this.totalDuration / 1000);
+    }
+
+    // Cập nhật tổng thời lượng theo độ dài thực tế của file âm thanh nếu dài hơn
+    const audioDurMs = Math.round((this.audioEngine.getDuration() || 0) * 1000);
+    if (audioDurMs > 0) {
+      this.totalDuration = Math.max(this.totalDuration, audioDurMs);
     }
   }
 
@@ -449,7 +457,8 @@ export class GameEngine {
 
       this.renderer.render(gameState, this.particleSystem);
 
-      if (songTime >= this.totalDuration + 1000 && this.notes.every(n => n.state === 'JUDGED' || n.state === 'MISSED')) {
+      const allNotesDone = this.notes.length === 0 || this.notes.every(n => n.state === 'JUDGED' || n.state === 'MISSED');
+      if ((allNotesDone && songTime >= this.totalDuration) || (songTime >= this.totalDuration + 2000)) {
         this.finishGame();
         return;
       }
@@ -635,15 +644,6 @@ export class GameEngine {
       const missWindow = JUDGEMENT_CONFIG.windows.good || 150;
       if (note.state === 'ACTIVE') {
         if (note.type === 'tap' || note.type === 'break') {
-          // Nếu có nốt Ring đồng thời đã ăn, tự động đánh dấu hoàn tất note này (không bị miss)
-          const matchingRing = this.notes.find(
-            o => (o.type === 'ring' || o.type === 'slide') && Math.abs(o.time - note.time) <= 30
-          );
-          if (matchingRing && matchingRing.state === 'JUDGED') {
-            note.state = 'JUDGED';
-            continue;
-          }
-
           if (songTime > note.time + missWindow) {
             this.triggerJudgement(note, 'MISS', missWindow);
           }
@@ -677,17 +677,8 @@ export class GameEngine {
         } else if (note.type === 'ring' || note.type === 'slide') {
           const isHoldRing = Boolean(note.isHold && note.endTime && note.endTime > note.time);
           if (!isHoldRing) {
-            // Nếu có nốt Tap/Break đồng thời đã ăn, tự động đánh dấu hoàn tất note này (không bị miss)
-            const matchingTap = this.notes.find(
-              o => (o.type === 'tap' || o.type === 'break') && Math.abs(o.time - note.time) <= 30
-            );
-            if (matchingTap && matchingTap.state === 'JUDGED') {
-              note.state = 'JUDGED';
-              continue;
-            }
-
-            // Người chơi giữ phím SPACE: tự động phán định nốt Ring hoàn hảo không cần bấm quá nhiều lần
-            if (this.inputManager?.isSpaceDown && songTime >= note.time - 35) {
+            // Người chơi giữ phím SPACE: tự động phán định nốt Ring hoàn hảo khi nốt tới tâm receptor
+            if (this.inputManager?.isSpaceDown && songTime >= note.time && Math.abs(songTime - note.time) <= 50) {
               this.judgeRingNote(note, note.time, originPix);
               continue;
             }
@@ -858,19 +849,6 @@ export class GameEngine {
       }
     } else {
       this.judgeRingNote(targetNote, audioTime, originPix);
-
-      // Nếu có nốt button đồng thời (từ slide convert cũ), phán định hoàn tất luôn
-      const simultaneousTap = this.notes.find(
-        n => (n.type === 'tap' || n.type === 'break') &&
-             n.state !== 'JUDGED' &&
-             n.state !== 'MISSED' &&
-             Math.abs(n.time - targetNote.time) <= 35
-      );
-      if (simultaneousTap) {
-        const deltaMs = Math.round(audioTime - simultaneousTap.time);
-        const j = getJudgement(deltaMs);
-        this.triggerJudgement(simultaneousTap, j !== 'MISS' ? j : 'GOOD', deltaMs);
-      }
     }
   }
 
@@ -989,17 +967,6 @@ export class GameEngine {
         note.isHolding = true;
         this.holdingNotes.set(lane, note);
         this.triggerJudgement(note, judgement, deltaMs, false);
-      }
-
-      // Nếu có nốt Ring đồng thời tại mốc thời gian này (từ slide convert cũ), phán định hoàn tất luôn
-      const simultaneousRing = this.notes.find(
-        n => (n.type === 'ring' || n.type === 'slide') &&
-             n.state !== 'JUDGED' &&
-             n.state !== 'MISSED' &&
-             Math.abs(n.time - note.time) <= 35
-      );
-      if (simultaneousRing) {
-        this.judgeRingNote(simultaneousRing, audioTime);
       }
     }
   }
