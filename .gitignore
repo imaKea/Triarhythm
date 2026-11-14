@@ -31,3 +31,4 @@ Thumbs.db
 # Test / scratch
 /coverage/
 /scratch/
+.phpunit.result.cache

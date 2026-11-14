@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Map extends Model
@@ -11,6 +12,7 @@ class Map extends Model
     use HasFactory;
 
     protected $fillable = [
+        'user_id',
         'song_id',
         'title',
         'artist',
@@ -27,12 +29,18 @@ class Map extends Model
     ];
 
     protected $casts = [
+        'user_id' => 'integer',
         'bpm' => 'float',
         'preview_time' => 'float',
         'difficulties' => 'array',
         'metadata' => 'array',
         'play_count' => 'integer',
     ];
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 
     public function scores(): HasMany
     {

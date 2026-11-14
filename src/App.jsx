@@ -82,6 +82,9 @@ export default function App() {
         const meRes = await apiClient.me();
         if (meRes?.user) {
           setCurrentUser(meRes.user);
+          if (meRes.user.settings && typeof meRes.user.settings === 'object') {
+            setSettings((prev) => ({ ...prev, ...meRes.user.settings }));
+          }
         }
       } catch (_) {
         setCurrentUser(null);
@@ -114,11 +117,17 @@ export default function App() {
     loadDatabase();
   }, [loadDatabase]);
 
-  // Cập nhật cài đặt và lưu vào IndexedDB
+  // Cập nhật cài đặt, lưu vào IndexedDB và tự động đồng bộ lên server nếu đã đăng nhập
   const handleUpdateSettings = async (newSettings) => {
     setSettings(newSettings);
     try {
       await dbManager.saveSettings(newSettings);
+      if (apiClient.getToken()) {
+        await apiClient.request('/auth/settings', {
+          method: 'POST',
+          body: JSON.stringify({ settings: newSettings })
+        }).catch(() => {});
+      }
     } catch (err) {
       console.warn('Lỗi lưu cài đặt:', err);
     }

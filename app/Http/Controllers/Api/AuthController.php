@@ -11,6 +11,24 @@ use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
+    private function formatUserData(User $user): array
+    {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'username' => $user->username,
+            'email' => $user->email,
+            'role' => $user->role ?? 'user',
+            'avatar' => $user->avatar,
+            'country' => $user->country ?? 'VN',
+            'total_pp' => (float)($user->total_pp ?? 0.00),
+            'rating' => (float)($user->rating ?? 0.00),
+            'total_score' => (int)($user->total_score ?? 0),
+            'play_count' => (int)($user->play_count ?? 0),
+            'settings' => $user->settings ?? null,
+        ];
+    }
+
     public function register(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -27,8 +45,10 @@ class AuthController extends Controller
             'username' => $validated['username'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
+            'role' => 'user',
             'avatar' => 'https://api.dicebear.com/7.x/bottts/svg?seed=' . urlencode($validated['username']),
             'rating' => 0.00,
+            'total_pp' => 0.00,
             'total_score' => 0,
             'play_count' => 0,
             'api_token' => hash('sha256', $token),
@@ -38,16 +58,7 @@ class AuthController extends Controller
             'success' => true,
             'message' => 'Đăng ký tài khoản thành công!',
             'token' => $token,
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'username' => $user->username,
-                'email' => $user->email,
-                'avatar' => $user->avatar,
-                'rating' => (float)$user->rating,
-                'total_score' => (int)$user->total_score,
-                'play_count' => (int)$user->play_count,
-            ],
+            'user' => $this->formatUserData($user),
         ], 201);
     }
 
@@ -78,51 +89,108 @@ class AuthController extends Controller
             'success' => true,
             'message' => 'Đăng nhập thành công!',
             'token' => $token,
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'username' => $user->username,
-                'email' => $user->email,
-                'avatar' => $user->avatar,
-                'rating' => (float)$user->rating,
-                'total_score' => (int)$user->total_score,
-                'play_count' => (int)$user->play_count,
-            ],
+            'user' => $this->formatUserData($user),
         ]);
     }
 
     public function me(Request $request): JsonResponse
     {
-        $token = $request->bearerToken();
-        if (!$token) {
-            return response()->json(['success' => false, 'message' => 'Chưa đăng nhập'], 401);
+        $user = $request->user();
+        if (!$user) {
+            $token = $request->bearerToken();
+            if ($token) {
+                $user = User::where('api_token', hash('sha256', $token))->first();
+            }
         }
 
-        $hashedToken = hash('sha256', $token);
-        $user = User::where('api_token', $hashedToken)->first();
-
         if (!$user) {
-            return response()->json(['success' => false, 'message' => 'Phiên đăng nhập không hợp lệ'], 401);
+            return response()->json(['success' => false, 'message' => 'Chưa đăng nhập hoặc phiên đã hết hạn'], 401);
         }
 
         $bestScores = $user->scores()
+            ->with('map:song_id,title,artist,cover_url')
+            ->orderByDesc('pp')
             ->orderByDesc('score')
             ->limit(10)
             ->get();
 
         return response()->json([
             'success' => true,
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'username' => $user->username,
-                'email' => $user->email,
-                'avatar' => $user->avatar,
-                'rating' => (float)$user->rating,
-                'total_score' => (int)$user->total_score,
-                'play_count' => (int)$user->play_count,
-            ],
+            'user' => $this->formatUserData($user),
             'best_scores' => $bestScores,
+        ]);
+    }
+
+    public function updateSettings(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (!$user) {
+            $token = $request->bearerToken();
+            if ($token) {
+                $user = User::where('api_token', hash('sha256', $token))->first();
+            }
+        }
+
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Chưa đăng nhập'], 401);
+        }
+
+        $settings = $request->input('settings', []);
+        $user->settings = $settings;
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Đã đồng bộ cài đặt lên tài khoản!',
+            'settings' => $user->settings,
+        ]);
+    }
+
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (!$user) {
+            $token = $request->bearerToken();
+            if ($token) {
+                $user = User::where('api_token', hash('sha256', $token))->first();
+            }
+        }
+
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Chưa đăng nhập'], 401);
+        }
+
+        $validated = $request->validate([
+            'name' => 'nullable|string|max:100',
+            'avatar' => 'nullable|string|max:500',
+            'current_password' => 'nullable|string',
+            'new_password' => 'nullable|string|min:6',
+        ]);
+
+        if (!empty($validated['name'])) {
+            $user->name = $validated['name'];
+        }
+
+        if (!empty($validated['avatar'])) {
+            $user->avatar = $validated['avatar'];
+        }
+
+        if (!empty($validated['new_password'])) {
+            if (empty($validated['current_password']) || !Hash::check($validated['current_password'], $user->password)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Mật khẩu hiện tại không chính xác!',
+                ], 422);
+            }
+            $user->password = Hash::make($validated['new_password']);
+        }
+
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Cập nhật thông tin tài khoản thành công!',
+            'user' => $this->formatUserData($user),
         ]);
     }
 

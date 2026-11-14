@@ -63,12 +63,23 @@ class MapController extends Controller
             'metadata' => 'nullable|array',
         ]);
 
+        $user = $request->user();
+        if (!$user) {
+            $token = $request->bearerToken();
+            if ($token) {
+                $user = \App\Models\User::where('api_token', hash('sha256', $token))->first();
+            }
+        }
+
+        $creatorName = $validated['creator'] ?? ($user ? $user->name : 'Mapper');
+
         $map = Map::updateOrCreate(
             ['song_id' => $validated['song_id']],
             [
+                'user_id' => $user?->id,
                 'title' => $validated['title'],
                 'artist' => $validated['artist'] ?? 'Unknown Artist',
-                'creator' => $validated['creator'] ?? 'Mapper',
+                'creator' => $creatorName,
                 'source' => $validated['source'] ?? 'maimai',
                 'bpm' => $validated['bpm'] ?? 120,
                 'preview_time' => $validated['preview_time'] ?? 0,
@@ -164,12 +175,30 @@ class MapController extends Controller
         ]);
     }
 
-    public function destroy(string $song_id): JsonResponse
+    public function destroy(Request $request, string $song_id): JsonResponse
     {
         $map = Map::where('song_id', $song_id)->first();
 
         if (!$map) {
             return response()->json(['success' => false, 'message' => 'Không tìm thấy beatmap'], 404);
+        }
+
+        $user = $request->user();
+        if (!$user) {
+            $token = $request->bearerToken();
+            if ($token) {
+                $user = \App\Models\User::where('api_token', hash('sha256', $token))->first();
+            }
+        }
+
+        // Kiểm tra quyền: Chỉ tác giả map hoặc Quản trị viên (Admin) mới có quyền xoá
+        $canDelete = $user && ($user->isAdmin() || ($map->user_id && $map->user_id === $user->id));
+
+        if (!$canDelete) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn không có quyền xoá beatmap này. Chỉ tác giả tạo map hoặc Quản trị viên mới có thể xoá.',
+            ], 403);
         }
 
         // Xoá asset đã upload để tránh file mồ côi trong storage.

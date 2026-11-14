@@ -59,6 +59,7 @@ function toMysqlPayload(record) {
   return {
     song_id: record.beatmapId,
     difficulty_name: record.difficultyName,
+    stars: record.stars || 0,
     score: record.score,
     accuracy: record.accuracy,
     max_combo: record.maxCombo,

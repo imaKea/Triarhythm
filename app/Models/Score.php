@@ -14,6 +14,7 @@ class Score extends Model
         'user_id',
         'song_id',
         'difficulty_name',
+        'stars',
         'score',
         'accuracy',
         'max_combo',
@@ -28,6 +29,7 @@ class Score extends Model
     ];
 
     protected $casts = [
+        'stars' => 'decimal:2',
         'score' => 'integer',
         'accuracy' => 'decimal:2',
         'max_combo' => 'integer',

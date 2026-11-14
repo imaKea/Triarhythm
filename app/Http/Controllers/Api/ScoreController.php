@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Map;
 use App\Models\Score;
 use App\Models\User;
+use App\Services\PpCalculator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -16,6 +17,8 @@ class ScoreController extends Controller
         $validated = $request->validate([
             'song_id' => 'required|string',
             'difficulty_name' => 'required|string',
+            'stars' => 'nullable|numeric|min:0|max:15.0',
+            'note_count' => 'nullable|integer|min:0',
             'score' => 'required|integer|min:0|max:1010000',
             'accuracy' => 'required|numeric|min:0|max:101.00',
             'max_combo' => 'required|integer|min:0',
@@ -29,42 +32,67 @@ class ScoreController extends Controller
             'mods' => 'nullable|array',
         ]);
 
-        // Xác thực người dùng qua API token nếu có, hoặc tìm/tạo tài khoản Khách
-        $user = null;
-        $token = $request->bearerToken();
-        if ($token) {
-            $user = User::where('api_token', hash('sha256', $token))->first();
+        // Xác thực người dùng qua API token
+        $user = $request->user();
+        if (!$user) {
+            $token = $request->bearerToken();
+            if ($token) {
+                $user = User::where('api_token', hash('sha256', $token))->first();
+            }
         }
 
+        // Không cho phép lưu vào tài khoản guest dùng chung; yêu cầu đăng nhập
         if (!$user) {
-            $user = User::firstOrCreate(
-                ['email' => 'guest@triarhythm.local'],
-                [
-                    'name' => 'Khách',
-                    'username' => 'guest',
-                    'password' => bcrypt('guest123456'),
-                    'avatar' => 'https://api.dicebear.com/7.x/bottts/svg?seed=guest',
-                    'rating' => 0.00,
-                    'total_score' => 0,
-                    'play_count' => 0,
-                ]
-            );
+            return response()->json([
+                'success' => false,
+                'message' => 'Yêu cầu đăng nhập để lưu điểm trực tuyến lên bảng xếp hạng.',
+            ], 401);
         }
+
+        // Tìm beatmap và độ khó để lấy stars và noteCount chuẩn
+        $map = Map::where('song_id', $validated['song_id'])->first();
+        $stars = (float)($validated['stars'] ?? 0);
+        $noteCount = (int)($validated['note_count'] ?? 0);
+
+        if ($map && is_array($map->difficulties)) {
+            foreach ($map->difficulties as $diff) {
+                if (($diff['difficultyName'] ?? '') === $validated['difficulty_name']) {
+                    if (isset($diff['stars']) && (float)$diff['stars'] > 0) {
+                        $stars = (float)$diff['stars'];
+                    }
+                    if (isset($diff['noteCount']) && (int)$diff['noteCount'] > 0) {
+                        $noteCount = (int)$diff['noteCount'];
+                    }
+                    break;
+                }
+            }
+        }
+
+        if ($stars <= 0) {
+            $stars = (float)($validated['stars'] ?? 5.0);
+        }
+
+        $missCount = (int)($validated['miss'] ?? 0);
+        $accuracy = (float)$validated['accuracy'];
+
+        // Tính toán PP độc lập trên server bằng PpCalculator (không tin tưởng hoàn toàn client)
+        $serverCalculatedPP = PpCalculator::calculatePP($stars, $accuracy, $missCount, $noteCount);
 
         $score = Score::create([
             'user_id' => $user->id,
             'song_id' => $validated['song_id'],
             'difficulty_name' => $validated['difficulty_name'],
+            'stars' => $stars,
             'score' => $validated['score'],
-            'accuracy' => $validated['accuracy'],
+            'accuracy' => $accuracy,
             'max_combo' => $validated['max_combo'],
             'rank' => $validated['rank'],
             'critical_perfect' => $validated['critical_perfect'] ?? 0,
             'perfect' => $validated['perfect'] ?? 0,
             'great' => $validated['great'] ?? 0,
             'good' => $validated['good'] ?? 0,
-            'miss' => $validated['miss'] ?? 0,
-            'pp' => $validated['pp'] ?? 0.00,
+            'miss' => $missCount,
+            'pp' => $serverCalculatedPP,
             'mods' => $validated['mods'] ?? [],
         ]);
 
@@ -72,19 +100,8 @@ class ScoreController extends Controller
         $user->increment('play_count');
         $user->increment('total_score', $validated['score']);
 
-        // Tính lại Rating trung bình 10 bài điểm cao nhất
-        $topScores = $user->scores()
-            ->orderByDesc('accuracy')
-            ->limit(10)
-            ->get();
-
-        if ($topScores->count() > 0) {
-            $avgAcc = $topScores->avg('accuracy');
-            // Rating tính theo công thức AstroDX / Maimai rating cơ bản
-            $newRating = round(($avgAcc / 100) * 15.0, 2);
-            $user->rating = $newRating;
-            $user->save();
-        }
+        // Tính lại Total PP theo top 100 điểm với trọng số suy giảm 0.95^i chuẩn osu!
+        $newTotalPP = $user->recalculateTotalPP();
 
         // Tăng play_count của beatmap nếu có
         Map::where('song_id', $validated['song_id'])->increment('play_count');
@@ -99,11 +116,13 @@ class ScoreController extends Controller
             'success' => true,
             'message' => 'Lưu điểm số thành công vào MySQL Database!',
             'score' => $score,
+            'calculated_pp' => $serverCalculatedPP,
             'rank_position' => $rankPosition,
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'username' => $user->username,
+                'total_pp' => (float)$user->total_pp,
                 'rating' => (float)$user->rating,
                 'total_score' => (int)$user->total_score,
                 'play_count' => (int)$user->play_count,
@@ -114,18 +133,29 @@ class ScoreController extends Controller
     public function userScores(int $userId): JsonResponse
     {
         $user = User::find($userId);
+
         if (!$user) {
-            return response()->json(['success' => false, 'message' => 'Không tìm thấy người dùng'], 404);
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy người chơi'], 404);
         }
 
         $scores = $user->scores()
-            ->orderByDesc('created_at')
-            ->limit(50)
+            ->with('map:song_id,title,artist,cover_url')
+            ->orderByDesc('pp')
+            ->orderByDesc('score')
+            ->limit(100)
             ->get();
 
         return response()->json([
             'success' => true,
-            'user' => $user,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'username' => $user->username,
+                'avatar' => $user->avatar,
+                'total_pp' => (float)$user->total_pp,
+                'rating' => (float)$user->rating,
+                'play_count' => (int)$user->play_count,
+            ],
             'scores' => $scores,
         ]);
     }

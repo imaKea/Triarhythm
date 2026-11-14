@@ -12,21 +12,34 @@ Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    Route::middleware('auth.api')->group(function () {
+        Route::post('/settings', [AuthController::class, 'updateSettings']);
+        Route::post('/profile', [AuthController::class, 'updateProfile']);
+    });
 });
 
 // Maps Routes
 Route::prefix('maps')->group(function () {
     Route::get('/', [MapController::class, 'index']);
-    Route::post('/', [MapController::class, 'store']);
-    Route::post('/{song_id}/assets', [MapController::class, 'uploadAssets']);
     Route::get('/{song_id}', [MapController::class, 'show']);
-    Route::delete('/{song_id}', [MapController::class, 'destroy']);
+
+    // Upload & Xoá map yêu cầu xác thực người dùng
+    Route::middleware('auth.api')->group(function () {
+        Route::post('/', [MapController::class, 'store']);
+        Route::post('/{song_id}/assets', [MapController::class, 'uploadAssets']);
+        Route::delete('/{song_id}', [MapController::class, 'destroy']);
+    });
 });
 
 // Scores Routes
 Route::prefix('scores')->group(function () {
-    Route::post('/', [ScoreController::class, 'store']);
     Route::get('/user/{userId}', [ScoreController::class, 'userScores']);
+
+    // Nộp điểm lên server yêu cầu xác thực tài khoản
+    Route::middleware('auth.api')->group(function () {
+        Route::post('/', [ScoreController::class, 'store']);
+    });
 });
 
 // Leaderboard Routes

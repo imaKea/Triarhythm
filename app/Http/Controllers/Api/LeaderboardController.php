@@ -12,22 +12,28 @@ class LeaderboardController extends Controller
 {
     public function global(Request $request): JsonResponse
     {
-        $type = $request->query('type', 'rating'); // 'rating' or 'score'
+        $type = $request->query('type', 'pp'); // 'pp' (default osu!), 'score', or 'rating'
         $limit = min(100, max(1, (int)$request->query('limit', 50)));
 
         $query = User::query()->where('play_count', '>', 0);
 
         if ($type === 'score') {
             $query->orderByDesc('total_score');
-        } else {
+        } elseif ($type === 'rating') {
             $query->orderByDesc('rating')->orderByDesc('total_score');
+        } else {
+            // Chuẩn osu!: sắp xếp theo Total PP
+            $query->orderByDesc('total_pp')->orderByDesc('total_score');
         }
 
         $players = $query->limit($limit)->get([
             'id',
             'name',
             'username',
+            'role',
             'avatar',
+            'country',
+            'total_pp',
             'rating',
             'total_score',
             'play_count',
@@ -46,7 +52,7 @@ class LeaderboardController extends Controller
         $difficulty = $request->query('difficulty');
         $limit = min(100, max(1, (int)$request->query('limit', 50)));
 
-        $query = Score::with('user:id,name,username,avatar,rating')
+        $query = Score::with('user:id,name,username,avatar,total_pp,rating')
             ->where('song_id', $song_id);
 
         if ($difficulty) {
@@ -62,6 +68,7 @@ class LeaderboardController extends Controller
             'success' => true,
             'song_id' => $song_id,
             'difficulty' => $difficulty,
+            'count' => $scores->count(),
             'scores' => $scores,
         ]);
     }
