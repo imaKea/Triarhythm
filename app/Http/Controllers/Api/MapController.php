@@ -172,6 +172,9 @@ class MapController extends Controller
             return response()->json(['success' => false, 'message' => 'Không tìm thấy beatmap'], 404);
         }
 
+        // Xoá asset đã upload để tránh file mồ côi trong storage.
+        Storage::disk('public')->deleteDirectory("beatmaps/{$song_id}");
+
         $map->delete();
 
         return response()->json([
