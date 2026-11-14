@@ -94,23 +94,51 @@ npm run build     # build SPA ra dist/
 - **Import map** đi qua một luồng duy nhất: `src/core/parser/importService.js` → lưu IndexedDB + đồng bộ metadata lên MySQL (`saveMap`) + upload asset lên Laravel Storage (`saveAssets`).
 - **PP/Star**: `src/core/pp/ppCalculator.js`, cấu hình `src/config/pp.config.js`.
 
+## Tính năng nổi bật & Giao diện chuẩn osu!(lazer)
+
+- **Giao diện osu!(lazer) Design System**:
+  - Tông màu chủ đạo: Dark violet (`#181224`), Accent pink (`#ff66ab`), Neon Purple (`#6c5ce7`).
+  - Typography: Torus / Nunito / Be Vietnam Pro, JetBrains Mono cho số liệu.
+  - Hiệu ứng Glassmorphism backdrop-blur, bo góc chuẩn lazer (`12px`), tab switcher, avatar tròn viền phát sáng.
+  - **Song Select**: Card nghiêng góc osu!, huy hiệu xếp hạng SS/S/A/B/C/D, bộ lọc tìm kiếm tức thì (`stars>5`, `bpm<200`), nút F2 ngẫu nhiên, F5 tải lại, context menu chuột phải.
+  - **Result Screen**: Cấp độ chữ cái lớn, điểm số 8 chữ số cuộn hoạt ảnh, thanh đếm số lượng phán định, biểu đồ phân bố độ lệch thời gian (UR Histogram), thống kê PP đạt được và so sánh kỷ lục cá nhân.
+  - **Gameplay & Lead-in**: Đếm ngược 3-2-1 khi bắt đầu / tiếp tục từ Pause, 1 giây audio lead-in (-1000ms) chống hiện tượng "rocket note".
+
+- **Hệ thống Quản trị (Admin Panel CRUD)**:
+  - Bảng điều khiển phân tích số liệu KPI: tổng người chơi, tổng map, lượt chơi, biểu đồ 7 ngày gần nhất, phân bố cấp bậc rank.
+  - Quản lý tài khoản: Đổi vai trò (user ↔ admin), cấm/bỏ cấm (ban/unban), đặt lại mật khẩu, xóa tài khoản.
+  - Quản lý beatmap: Chỉnh sửa metadata trực tiếp, bật/tắt trạng thái phát hành (Draft/Published), xóa map.
+  - Kiểm duyệt điểm số: Xóa điểm nghi vấn gian lận, tự động tính toán lại PP người chơi, nút "Tính lại toàn bộ PP" (Batch recalculate).
+  - Nhật ký hoạt động (Audit Activity Logs): Ghi lại chi tiết mọi hành vi quản trị cùng IP và thời gian.
+
+- **Hoàn tác Xóa Beatmap (Soft Delete, Ctrl+Z & Thùng rác)**:
+  - Khi xóa map, map được đưa vào trạng thái lưu trữ an toàn (soft delete) cả trên MySQL (`deleted_at`) và IndexedDB (`deletedAt`).
+  - Phím tắt **Ctrl+Z** hoặc nút trên Toast hoàn tác ngay lập tức trong vòng 7 giây.
+  - Giao diện **Thùng rác Beatmap (Trash Bin)** cho phép duyệt danh sách các map đã xóa, khôi phục từng bài hoặc dọn sạch vĩnh viễn (purge binary assets).
+
+- **Trình chỉnh sửa Map (Map Editor kiểu osu!)**:
+  - Giao diện Composer 3 cột: Thanh công cụ ghi chú & Timing, Preview tam giác ngược với 9 lane và 3 đỉnh slide node, Timeline đa rãnh với waveform và osu! snap divisor (1/1 trắng, 1/2 xanh lam, 1/3 tím, 1/4 vàng, 1/6 hồng, 1/8 cam, 1/12 ngọc, 1/16 xám).
+  - Đầy đủ 7 công cụ nốt: Select (1), Tap (2), Hold (3), Break (4), Ring (5), Slide (6 - chuột trượt qua các node), Typing (7 - gõ chữ).
+  - Phím tắt tiện lợi: `Space` phát/dừng nhạc, `Ctrl+S` lưu nhanh, `F5` chơi thử ngay lập tức (Test Play).
+
 ## Cấu trúc chính
 
 ```
 src/
-  components/        # Song select, gameplay, leaderboard, editor shell, modals
+  components/        # Song select, gameplay, leaderboard, editor shell, admin panel, modals
   config/            # layout, judgement, pp, slide
   core/
-    api/             # Laravel API client
+    api/             # Laravel API client & Token Auth
     beatmap/         # schema + validator + sample chart
-    engine/          # game engine + renderers
+    engine/          # game engine + renderers + audio lead-in + countdown
     parser/          # osu / maimai / package + importService
     pp/              # star & PP calculator
-    storage/         # IndexedDB + score flow + seed
-  features/editor/   # editor hook + panels
-app/Http/Controllers/Api/   # Laravel API
-routes/api.php              # API routes
+    storage/         # IndexedDB + soft delete + score flow + seed
+  features/editor/   # editor hook + timeline + preview + tools
+  ui/                # Button, Modal, Toast, Slider, Dropdown, Toggle
+app/Http/Controllers/Api/   # Laravel API (Auth, Map, Score, Leaderboard, Admin)
+routes/api.php              # API routes & middleware (auth.api, admin)
 static/                     # asset tĩnh của game (audio, sfx)
 public/                     # Laravel web-root (index.php, .htaccess)
-tests/                      # Vitest
+tests/                      # Vitest & PHPUnit Feature tests
 ```

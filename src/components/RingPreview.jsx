@@ -162,7 +162,7 @@ export default function RingPreview() {
       ctx.stroke();
 
       const isWideText = lane.label.length > 2;
-      ctx.font = `bold ${Math.round((isWideText ? 9.5 : 11) * (scale / 240))}px Orbitron, sans-serif`;
+      ctx.font = `bold ${Math.round((isWideText ? 9.5 : 11) * (scale / 240))}px Torus, Nunito, 'Be Vietnam Pro', system-ui, sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillStyle = isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.85)';
