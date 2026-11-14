@@ -105,9 +105,9 @@ export default function GameplayView({
     const setupChart = async () => {
       if (initialChart) {
         const beatmap = initialChart.beatmap || initialChart;
-        const audioBlob = initialChart.audioBlob || initialChart.audioSource || null;
+        const audioBlob = initialChart.audioBlob || initialChart.audioSource || initialChart.serverAssets?.audioUrl || null;
         const hitsounds = initialChart.hitsounds || null;
-        const videoBlob = initialChart.videoBlob || beatmap.assets?.video || null;
+        const videoBlob = initialChart.videoBlob || initialChart.videoSource || initialChart.serverAssets?.videoUrl || beatmap.assets?.video || null;
 
         await engine.loadChart(beatmap, audioBlob, hitsounds);
         setActiveChartName(`${beatmap.metadata?.title || initialChart.title || 'Unknown'} [${beatmap.metadata?.difficultyName || initialChart.difficultyName || 'Normal'}]`);

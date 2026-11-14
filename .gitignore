@@ -20,6 +20,9 @@ node_modules/
 /bootstrap/cache/*.php
 !/bootstrap/cache/.gitignore
 
+# Symlink do `php artisan storage:link` tạo ra
+/public/storage
+
 # Editor / OS
 .DS_Store
 Thumbs.db

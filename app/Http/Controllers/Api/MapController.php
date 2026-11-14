@@ -6,9 +6,21 @@ use App\Http\Controllers\Controller;
 use App\Models\Map;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class MapController extends Controller
 {
+    /**
+     * Bỏ qua URL tạm (blob:) do trình duyệt sinh ra — không lưu vào MySQL.
+     */
+    private function cleanUrl(?string $url): ?string
+    {
+        if (!$url) {
+            return null;
+        }
+        return str_starts_with($url, 'blob:') ? null : $url;
+    }
+
     public function index(Request $request): JsonResponse
     {
         $query = Map::query();
@@ -60,9 +72,9 @@ class MapController extends Controller
                 'source' => $validated['source'] ?? 'maimai',
                 'bpm' => $validated['bpm'] ?? 120,
                 'preview_time' => $validated['preview_time'] ?? 0,
-                'cover_url' => $validated['cover_url'] ?? null,
-                'audio_url' => $validated['audio_url'] ?? null,
-                'video_url' => $validated['video_url'] ?? null,
+                'cover_url' => $this->cleanUrl($validated['cover_url'] ?? null),
+                'audio_url' => $this->cleanUrl($validated['audio_url'] ?? null),
+                'video_url' => $this->cleanUrl($validated['video_url'] ?? null),
                 'difficulties' => $validated['difficulties'],
                 'metadata' => $validated['metadata'] ?? [],
             ]
@@ -73,6 +85,69 @@ class MapController extends Controller
             'message' => 'Lưu beatmap thành công vào MySQL Database!',
             'map' => $map,
         ], 201);
+    }
+
+    /**
+     * Nhận file audio / background / video (multipart) và lưu vào public disk.
+     * Trả về URL tương đối `/storage/...` để frontend dùng lại sau khi reload.
+     */
+    public function uploadAssets(Request $request, string $song_id): JsonResponse
+    {
+        $map = Map::where('song_id', $song_id)->first();
+
+        if (!$map) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy beatmap'], 404);
+        }
+
+        $request->validate([
+            'audio' => 'nullable|file|mimes:mp3,ogg,wav,m4a,aac,flac|max:51200',
+            'background' => 'nullable|file|mimes:jpg,jpeg,png,webp|max:10240',
+            'video' => 'nullable|file|mimes:mp4,webm,mkv,mov|max:102400',
+        ]);
+
+        $disk = Storage::disk('public');
+        $folder = "beatmaps/{$song_id}";
+        $updated = [];
+
+        $fields = [
+            'audio' => 'audio_url',
+            'background' => 'cover_url',
+            'video' => 'video_url',
+        ];
+
+        foreach ($fields as $input => $column) {
+            if (!$request->hasFile($input)) {
+                continue;
+            }
+
+            // Xoá file cũ nếu trước đó đã upload vào storage của app.
+            $old = $map->{$column};
+            if (is_string($old) && str_starts_with($old, '/storage/')) {
+                $oldPath = substr($old, strlen('/storage/'));
+                if ($disk->exists($oldPath)) {
+                    $disk->delete($oldPath);
+                }
+            }
+
+            $path = $request->file($input)->store($folder, 'public');
+            $url = '/storage/' . str_replace('\\', '/', $path);
+
+            $map->{$column} = $url;
+            $updated[$column] = $url;
+        }
+
+        $map->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Tải asset lên thành công!',
+            'assets' => [
+                'audio_url' => $map->audio_url,
+                'cover_url' => $map->cover_url,
+                'video_url' => $map->video_url,
+            ],
+            'updated' => $updated,
+        ]);
     }
 
     public function show(string $song_id): JsonResponse

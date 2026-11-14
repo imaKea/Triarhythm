@@ -55,9 +55,15 @@ export default function App() {
       const rawMaps = await dbManager.getAllBeatmaps();
       const maps = rawMaps.map((bm) => ({
         ...bm,
-        audioSource: bm.audioBlob instanceof Blob ? URL.createObjectURL(bm.audioBlob) : (bm.audioSource || null),
-        backgroundSource: bm.backgroundBlob instanceof Blob ? URL.createObjectURL(bm.backgroundBlob) : (bm.backgroundSource || null),
-        videoSource: bm.videoBlob instanceof Blob ? URL.createObjectURL(bm.videoBlob) : (bm.videoSource || null),
+        audioSource: bm.audioBlob instanceof Blob
+          ? URL.createObjectURL(bm.audioBlob)
+          : (bm.audioSource || bm.serverAssets?.audioUrl || null),
+        backgroundSource: bm.backgroundBlob instanceof Blob
+          ? URL.createObjectURL(bm.backgroundBlob)
+          : (bm.backgroundSource || bm.serverAssets?.coverUrl || null),
+        videoSource: bm.videoBlob instanceof Blob
+          ? URL.createObjectURL(bm.videoBlob)
+          : (bm.videoSource || bm.serverAssets?.videoUrl || null),
       }));
       setBeatmaps(maps);
       setSelectedBeatmap((prev) => {

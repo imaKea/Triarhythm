@@ -106,6 +106,33 @@ class ApiClient {
     });
   }
 
+  /**
+   * Upload audio/background/video (Blob/File) lên Laravel Storage.
+   * Không set Content-Type để trình duyệt tự thêm boundary của multipart.
+   */
+  async uploadMapAssets(songId, { audio, background, video } = {}) {
+    const form = new FormData();
+    if (audio) form.append('audio', audio, audio.name || 'audio');
+    if (background) form.append('background', background, background.name || 'background');
+    if (video) form.append('video', video, video.name || 'video');
+
+    const headers = { Accept: 'application/json' };
+    const token = this.getToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const response = await fetch(`${API_BASE}/maps/${encodeURIComponent(songId)}/assets`, {
+      method: 'POST',
+      headers,
+      body: form,
+    });
+
+    const data = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw new Error(data?.message || `HTTP ${response.status}: ${response.statusText}`);
+    }
+    return data;
+  }
+
   async deleteMap(songId) {
     return await this.request(`/maps/${encodeURIComponent(songId)}`, {
       method: 'DELETE',

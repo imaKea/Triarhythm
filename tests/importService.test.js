@@ -186,6 +186,42 @@ describe('importFiles', () => {
     expect(payload.difficulties.length).toBe(1);
   });
 
+  it('upload asset và lưu serverAssets vào IndexedDB', async () => {
+    const db = makeFakeDb();
+    const audio = { name: 'audio.ogg', type: 'audio/ogg', size: 16 };
+    const saveMap = vi.fn(async () => ({}));
+    const saveAssets = vi.fn(async () => ({
+      assets: { audio_url: '/storage/beatmaps/x/audio.ogg', cover_url: null, video_url: null }
+    }));
+
+    const result = await importFiles([makeOsuFile(), audio], {
+      db,
+      syncMap: true,
+      saveMap,
+      saveAssets
+    });
+
+    expect(saveAssets).toHaveBeenCalledTimes(1);
+    expect(result.songEntry.serverAssets.audioUrl).toBe('/storage/beatmaps/x/audio.ogg');
+    const stored = db.store.get(result.songEntry.id);
+    expect(stored.serverAssets.audioUrl).toBe('/storage/beatmaps/x/audio.ogg');
+  });
+
+  it('không gán serverAssets khi upload trả về rỗng', async () => {
+    const db = makeFakeDb();
+    const audio = { name: 'audio.ogg', type: 'audio/ogg', size: 16 };
+    const saveAssets = vi.fn(async () => null);
+
+    const result = await importFiles([makeOsuFile(), audio], {
+      db,
+      syncMap: true,
+      saveMap: vi.fn(async () => ({})),
+      saveAssets
+    });
+
+    expect(result.songEntry.serverAssets).toBeUndefined();
+  });
+
   it('không chặn import khi đồng bộ MySQL thất bại', async () => {
     const db = makeFakeDb();
     const saveMap = vi.fn(async () => {

@@ -39,6 +39,9 @@ php artisan key:generate
 # 3. Tạo database + migrate
 #    Tạo database `triarhythm` trong MySQL (phpMyAdmin/XAMPP) trước
 php artisan migrate
+
+# 4. Symlink storage để asset upload truy cập được qua /storage/...
+php artisan storage:link
 ```
 
 `.env` cần trỏ đúng MySQL:
@@ -60,11 +63,20 @@ Mở **2 terminal**:
 # Terminal 1 - Laravel API (http://127.0.0.1:8000)
 php artisan serve
 
-# Terminal 2 - Vite frontend (http://localhost:3000, proxy /api -> :8000)
+# Terminal 2 - Vite frontend (http://localhost:3000, proxy /api + /storage -> :8000)
 npm run dev
 ```
 
 Frontend đọc `VITE_API_BASE_URL` (mặc định `/api`, xem `.env.example`).
+
+## Asset upload
+
+Asset của map (audio / background / video) được upload lên **Laravel Storage**:
+
+- Endpoint: `POST /api/maps/{song_id}/assets` (multipart, field `audio`, `background`, `video`).
+- File lưu tại `storage/app/public/beatmaps/{song_id}/`, phục vụ qua `/storage/...` (cần `php artisan storage:link`).
+- URL tương đối được lưu vào cột `audio_url`, `cover_url`, `video_url` của bảng `maps` và vào `serverAssets` trong IndexedDB.
+- URL tạm `blob:` của trình duyệt bị bỏ qua (`MapController::cleanUrl`) để không ghi dữ liệu chết vào MySQL.
 
 ## Test & build
 
@@ -79,9 +91,8 @@ npm run build     # build SPA ra dist/
 
 - **IndexedDB** (`src/core/storage/db.js`) giữ beatmap, blob audio/background/video và lịch sử điểm để chơi offline.
 - **MySQL** là nguồn chính cho auth/leaderboard. `src/core/api/client.js` là lớp gọi API duy nhất.
-- **Import map** đi qua một luồng duy nhất: `src/core/parser/importService.js` → lưu IndexedDB + đồng bộ metadata lên MySQL.
+- **Import map** đi qua một luồng duy nhất: `src/core/parser/importService.js` → lưu IndexedDB + đồng bộ metadata lên MySQL (`saveMap`) + upload asset lên Laravel Storage (`saveAssets`).
 - **PP/Star**: `src/core/pp/ppCalculator.js`, cấu hình `src/config/pp.config.js`.
-- ⚠️ `MapController` hiện lưu `audio_url/cover_url/video_url` dạng URL. Với dữ liệu import từ file, đây là `blob:` URL tạm thời — cần bổ sung upload file lên `storage/app/public` nếu muốn asset tồn tại lâu dài phía server.
 
 ## Cấu trúc chính
 

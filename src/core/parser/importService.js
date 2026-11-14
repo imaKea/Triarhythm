@@ -144,9 +144,9 @@ export function songEntryToMapPayload(songEntry) {
     source: songEntry.source || 'maimai',
     bpm: beatmap.timingPoints?.[0]?.bpm || 120,
     preview_time: beatmap.metadata?.previewTime || 0,
-    cover_url: songEntry.backgroundSource || null,
-    audio_url: songEntry.audioSource || null,
-    video_url: songEntry.videoSource || null,
+    cover_url: songEntry.serverAssets?.coverUrl || null,
+    audio_url: songEntry.serverAssets?.audioUrl || null,
+    video_url: songEntry.serverAssets?.videoUrl || null,
     difficulties: (songEntry.difficulties || []).map((d) => ({
       difficultyName: d.difficultyName,
       difficultyLevel: d.difficultyLevel,
@@ -162,6 +162,32 @@ export function songEntryToMapPayload(songEntry) {
 async function defaultSaveMap(payload) {
   if (typeof window === 'undefined' || typeof fetch !== 'function') return null;
   return apiClient.saveMap(payload);
+}
+
+/**
+ * Chuẩn hoá response upload asset (`{ assets: { audio_url, ... } }`) về camelCase.
+ */
+export function serverAssetsFromResponse(res) {
+  const assets = res?.assets || res || {};
+  return {
+    audioUrl: assets.audio_url || null,
+    coverUrl: assets.cover_url || null,
+    videoUrl: assets.video_url || null
+  };
+}
+
+/**
+ * Upload audio/background/video lên Laravel Storage. Bỏ qua khi không có asset.
+ */
+async function defaultSaveAssets(songEntry) {
+  if (typeof window === 'undefined' || typeof fetch !== 'function') return null;
+  const { audioBlob, backgroundBlob, videoBlob } = songEntry || {};
+  if (!audioBlob && !backgroundBlob && !videoBlob) return null;
+  return apiClient.uploadMapAssets(songEntry.id, {
+    audio: audioBlob,
+    background: backgroundBlob,
+    video: videoBlob
+  });
 }
 
 function assetsFromFiles(fileList) {
@@ -242,6 +268,7 @@ export async function parseFiles(fileList, options = {}) {
  * @param {Object} [options.db] - inject fake DB khi test
  * @param {boolean} [options.syncMap=true] - đồng bộ metadata lên Laravel API
  * @param {Function|null} [options.saveMap] - inject fake saver khi test
+ * @param {Function|null} [options.saveAssets] - inject fake uploader khi test
  * @returns {Promise<{status: 'saved'|'duplicate', songEntry: Object, kind: string, difficultyCount: number}>}
  */
 export async function importFiles(fileList, options = {}) {
@@ -250,7 +277,8 @@ export async function importFiles(fileList, options = {}) {
     autoSlide = false,
     db = dbManager,
     syncMap = true,
-    saveMap = defaultSaveMap
+    saveMap = defaultSaveMap,
+    saveAssets = defaultSaveAssets
   } = options;
 
   const parsed = await parseFiles(fileList, { preset, autoSlide });
@@ -274,6 +302,8 @@ export async function importFiles(fileList, options = {}) {
 
   await db.saveBeatmap(songEntry);
 
+  let savedEntry = songEntry;
+
   // Đồng bộ metadata map lên MySQL (Laravel API, chạy nền không chặn UI)
   if (syncMap && typeof saveMap === 'function') {
     try {
@@ -283,9 +313,22 @@ export async function importFiles(fileList, options = {}) {
     }
   }
 
+  // Upload audio/background/video lên Laravel Storage, lưu URL vào IndexedDB
+  if (syncMap && typeof saveAssets === 'function') {
+    try {
+      const res = await saveAssets(songEntry);
+      if (res) {
+        savedEntry = { ...songEntry, serverAssets: serverAssetsFromResponse(res) };
+        await db.saveBeatmap(savedEntry);
+      }
+    } catch (err) {
+      console.warn('[Import] Upload asset lên server thất bại:', err.message);
+    }
+  }
+
   return {
     status: 'saved',
-    songEntry,
+    songEntry: savedEntry,
     kind: parsed.kind,
     difficultyCount: parsed.charts.length
   };

@@ -138,7 +138,7 @@ export default function AstroSongSelect({
       audioRef.current.pause();
       setIsPlayingPreview(false);
     } else {
-      const audioUrl = current.audioSource || (current.audioBlob instanceof Blob ? URL.createObjectURL(current.audioBlob) : null);
+      const audioUrl = current.audioSource || current.serverAssets?.audioUrl || (current.audioBlob instanceof Blob ? URL.createObjectURL(current.audioBlob) : null);
       if (!audioUrl) return;
       if (audioRef.current.src !== audioUrl) {
         audioRef.current.src = audioUrl;

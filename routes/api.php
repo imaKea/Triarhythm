@@ -18,6 +18,7 @@ Route::prefix('auth')->group(function () {
 Route::prefix('maps')->group(function () {
     Route::get('/', [MapController::class, 'index']);
     Route::post('/', [MapController::class, 'store']);
+    Route::post('/{song_id}/assets', [MapController::class, 'uploadAssets']);
     Route::get('/{song_id}', [MapController::class, 'show']);
     Route::delete('/{song_id}', [MapController::class, 'destroy']);
 });
