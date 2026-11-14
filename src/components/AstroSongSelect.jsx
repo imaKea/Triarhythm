@@ -24,7 +24,6 @@ export default function AstroSongSelect({
   onSelectBeatmap,
   onStartGame,
   onOpenSettings,
-  onOpenEditor,
   currentUser,
   onOpenAuth,
   isAutoplay,
@@ -817,17 +816,6 @@ export default function AstroSongSelect({
           <Button variant="ghost" size="sm" onClick={onOpenSettings} icon="⚙">
             Options
           </Button>
-
-          {onOpenEditor && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onOpenEditor(current)}
-              icon="✎"
-            >
-              Edit Beatmap
-            </Button>
-          )}
         </div>
 
         {/* Right: PLAY Button */}
@@ -857,13 +845,6 @@ export default function AstroSongSelect({
                 onSelectBeatmap(contextMenu.beatmap);
                 handlePlaySelected();
               }
-            }
-          },
-          {
-            label: 'Chỉnh sửa trong Editor',
-            icon: '✎',
-            onClick: () => {
-              if (onOpenEditor && contextMenu.beatmap) onOpenEditor(contextMenu.beatmap);
             }
           },
           { divider: true },

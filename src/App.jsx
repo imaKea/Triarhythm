@@ -3,7 +3,6 @@ import RhythmNavbar from './components/RhythmNavbar.jsx';
 import AstroSongSelect from './components/AstroSongSelect.jsx';
 import LeaderboardView from './components/LeaderboardView.jsx';
 import GameplayView from './components/GameplayView.jsx';
-import MapEditor from './components/MapEditor.jsx';
 import AstroSettingsModal from './components/AstroSettingsModal.jsx';
 import AstroAuthModal from './components/AstroAuthModal.jsx';
 import RingPreview from './components/RingPreview.jsx';
@@ -19,7 +18,7 @@ import { apiClient } from './core/api/client.js';
 import { TRI_RING_LAYOUT } from './config/layout.config.js';
 
 export default function App() {
-  // Trạng thái màn hình chính: 'SONG_SELECT' | 'LEADERBOARD' | 'GAMEPLAY' | 'EDITOR' | 'LAYOUT'
+  // Trạng thái màn hình chính: 'SONG_SELECT' | 'LEADERBOARD' | 'GAMEPLAY' | 'LAYOUT'
   const [currentScreen, setCurrentScreen] = useState('SONG_SELECT');
 
   // Dữ liệu Beatmaps từ IndexedDB & MySQL
@@ -45,9 +44,6 @@ export default function App() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [loadingChart, setLoadingChart] = useState(null);
-
-  // Target beatmap cho Map Editor
-  const [editorBeatmap, setEditorBeatmap] = useState(null);
 
   // Drag & drop file overlay
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -159,12 +155,6 @@ export default function App() {
     setCurrentScreen('PLAYER_LOADER');
   };
 
-  // Mở Map Editor
-  const handleOpenEditor = (chart) => {
-    setEditorBeatmap(chart || selectedBeatmap);
-    setCurrentScreen('EDITOR');
-  };
-
   // Nhập map qua một luồng duy nhất (importService)
   const processFiles = async (fileList) => {
     if (!fileList || fileList.length === 0) return null;
@@ -256,7 +246,6 @@ export default function App() {
             onSelectBeatmap={(bm) => setSelectedBeatmap(bm)}
             onStartGame={handleStartGame}
             onOpenSettings={() => setIsSettingsOpen(true)}
-            onOpenEditor={() => handleOpenEditor(selectedBeatmap)}
             currentUser={currentUser}
             onOpenAuth={() => setIsAuthOpen(true)}
             isAutoplay={settings.isAutoplay}
@@ -292,18 +281,6 @@ export default function App() {
             onBackToSelect={() => setCurrentScreen('SONG_SELECT')}
             onOpenSettings={() => setIsSettingsOpen(true)}
             onUploadFiles={processFiles}
-          />
-        )}
-
-        {/* MÀN HÌNH 4: MAP EDITOR */}
-        {currentScreen === 'EDITOR' && (
-          <MapEditor
-            initialBeatmap={editorBeatmap}
-            onClose={() => setCurrentScreen('SONG_SELECT')}
-            onTestPlay={(editedChart) => {
-              setSelectedBeatmap(editedChart);
-              setCurrentScreen('GAMEPLAY');
-            }}
           />
         )}
 

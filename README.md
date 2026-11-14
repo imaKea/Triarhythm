@@ -10,7 +10,6 @@ Frontend (React 18 + Vite)          Backend (Laravel 12)         Database
 │ src/                    │ ──────► │ app/Http/Controllers │ ──► │  MySQL  │
 │ - components/ (UI)      │  proxy  │   /Api/*             │     │ users   │
 │ - core/ (engine/parser) │         │ routes/api.php       │     │ maps    │
-│ - features/editor/      │         └──────────────────────┘     │ scores  │
 │ IndexedDB (offline cache)│                                       └─────────┘
 └─────────────────────────┘
 ```
@@ -116,16 +115,11 @@ npm run build     # build SPA ra dist/
   - Phím tắt **Ctrl+Z** hoặc nút trên Toast hoàn tác ngay lập tức trong vòng 7 giây.
   - Giao diện **Thùng rác Beatmap (Trash Bin)** cho phép duyệt danh sách các map đã xóa, khôi phục từng bài hoặc dọn sạch vĩnh viễn (purge binary assets).
 
-- **Trình chỉnh sửa Map (Map Editor kiểu osu!)**:
-  - Giao diện Composer 3 cột: Thanh công cụ ghi chú & Timing, Preview tam giác ngược với 9 lane và 3 đỉnh slide node, Timeline đa rãnh với waveform và osu! snap divisor (1/1 trắng, 1/2 xanh lam, 1/3 tím, 1/4 vàng, 1/6 hồng, 1/8 cam, 1/12 ngọc, 1/16 xám).
-  - Đầy đủ 7 công cụ nốt: Select (1), Tap (2), Hold (3), Break (4), Ring (5), Slide (6 - chuột trượt qua các node), Typing (7 - gõ chữ).
-  - Phím tắt tiện lợi: `Space` phát/dừng nhạc, `Ctrl+S` lưu nhanh, `F5` chơi thử ngay lập tức (Test Play).
-
 ## Cấu trúc chính
 
 ```
 src/
-  components/        # Song select, gameplay, leaderboard, editor shell, admin panel, modals
+  components/        # Song select, gameplay, leaderboard, admin panel, modals
   config/            # layout, judgement, pp, slide
   core/
     api/             # Laravel API client & Token Auth
@@ -134,7 +128,6 @@ src/
     parser/          # osu / maimai / package + importService
     pp/              # star & PP calculator
     storage/         # IndexedDB + soft delete + score flow + seed
-  features/editor/   # editor hook + timeline + preview + tools
   ui/                # Button, Modal, Toast, Slider, Dropdown, Toggle
 app/Http/Controllers/Api/   # Laravel API (Auth, Map, Score, Leaderboard, Admin)
 routes/api.php              # API routes & middleware (auth.api, admin)

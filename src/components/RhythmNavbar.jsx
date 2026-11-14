@@ -33,7 +33,6 @@ export default function RhythmNavbar({
   const navItems = [
     { id: 'SONG_SELECT', label: 'play', icon: '▶' },
     { id: 'LEADERBOARD', label: 'rankings', icon: '★' },
-    { id: 'EDITOR', label: 'edit', icon: '✎' },
     ...(currentUser?.role === 'admin' ? [{ id: 'ADMIN', label: 'admin', icon: '🛡️' }] : []),
     { id: 'UI_KIT', label: 'ui kit', icon: '🎨' },
   ];
