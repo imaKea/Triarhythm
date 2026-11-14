@@ -593,27 +593,29 @@ export default function GameplayView({
 
 
 
-        {/* 8. PAUSE MENU (osu! lazer style with keyboard navigation) */}
+        {/* 8. PAUSE MENU (Cute bunny & ribbon style with keyboard navigation) */}
         {isPaused && (
-          <div className="absolute inset-0 z-30 bg-[#0d0d1a]/90 backdrop-blur-md flex flex-col items-center justify-center text-center animate-fadeIn select-none">
-            <div className="text-4xl font-black text-white mb-1 tracking-widest font-torus drop-shadow-[0_0_20px_rgba(255,102,171,0.5)]">
-              PAUSED
+          <div className="absolute inset-0 z-30 bg-[#140b17]/90 backdrop-blur-md flex flex-col items-center justify-center text-center animate-fadeIn select-none">
+            <div className="text-4xl font-black text-white mb-1 tracking-widest font-torus drop-shadow-[0_0_25px_rgba(255,133,162,0.7)] flex items-center gap-2">
+              <span className="text-3xl animate-kawaii-bounce inline-block">🐰</span>
+              <span>TẠM DỪNG</span>
+              <span className="text-3xl animate-kawaii-wiggle inline-block">🎀</span>
             </div>
-            <div className="text-xs text-[#7c849c] mb-6 font-mono">
+            <div className="text-xs text-[#ffaec9] mb-6 font-mono">
               {activeChartName} [{activeDiffName}]
             </div>
 
             <div className="flex flex-col gap-2.5 w-72">
               {[
-                { label: '▶ Tiếp tục (Continue)', action: handlePauseToggle },
-                { label: '↺ Thử lại (Retry)', action: handleRetry },
+                { label: '▶ Tiếp tục 🎀', action: handlePauseToggle },
+                { label: '↺ Chơi lại 🐰', action: handleRetry },
                 {
                   label: '⚙ Cài đặt (Settings)',
                   action: () => {
                     if (onOpenSettings) onOpenSettings();
                   }
                 },
-                { label: '✕ Quay lại bài hát (Back)', action: handleBack }
+                { label: '✕ Chọn bài khác 🐰', action: handleBack }
               ].map((item, idx) => {
                 const isSelected = pauseMenuIndex === idx;
                 return (
@@ -629,8 +631,8 @@ export default function GameplayView({
                     }}
                     className={`w-full py-3 px-4 rounded-full text-xs font-bold tracking-wider uppercase transition-all cursor-pointer flex items-center justify-center gap-2 ${
                       isSelected
-                        ? 'bg-gradient-to-r from-[#ff66ab] to-[#cc5289] text-white shadow-[0_4px_20px_rgba(255,102,171,0.5)] scale-105'
-                        : 'bg-white/[0.06] text-[#b8c0d4] hover:bg-white/[0.12] hover:text-white'
+                        ? 'bg-gradient-to-r from-[#ff85a2] via-[#ff6b93] to-[#ff4d80] text-white shadow-[0_4px_24px_rgba(255,133,162,0.6)] scale-105'
+                        : 'bg-white/[0.06] text-[#ffd6e0] hover:bg-white/[0.12] hover:text-white border border-[#ff85a2]/20'
                     }`}
                   >
                     <span>{item.label}</span>
@@ -639,8 +641,8 @@ export default function GameplayView({
               })}
             </div>
 
-            <div className="mt-6 text-[11px] text-[#7c849c] font-mono">
-              [↑ / ↓] Di chuyển • [Enter] Chọn • [Esc] Tiếp tục
+            <div className="mt-6 text-[11px] text-[#b89cb9] font-mono">
+              [↑ / ↓] Di chuyển • [Enter] Chọn • [Esc] Tiếp tục 🐰
             </div>
           </div>
         )}

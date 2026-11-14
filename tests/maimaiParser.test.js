@@ -329,4 +329,43 @@ describe('Maimai / Simai Chart Parser (maimaiParser.js)', () => {
     const ringE3 = notes.find((n) => n.time === 1875 && n.type === 'ring');
     expect(ringE3).toBeDefined();
   });
+
+  it('14. Khi convert slider maimai, ở cuối slider tự động thêm 1 nốt ring đơn (trừ note ring hold)', () => {
+    // BPM = 120 (1 beat = 500ms).
+    // Tại time = 0: Slide 1-5[2:1] (duration [2:1] = 2 beat = 1000ms).
+    // Điểm kết thúc của slider là time = 1000ms.
+    // Tại time = 2000: Đồng thời 2 slider 1-4[4:1]/8-5[4:1] (duration [4:1] = 1 beat = 500ms).
+    // Điểm kết thúc của cả 2 slider là time = 2500ms.
+    const sliderMaidata = `
+&title=Slider End Ring Test
+&artist=Triarhythm
+&first=0
+&lv_4=12
+&inote_4=(120){2}1-5[2:1],,{2}1-4[4:1]/8-5[4:1],,E
+`;
+    const res = parseMaimai(sliderMaidata);
+    const notes = res.difficulties[0].beatmap.notes;
+
+    // 1. Slider 1-5[2:1] tại time = 0:
+    // - Có nốt Ring tại time = 0 (bắt đầu slider)
+    const ringAtStart = notes.find((n) => n.time === 0 && n.type === 'ring');
+    expect(ringAtStart).toBeDefined();
+
+    // - Cuối slider (time = 1000ms): PHẢI có 1 nốt Ring đơn (không phải Ring Hold)
+    const ringAtSliderEnd = notes.find((n) => n.time === 1000 && n.type === 'ring');
+    expect(ringAtSliderEnd).toBeDefined();
+    expect(Boolean(ringAtSliderEnd.isHold)).toBe(false);
+    expect(ringAtSliderEnd.endTime).toBeUndefined();
+
+    // 2. Hai slider đồng thời 1-4[4:1]/8-5[4:1] tại time = 2000ms:
+    // - Có nốt Ring tại time = 2000ms
+    const ringAtDoubleStart = notes.filter((n) => n.time === 2000 && n.type === 'ring');
+    expect(ringAtDoubleStart.length).toBe(1);
+
+    // - Cuối slider (time = 2500ms): chỉ có ĐÚNG 1 nốt Ring đơn duy nhất (khử trùng lặp)
+    const ringsAtDoubleEnd = notes.filter((n) => n.time === 2500 && n.type === 'ring');
+    expect(ringsAtDoubleEnd.length).toBe(1);
+    expect(Boolean(ringsAtDoubleEnd[0].isHold)).toBe(false);
+    expect(ringsAtDoubleEnd[0].endTime).toBeUndefined();
+  });
 });

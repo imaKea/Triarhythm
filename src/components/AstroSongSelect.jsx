@@ -492,21 +492,21 @@ export default function AstroSongSelect({
       )}
 
       {/* TOP BAR: Search + Filters + Sort */}
-      <div className="h-13 px-6 bg-[#111122]/90 border-b border-white/[0.06] flex items-center justify-between gap-4 shrink-0 z-20">
+      <div className="h-13 px-6 bg-[#180d1e]/90 border-b border-[#ff85a2]/15 flex items-center justify-between gap-4 shrink-0 z-20">
         {/* Search with syntax hints */}
         <div className="relative flex-1 max-w-md">
-          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7c849c] text-sm">⌕</span>
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#ffaec9] text-xs">🐰</span>
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Type to search (stars>5, bpm<200, artist=...)..."
-            className="w-full bg-[#1a1a2e] border border-white/[0.08] focus:border-[#ff66ab]/60 rounded-full pl-9 pr-4 py-1.5 text-xs text-white placeholder-[#7c849c] outline-none transition-all"
+            placeholder="Tìm kiếm bài hát, ca sĩ... (stars>5, bpm<200) 🎀"
+            className="w-full bg-[#25132b] border border-[#ff85a2]/25 focus:border-[#ff85a2] rounded-full pl-9 pr-4 py-1.5 text-xs text-white placeholder-[#b89cb9] outline-none transition-all focus:shadow-[0_0_12px_rgba(255,133,162,0.3)]"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#7c849c] hover:text-white"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ffaec9] hover:text-white"
             >
               ✕
             </button>
@@ -515,33 +515,33 @@ export default function AstroSongSelect({
 
         {/* Sort & Action controls */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-xs text-[#7c849c]">
-            <span>Sort by:</span>
+          <div className="flex items-center gap-2 text-xs text-[#d8bfd8]">
+            <span>Sắp xếp:</span>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="bg-[#1a1a2e] border border-white/[0.08] text-white text-xs rounded-lg px-2.5 py-1 outline-none cursor-pointer"
+              className="bg-[#25132b] border border-[#ff85a2]/25 text-white text-xs rounded-xl px-2.5 py-1 outline-none cursor-pointer hover:border-[#ff85a2]/50 transition-colors"
             >
-              <option value="title">Title (A-Z)</option>
-              <option value="artist">Artist (A-Z)</option>
-              <option value="stars">Difficulty (Stars)</option>
+              <option value="title">Tên bài (A-Z)</option>
+              <option value="artist">Ca sĩ (A-Z)</option>
+              <option value="stars">Độ khó (Stars)</option>
               <option value="bpm">BPM</option>
-              <option value="length">Length</option>
+              <option value="length">Độ dài</option>
             </select>
           </div>
 
           <button
             onClick={handleOpenTrash}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-[#8890a4] hover:text-white text-xs font-bold transition-all border border-white/[0.08] cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.05] hover:bg-white/[0.12] text-[#d8bfd8] hover:text-white text-xs font-bold transition-all border border-[#ff85a2]/20 cursor-pointer hover:scale-105"
             title="Thùng rác beatmap (khôi phục bài đã xóa)"
           >
             <span>🗑️</span>
-            <span>Thùng rác</span>
+            <span>Thùng rác 🐰</span>
           </button>
 
-          <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#ff66ab] hover:bg-[#ff7ab8] text-white text-xs font-bold cursor-pointer transition-all shadow-[0_0_12px_rgba(255,102,171,0.3)]">
-            <span>{isImporting ? '⏳' : '+'}</span>
-            <span>{isImporting ? 'Importing...' : 'Import'}</span>
+          <label className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] hover:from-[#ffaec9] hover:to-[#ff6b93] text-white text-xs font-bold cursor-pointer transition-all shadow-[0_0_14px_rgba(255,133,162,0.4)] hover:scale-105">
+            <span>{isImporting ? '⏳' : '🎀'}</span>
+            <span>{isImporting ? 'Đang thêm...' : 'Thêm bài (+)'}</span>
             <input
               type="file"
               multiple
@@ -565,15 +565,26 @@ export default function AstroSongSelect({
         )}
 
         {/* LEFT PANE: Song Wedge Info + Leaderboard */}
-        <div className="w-[480px] h-full flex flex-col p-6 overflow-y-auto custom-scrollbar border-r border-white/[0.06] bg-[#0d0d1a]/85 backdrop-blur-md z-10">
+        <div className="w-[480px] h-full flex flex-col p-6 overflow-y-auto custom-scrollbar border-r border-[#ff85a2]/15 bg-[#160c1a]/85 backdrop-blur-md z-10">
           {/* Song Info Wedge */}
-          <div className="p-5 rounded-2xl bg-[#1a1a2e]/90 border border-white/[0.08] shadow-xl flex flex-col gap-3 relative overflow-hidden">
-            {/* Top row: StarRating + BPM + Length */}
+          <div className="p-5 rounded-2xl bg-[#241229]/90 border border-[#ff85a2]/25 shadow-[0_8px_32px_rgba(22,12,26,0.6)] flex flex-col gap-3 relative overflow-hidden">
+            {/* Cute mini ribbon tag */}
+            <div className="flex items-center justify-between text-[10px] font-bold text-[#ffaec9] uppercase tracking-wider">
+              <span className="flex items-center gap-1">
+                <span>🎀</span>
+                <span>BÀI HÁT ĐANG CHỌN</span>
+                <span>🐰</span>
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-[#ff85a2]/20 text-[#ffaec9] border border-[#ff85a2]/30 text-[10px]">
+                {noteStats.total} Notes
+              </span>
+            </div>
+
+            {/* Top row: StarRating + BPM */}
             <div className="flex items-center justify-between">
               <StarRating stars={currentStars} size="md" />
-              <div className="flex items-center gap-2 text-xs font-mono font-bold text-[#b8c0d4]">
-                <span className="px-2 py-0.5 rounded bg-white/[0.06]">{currentBpm} BPM</span>
-                <span className="px-2 py-0.5 rounded bg-white/[0.06]">{noteStats.total} Notes</span>
+              <div className="flex items-center gap-2 text-xs font-mono font-bold text-[#ffd6e0]">
+                <span className="px-2.5 py-0.5 rounded-full bg-white/[0.08] border border-white/[0.1]">{currentBpm} BPM</span>
               </div>
             </div>
 
@@ -582,37 +593,37 @@ export default function AstroSongSelect({
               <h1 className="text-xl font-black text-white tracking-wide truncate max-w-full font-torus">
                 {currentTitle}
               </h1>
-              <p className="text-sm font-semibold text-[#b8c0d4] truncate max-w-full">
+              <p className="text-sm font-semibold text-[#ffaec9] truncate max-w-full">
                 {currentArtist}
               </p>
             </div>
 
             {/* Creator info */}
-            <div className="text-xs text-[#7c849c]">
-              Beatmap by <strong className="text-[#f0f2f8]">{currentCreator}</strong>
+            <div className="text-xs text-[#b89cb9]">
+              Mapper: <strong className="text-white">{currentCreator}</strong> 🎀
             </div>
 
             {/* Note breakdown badges */}
-            <div className="pt-2 border-t border-white/[0.06] flex flex-wrap gap-1.5 text-[11px] font-mono">
-              <span className="px-2 py-0.5 rounded bg-[#ff2a70]/15 text-[#ff2a70] border border-[#ff2a70]/30 font-bold">
-                Tap: {noteStats.tap}
+            <div className="pt-2 border-t border-[#ff85a2]/15 flex flex-wrap gap-1.5 text-[11px] font-mono">
+              <span className="px-2 py-0.5 rounded-full bg-[#ff85a2]/15 text-[#ffaec9] border border-[#ff85a2]/35 font-bold">
+                Tap: {noteStats.tap} 🐰
               </span>
-              <span className="px-2 py-0.5 rounded bg-[#ff9100]/15 text-[#ff9100] border border-[#ff9100]/30 font-bold">
-                Hold: {noteStats.hold}
+              <span className="px-2 py-0.5 rounded-full bg-[#ffaec9]/15 text-[#ffd6e0] border border-[#ffaec9]/35 font-bold">
+                Hold: {noteStats.hold} 🎀
               </span>
-              <span className="px-2 py-0.5 rounded bg-[#ff3d00]/15 text-[#ff3d00] border border-[#ff3d00]/30 font-bold">
-                Break: {noteStats.breakN}
+              <span className="px-2 py-0.5 rounded-full bg-[#ff4d80]/15 text-[#ff85a2] border border-[#ff4d80]/35 font-bold">
+                Break: {noteStats.breakN} ✨
               </span>
-              <span className="px-2 py-0.5 rounded bg-[#00e5ff]/15 text-[#00e5ff] border border-[#00e5ff]/30 font-bold">
-                Ring: {noteStats.ring}
+              <span className="px-2 py-0.5 rounded-full bg-[#ffd6e0]/20 text-white border border-[#ffd6e0]/40 font-bold">
+                Ring: {noteStats.ring} ⭕
               </span>
               {noteStats.slide > 0 && (
-                <span className="px-2 py-0.5 rounded bg-[#ffe600]/15 text-[#ffe600] border border-[#ffe600]/30 font-bold">
+                <span className="px-2 py-0.5 rounded-full bg-[#ffe082]/15 text-[#ffe082] border border-[#ffe082]/35 font-bold">
                   Slide: {noteStats.slide}
                 </span>
               )}
               {noteStats.typing > 0 && (
-                <span className="px-2 py-0.5 rounded bg-[#a29bfe]/15 text-[#a29bfe] border border-[#a29bfe]/30 font-bold">
+                <span className="px-2 py-0.5 rounded-full bg-[#b388ff]/15 text-[#b388ff] border border-[#b388ff]/35 font-bold">
                   Typing: {noteStats.typing}
                 </span>
               )}
@@ -620,18 +631,18 @@ export default function AstroSongSelect({
           </div>
 
           {/* LEADERBOARD WIDGET */}
-          <div className="flex-1 mt-4 flex flex-col min-h-0 bg-[#1a1a2e]/70 rounded-2xl border border-white/[0.06] p-4">
+          <div className="flex-1 mt-4 flex flex-col min-h-0 bg-[#241229]/75 rounded-2xl border border-[#ff85a2]/20 p-4 shadow-lg">
             {/* Header + Tabs */}
-            <div className="flex items-center justify-between pb-3 mb-2 border-b border-white/[0.06]">
+            <div className="flex items-center justify-between pb-3 mb-2 border-b border-[#ff85a2]/15">
               <div className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
                 <span>🏆</span>
-                <span>Bảng xếp hạng ({selectedDiff?.difficultyName || 'All'})</span>
+                <span>Bảng xếp hạng 🎀 ({selectedDiff?.difficultyName || 'All'})</span>
               </div>
-              <div className="flex gap-1 bg-[#111122] p-0.5 rounded-full border border-white/[0.06]">
+              <div className="flex gap-1 bg-[#1a0e21] p-0.5 rounded-full border border-[#ff85a2]/20">
                 <button
                   onClick={() => { playHover(); setLeaderboardTab('global'); }}
                   className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
-                    leaderboardTab === 'global' ? 'bg-[#ff66ab] text-white shadow-sm' : 'text-[#7c849c] hover:text-white'
+                    leaderboardTab === 'global' ? 'bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] text-white shadow-[0_0_10px_rgba(255,133,162,0.4)]' : 'text-[#b89cb9] hover:text-white'
                   }`}
                 >
                   Global
@@ -639,7 +650,7 @@ export default function AstroSongSelect({
                 <button
                   onClick={() => { playHover(); setLeaderboardTab('local'); }}
                   className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
-                    leaderboardTab === 'local' ? 'bg-[#ff66ab] text-white shadow-sm' : 'text-[#7c849c] hover:text-white'
+                    leaderboardTab === 'local' ? 'bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] text-white shadow-[0_0_10px_rgba(255,133,162,0.4)]' : 'text-[#b89cb9] hover:text-white'
                   }`}
                 >
                   Local
@@ -716,31 +727,33 @@ export default function AstroSongSelect({
                 onContextMenu={(e) => handleCardContextMenu(e, bm)}
                 className={`relative rounded-2xl transition-all duration-200 cursor-pointer overflow-hidden border ${
                   isSelected
-                    ? 'border-[#ff66ab] shadow-[0_4px_24px_rgba(255,102,171,0.35)] scale-[1.01]'
-                    : 'border-white/[0.08] hover:border-white/[0.2] bg-[#1a1a2e]/80 hover:bg-[#222238]/90'
+                    ? 'border-[#ff85a2] shadow-[0_6px_28px_rgba(255,133,162,0.45)] scale-[1.01] bg-[#2d1734]/95'
+                    : 'border-[#ff85a2]/15 hover:border-[#ff85a2]/45 bg-[#221227]/85 hover:bg-[#2c1733]/90'
                 }`}
               >
                 {/* Horizontal Card Body */}
                 <div className="flex items-center justify-between p-3.5 gap-4 relative">
                   {/* Left: Thumbnail & Song Info */}
                   <div className="flex items-center gap-3.5 min-w-0">
-                    <div className="w-14 h-14 rounded-xl overflow-hidden bg-[#111122] shrink-0 border border-white/[0.08] flex items-center justify-center">
+                    <div className="w-14 h-14 rounded-2xl overflow-hidden bg-[#180d1e] shrink-0 border border-[#ff85a2]/30 flex items-center justify-center shadow-md">
                       {cardCover ? (
                         <img src={cardCover} alt="" className="w-full h-full object-cover" />
                       ) : (
-                        <span className="text-xl text-[#ff66ab]">▲</span>
+                        <span className="text-xl">🐰</span>
                       )}
                     </div>
 
                     <div className="flex flex-col min-w-0">
-                      <span className="font-torus font-black text-sm text-white truncate max-w-sm">
+                      <span className="font-torus font-black text-sm text-white truncate max-w-sm group-hover:text-[#ffaec9] transition-colors">
                         {title}
                       </span>
-                      <span className="text-xs font-semibold text-[#b8c0d4] truncate max-w-xs mt-0.5">
+                      <span className="text-xs font-semibold text-[#ffaec9] truncate max-w-xs mt-0.5">
                         {artist}
                       </span>
-                      <span className="text-[10px] text-[#7c849c] mt-0.5">
-                        {bm.creator || meta.creator || 'Mapper'}
+                      <span className="text-[10px] text-[#b89cb9] mt-0.5 flex items-center gap-1">
+                        <span>Mapper:</span>
+                        <strong className="text-[#ffd6e0]">{bm.creator || meta.creator || 'Mapper'}</strong>
+                        <span>🎀</span>
                       </span>
                     </div>
                   </div>
@@ -748,7 +761,7 @@ export default function AstroSongSelect({
                   {/* Right: StarRating + Diff count */}
                   <div className="flex items-center gap-3 shrink-0">
                     <StarRating stars={stars} size="sm" />
-                    <span className="text-xs text-[#7c849c] font-mono">
+                    <span className="text-xs text-[#ffaec9] font-mono px-2 py-0.5 rounded-full bg-white/[0.05] border border-[#ff85a2]/20">
                       {bm.difficulties?.length || 1} diffs
                     </span>
                   </div>
@@ -756,9 +769,10 @@ export default function AstroSongSelect({
 
                 {/* Expanded Difficulties Bar if selected */}
                 {isSelected && diffList.length > 0 && (
-                  <div className="px-4 py-2.5 bg-[#111122]/90 border-t border-white/[0.06] flex items-center gap-2 overflow-x-auto custom-scrollbar">
-                    <span className="text-[11px] font-bold text-[#7c849c] uppercase tracking-wider shrink-0 mr-1">
-                      Độ khó (Diff):
+                  <div className="px-4 py-2.5 bg-[#180d1e]/90 border-t border-[#ff85a2]/15 flex items-center gap-2 overflow-x-auto custom-scrollbar">
+                    <span className="text-[11px] font-bold text-[#ffaec9] uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
+                      <span>🎀</span>
+                      <span>Độ khó:</span>
                     </span>
                     {diffList.map((d, dIdx) => {
                       const isDiffActive = selectedDiffIndex === dIdx;
@@ -772,14 +786,14 @@ export default function AstroSongSelect({
                             playHover();
                             setSelectedDiffIndex(dIdx);
                           }}
-                          className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                          className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
                             isDiffActive
-                              ? 'bg-gradient-to-r from-[#ff66ab] to-[#cc5289] text-white shadow-[0_0_10px_rgba(255,102,171,0.5)]'
-                              : 'bg-white/[0.06] text-[#b8c0d4] hover:bg-white/[0.12] hover:text-white'
+                              ? 'bg-gradient-to-r from-[#ff85a2] via-[#ff6b93] to-[#ff4d80] text-white shadow-[0_0_12px_rgba(255,133,162,0.6)] scale-105'
+                              : 'bg-white/[0.06] text-[#ffd6e0] hover:bg-white/[0.12] hover:text-white border border-[#ff85a2]/20'
                           }`}
                         >
                           <span>{d.difficultyName}</span>
-                          <span className="text-[10px] opacity-80">★{dStars.toFixed(1)}</span>
+                          <span className="text-[10px] opacity-85">★{dStars.toFixed(1)}</span>
                         </button>
                       );
                     })}
@@ -792,10 +806,10 @@ export default function AstroSongSelect({
       </div>
 
       {/* BOTTOM ACTION BAR */}
-      <div className="h-16 px-6 bg-[#111122]/95 border-t border-white/[0.08] flex items-center justify-between z-30 shrink-0">
+      <div className="h-16 px-6 bg-[#1a0e21]/95 border-t border-[#ff85a2]/20 flex items-center justify-between z-30 shrink-0">
         {/* Left: Back */}
         <Button variant="ghost" size="sm" onClick={() => window.history.back()} icon="←">
-          Back (Esc)
+          Back (Esc) 🐰
         </Button>
 
         {/* Center: Controls */}
@@ -810,7 +824,7 @@ export default function AstroSongSelect({
           </Button>
 
           <Button variant="ghost" size="sm" onClick={handleRandomSelect} icon="🎲">
-            Random (F2)
+            Random (F2) 🎀
           </Button>
 
           <Button variant="ghost" size="sm" onClick={onOpenSettings} icon="⚙">
@@ -823,10 +837,10 @@ export default function AstroSongSelect({
           variant="primary"
           size="lg"
           onClick={handlePlaySelected}
-          className="px-10 text-base shadow-[0_0_24px_rgba(255,102,171,0.6)]"
-          icon="▶"
+          className="px-10 text-base shadow-[0_0_28px_rgba(255,133,162,0.7)] hover:shadow-[0_0_38px_rgba(255,133,162,0.95)] hover:scale-105 active:scale-95"
+          icon="🐰"
         >
-          PLAY
+          CHƠI NGAY 🎀
         </Button>
       </div>
 

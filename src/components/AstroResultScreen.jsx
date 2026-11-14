@@ -290,50 +290,56 @@ export default function AstroResultScreen({
       </div>
 
       {/* Top Header Wedge: Map Info */}
-      <header className="relative z-10 flex items-center justify-between px-8 py-4 border-b border-white/[0.08] bg-[#121326]/60 backdrop-blur-md">
+      <header className="relative z-10 flex items-center justify-between px-8 py-4 border-b border-[#ff85a2]/20 bg-[#1a0e21]/75 backdrop-blur-md">
         <div className="flex items-center gap-4 min-w-0">
-          <div className="w-14 h-14 rounded-xl overflow-hidden bg-white/10 border border-white/20 flex-shrink-0 shadow-lg">
+          <div className="w-14 h-14 rounded-2xl overflow-hidden bg-white/10 border border-[#ff85a2]/30 flex-shrink-0 shadow-[0_0_15px_rgba(255,133,162,0.35)]">
             {coverUrl ? (
               <img src={coverUrl} alt="cover" className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-xl text-[#ff66ab]">★</div>
+              <div className="w-full h-full flex items-center justify-center text-xl text-[#ffaec9]">🐰</div>
             )}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-black text-white truncate tracking-tight">{title}</h1>
+              <h1 className="text-xl font-black text-white truncate tracking-tight flex items-center gap-1.5">
+                <span>{title}</span>
+                <span className="text-sm">🎀</span>
+              </h1>
               {isAutoplay && (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#ff9800]/20 text-[#ffb74d] border border-[#ff9800]/40">
                   AUTO PLAY
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 text-xs text-[#9aa4bc] font-medium truncate mt-0.5">
+            <div className="flex items-center gap-2 text-xs text-[#d8bfd8] font-medium truncate mt-0.5">
               <span>{artist}</span>
               <span>•</span>
-              <span className="text-[#ff66ab] font-bold">[{diffName}]</span>
+              <span className="text-[#ffaec9] font-bold">[{diffName}]</span>
               <span>•</span>
               <StarRating stars={stars} size="sm" />
               <span>•</span>
-              <span className="text-[#7c849c]">mapped by {creator}</span>
+              <span className="text-[#a890aa]">mapped by {creator} 🐰</span>
             </div>
           </div>
         </div>
 
         {/* User Card on Right */}
-        <div className="flex items-center gap-3 bg-white/[0.04] border border-white/[0.08] px-4 py-2 rounded-2xl">
-          <Avatar
-            src={currentUser?.avatar}
-            alt={currentUser?.name || 'Guest'}
-            size="md"
-            status={currentUser ? 'online' : 'offline'}
-          />
+        <div className="flex items-center gap-3 bg-white/[0.05] border border-[#ff85a2]/25 px-4 py-2 rounded-full shadow-sm">
+          <div className="relative">
+            <Avatar
+              src={currentUser?.avatar}
+              alt={currentUser?.name || 'Guest'}
+              size="md"
+              status={currentUser ? 'online' : 'offline'}
+            />
+            <span className="absolute -top-1 -right-1 text-[10px]">🎀</span>
+          </div>
           <div className="text-right">
             <div className="text-xs font-bold text-white leading-tight">
               {currentUser?.name || 'Guest'}
             </div>
-            <div className="text-[10px] text-[#7c849c] font-mono">
-              {currentUser ? `#${currentUser.rank || 1} • ${(currentUser.pp || currentUser.rating || 0).toFixed(0)}pp` : 'Offline Play'}
+            <div className="text-[10px] text-[#ffaec9] font-mono">
+              {currentUser ? `#${currentUser.rank || 1} • ${(currentUser.pp || currentUser.rating || 0).toFixed(0)}pp` : 'Offline Play 🐰'}
             </div>
           </div>
         </div>
@@ -344,11 +350,15 @@ export default function AstroResultScreen({
         {/* Left Column (5 Cols): Rank Grade, Score, Accuracy, Personal Best */}
         <div className="col-span-12 lg:col-span-5 flex flex-col items-center lg:items-start gap-5">
           {/* Rank Badge with Radiant Halo */}
-          <div className="relative group my-2">
-            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-[#ff66ab]/30 to-[#a29bfe]/30 blur-2xl transform scale-150 animate-pulse pointer-events-none" />
-            <div className="relative transform hover:scale-105 transition-transform duration-300">
-              <RankBadge rank={result?.rank || 'D'} size="xl" className="w-28 h-28 text-5xl rounded-3xl shadow-2xl" />
+          <div className="relative group my-2 flex items-center gap-3">
+            <span className="text-2xl animate-kawaii-wiggle inline-block select-none">🎀</span>
+            <div className="relative">
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-[#ff85a2]/40 via-[#ffaec9]/30 to-[#ffd6e0]/30 blur-2xl transform scale-150 animate-pulse pointer-events-none" />
+              <div className="relative transform hover:scale-105 transition-transform duration-300">
+                <RankBadge rank={result?.rank || 'D'} size="xl" className="w-28 h-28 text-5xl rounded-3xl shadow-2xl" />
+              </div>
             </div>
+            <span className="text-2xl animate-kawaii-bounce inline-block select-none">🐰</span>
           </div>
 
           {/* Rolling Score & Accuracy */}
@@ -565,9 +575,9 @@ export default function AstroResultScreen({
       </main>
 
       {/* Bottom Action Footer Bar */}
-      <footer className="relative z-10 flex items-center justify-between px-8 py-4 border-t border-white/[0.08] bg-[#0e0f1e]/90 backdrop-blur-md">
-        <div className="flex items-center gap-2 text-xs font-mono text-[#7c849c]">
-          <span className="px-2 py-0.5 rounded bg-white/[0.06] text-white">Esc</span> Quay lại chọn bài
+      <footer className="relative z-10 flex items-center justify-between px-8 py-4 border-t border-[#ff85a2]/20 bg-[#140b17]/95 backdrop-blur-md">
+        <div className="flex items-center gap-2 text-xs font-mono text-[#b89cb9]">
+          <span className="px-2 py-0.5 rounded-full bg-white/[0.08] text-white">Esc</span> Quay lại chọn bài 🐰
         </div>
 
         <div className="flex items-center gap-3">
@@ -580,7 +590,7 @@ export default function AstroResultScreen({
             }}
             icon="←"
           >
-            Song Select
+            Chọn bài hát 🐰
           </Button>
 
           <Button
@@ -592,7 +602,7 @@ export default function AstroResultScreen({
             }}
             icon="▶"
           >
-            Replay Autoplay
+            Xem lại 🎀
           </Button>
 
           <Button
@@ -604,7 +614,7 @@ export default function AstroResultScreen({
             }}
             icon="↺"
           >
-            Retry
+            Chơi lại 🎀
           </Button>
         </div>
       </footer>

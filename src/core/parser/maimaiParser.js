@@ -177,7 +177,7 @@ function parseSimaiInote(inoteText, offsetMs, options) {
   let initialBpm = null;
   let currentDivisor = 4;
   let currentTime = offsetMs;
-  const rawNotes = [];
+  let rawNotes = [];
 
   // Lược bỏ chú thích
   const clean = inoteText.replace(/\|\|.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
@@ -249,6 +249,19 @@ function parseSimaiInote(inoteText, offsetMs, options) {
   }
 
   rawNotes.sort((a, b) => a.time - b.time);
+
+  // Lọc trùng lặp các nốt Ring Tap quá sát nhau (<= 25ms), ví dụ từ nhiều slider kết thúc cùng lúc
+  const dedupedNotes = [];
+  for (const note of rawNotes) {
+    if (note.type === 'ring' && !note.isHold) {
+      const prevRing = [...dedupedNotes].reverse().find((n) => n.type === 'ring');
+      if (prevRing && Math.abs(prevRing.time - note.time) <= 25) {
+        continue;
+      }
+    }
+    dedupedNotes.push(note);
+  }
+  rawNotes = dedupedNotes;
 
   // Sanitization: Đảm bảo không có nốt nào trên cùng 1 lane chồng lên nhau hoặc đè nốt Hold
   const laneLastHold = new Map();
@@ -339,6 +352,24 @@ function parseSimaiNoteGroup(groupStr, time, bpm, currentDivisor, notesOut) {
         });
         hasRingAtThisTime = true;
       }
+
+      // Thêm 1 nốt ring đơn (tuyệt đối không phải ring hold) tại điểm kết thúc của slider maimai
+      const durMatch = raw.match(/\[(.*?)\]/);
+      const slideDuration = durMatch ? parseSimaiDuration(durMatch[1], bpm) : (60000 / bpm);
+      const slideEndTime = Math.round(time + slideDuration);
+      if (slideEndTime > Math.round(time)) {
+        const alreadyHasRingAtEnd = notesOut.some(
+          (n) => n.type === 'ring' && Math.abs(n.time - slideEndTime) <= 25
+        );
+        if (!alreadyHasRingAtEnd) {
+          notesOut.push({
+            type: 'ring',
+            time: slideEndTime
+            // Không có isHold và endTime (chỉ là nốt ring đơn, trừ nốt ring hold)
+          });
+        }
+      }
+
       // Khởi tạo nốt Tap/Break tương ứng với nút gốc bắt đầu slide
       const slideStartMatch = raw.match(/^([1-8])([bxf]?)/i);
       if (slideStartMatch) {

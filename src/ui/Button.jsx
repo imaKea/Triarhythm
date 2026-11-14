@@ -21,13 +21,13 @@ export default function Button({
 
   const variantClasses = {
     primary:
-      'bg-gradient-to-r from-[#ff66ab] to-[#cc5289] text-white font-bold border-none shadow-[0_4px_16px_rgba(255,102,171,0.25)] hover:shadow-[0_4px_24px_rgba(255,102,171,0.5)] hover:scale-[1.02] active:scale-[0.98]',
+      'bg-gradient-to-r from-[#ff85a2] via-[#ff6b93] to-[#ff4d80] text-white font-extrabold border border-white/30 shadow-[0_4px_18px_rgba(255,133,162,0.35)] hover:shadow-[0_6px_28px_rgba(255,133,162,0.6)] hover:scale-[1.03] active:scale-[0.97]',
     ghost:
-      'bg-white/[0.06] hover:bg-white/[0.12] text-[#b8c0d4] hover:text-white font-semibold border border-white/[0.08] hover:border-white/[0.2] active:scale-[0.98]',
+      'bg-white/[0.06] hover:bg-white/[0.14] text-[#fff5f8] hover:text-white font-bold border border-white/[0.1] hover:border-[#ff85a2]/40 active:scale-[0.98]',
     secondary:
-      'bg-[#6c5ce7]/20 hover:bg-[#6c5ce7]/30 text-[#a29bfe] hover:text-white font-bold border border-[#6c5ce7]/30 hover:border-[#6c5ce7]/60 active:scale-[0.98]',
+      'bg-[#ffd6e0]/15 hover:bg-[#ffd6e0]/30 text-[#ffaec9] hover:text-white font-bold border border-[#ffaec9]/40 hover:border-[#ffaec9]/80 active:scale-[0.98]',
     danger:
-      'bg-red-500/20 hover:bg-red-500/30 text-red-300 hover:text-white font-bold border border-red-500/30 hover:border-red-500/60 active:scale-[0.98]'
+      'bg-rose-500/20 hover:bg-rose-500/35 text-rose-300 hover:text-white font-bold border border-rose-500/30 hover:border-rose-500/60 active:scale-[0.98]'
   }[variant] || '';
 
   const disabledClasses = disabled

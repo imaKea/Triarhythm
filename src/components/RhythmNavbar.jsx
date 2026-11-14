@@ -31,7 +31,7 @@ export default function RhythmNavbar({
   };
 
   const navItems = [
-    { id: 'SONG_SELECT', label: 'play', icon: '▶' },
+    { id: 'SONG_SELECT', label: 'play', icon: '🐰' },
     { id: 'LEADERBOARD', label: 'rankings', icon: '★' },
     ...(currentUser?.role === 'admin' ? [{ id: 'ADMIN', label: 'admin', icon: '🛡️' }] : []),
     { id: 'UI_KIT', label: 'ui kit', icon: '🎨' },
@@ -39,28 +39,29 @@ export default function RhythmNavbar({
 
   return (
     <>
-      {/* TOP LAZER NAVBAR */}
-      <header className="fixed top-0 left-0 right-0 h-[52px] bg-[#111122]/95 backdrop-blur-xl border-b border-white/[0.08] px-6 flex items-center justify-between z-50 select-none shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
-        {/* Left: Lazer-style Logo */}
+      {/* TOP KAWAII NAVBAR */}
+      <header className="fixed top-0 left-0 right-0 h-[52px] bg-[#1a0e21]/95 backdrop-blur-xl border-b border-[#ff85a2]/20 px-6 flex items-center justify-between z-50 select-none shadow-[0_4px_24px_rgba(22,12,26,0.6)]">
+        {/* Left: Kawaii Bunny + Ribbon Logo */}
         <div
           onClick={() => {
             playSelect();
             onNavigate('SONG_SELECT');
           }}
-          className="flex items-center gap-3 cursor-pointer group"
+          className="flex items-center gap-2.5 cursor-pointer group"
         >
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff66ab] to-[#cc5289] flex items-center justify-center shadow-[0_0_14px_rgba(255,102,171,0.5)] group-hover:shadow-[0_0_22px_rgba(255,102,171,0.8)] group-hover:scale-105 transition-all">
-            <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white drop-shadow">
-              <polygon points="12,3 22,21 2,21" />
-            </svg>
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ffaec9] via-[#ff85a2] to-[#ff4d80] flex items-center justify-center shadow-[0_0_16px_rgba(255,133,162,0.6)] group-hover:shadow-[0_0_24px_rgba(255,133,162,0.9)] group-hover:scale-110 transition-all text-sm select-none">
+            🐰
           </div>
-          <span className="font-torus font-black text-lg text-white tracking-wider group-hover:text-[#ff66ab] transition-colors">
-            triarhythm
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="font-torus font-black text-lg text-white tracking-wider group-hover:text-[#ffaec9] transition-colors">
+              Triarhythm
+            </span>
+            <span className="text-sm animate-kawaii-wiggle inline-block">🎀</span>
+          </div>
         </div>
 
         {/* Center: Navigation Pills */}
-        <nav className="flex items-center gap-1 bg-[#1a1a2e]/70 p-1 rounded-full border border-white/[0.04]">
+        <nav className="flex items-center gap-1 bg-[#28152e]/85 p-1 rounded-full border border-[#ff85a2]/25 shadow-inner">
           {navItems.map((item) => {
             const isActive = currentScreen === item.id;
             return (
@@ -71,10 +72,10 @@ export default function RhythmNavbar({
                   onNavigate(item.id);
                 }}
                 onMouseEnter={() => !isActive && playHover()}
-                className={`px-5 py-1.5 rounded-full text-xs font-bold tracking-wide transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-4 py-1.5 rounded-full text-xs font-bold tracking-wide transition-all cursor-pointer flex items-center gap-1.5 ${
                   isActive
-                    ? 'bg-gradient-to-r from-[#ff66ab] to-[#cc5289] text-white shadow-[0_2px_12px_rgba(255,102,171,0.4)]'
-                    : 'text-[#8890a4] hover:text-white hover:bg-white/[0.04]'
+                    ? 'bg-gradient-to-r from-[#ff85a2] via-[#ff6b93] to-[#ff4d80] text-white shadow-[0_2px_14px_rgba(255,133,162,0.5)] scale-[1.02]'
+                    : 'text-[#d8bfd8] hover:text-white hover:bg-white/[0.08]'
                 }`}
               >
                 <span>{item.icon}</span>
@@ -89,7 +90,7 @@ export default function RhythmNavbar({
               if (onOpenSettings) onOpenSettings();
             }}
             onMouseEnter={() => playHover()}
-            className="px-4 py-1.5 rounded-full text-xs font-bold tracking-wide text-[#8890a4] hover:text-white hover:bg-white/[0.04] transition-all cursor-pointer flex items-center gap-1.5"
+            className="px-4 py-1.5 rounded-full text-xs font-bold tracking-wide text-[#d8bfd8] hover:text-white hover:bg-white/[0.08] transition-all cursor-pointer flex items-center gap-1.5"
           >
             <span>⚙</span>
             <span>settings</span>
@@ -105,20 +106,23 @@ export default function RhythmNavbar({
                   playClick();
                   if (onOpenProfile) onOpenProfile();
                 }}
-                className="flex items-center gap-2.5 px-3 py-1 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-[#ff66ab]/40 transition-all cursor-pointer group"
+                className="flex items-center gap-2.5 px-3 py-1 rounded-full bg-white/[0.05] hover:bg-white/[0.1] border border-[#ff85a2]/30 hover:border-[#ff85a2]/70 hover:shadow-[0_0_15px_rgba(255,133,162,0.3)] transition-all cursor-pointer group"
                 title="Xem hồ sơ người chơi"
               >
-                <Avatar
-                  src={currentUser.avatar}
-                  name={currentUser.name || currentUser.username}
-                  size="sm"
-                  status="online"
-                />
+                <div className="relative">
+                  <Avatar
+                    src={currentUser.avatar}
+                    name={currentUser.name || currentUser.username}
+                    size="sm"
+                    status="online"
+                  />
+                  <span className="absolute -top-1 -right-1 text-[10px]">🎀</span>
+                </div>
                 <div className="flex flex-col text-left leading-none">
-                  <span className="text-xs font-bold text-white group-hover:text-[#ff66ab] transition-colors truncate max-w-[100px]">
+                  <span className="text-xs font-bold text-white group-hover:text-[#ffaec9] transition-colors truncate max-w-[100px]">
                     {currentUser.name || currentUser.username}
                   </span>
-                  <span className="text-[10px] text-[#ff66ab] font-mono font-bold mt-0.5">
+                  <span className="text-[10px] text-[#ffaec9] font-mono font-bold mt-0.5">
                     {currentUser.total_pp ? `${Number(currentUser.total_pp).toLocaleString()}pp` : `${currentUser.rating || 0}★`}
                   </span>
                 </div>
@@ -131,7 +135,7 @@ export default function RhythmNavbar({
                     playClick();
                     if (onLogout) onLogout();
                   }}
-                  className="w-8 h-8 rounded-full bg-red-500/10 hover:bg-red-500/25 border border-red-500/30 text-red-400 hover:text-red-300 flex items-center justify-center text-xs transition-all cursor-pointer shadow-sm"
+                  className="w-8 h-8 rounded-full bg-rose-500/15 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 hover:text-white flex items-center justify-center text-xs transition-all cursor-pointer shadow-sm hover:scale-105"
                   title="Đăng xuất"
                 >
                   ⎋
@@ -144,9 +148,11 @@ export default function RhythmNavbar({
                 playClick();
                 if (onOpenAuth) onOpenAuth();
               }}
-              className="px-4 py-1.5 rounded-full text-xs font-bold bg-[#ff66ab]/20 hover:bg-[#ff66ab]/30 text-[#ff66ab] border border-[#ff66ab]/30 hover:border-[#ff66ab]/60 transition-all cursor-pointer shadow-[0_0_10px_rgba(255,102,171,0.2)]"
+              className="px-4 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-[#ff85a2]/20 to-[#ffaec9]/20 hover:from-[#ff85a2]/35 hover:to-[#ffaec9]/35 text-[#ffaec9] hover:text-white border border-[#ff85a2]/50 hover:border-[#ff85a2]/90 transition-all cursor-pointer shadow-[0_0_14px_rgba(255,133,162,0.3)] flex items-center gap-1.5"
             >
-              Đăng nhập / Đăng ký
+              <span>🐰</span>
+              <span>Đăng nhập / Đăng ký</span>
+              <span>🎀</span>
             </button>
           )}
 
@@ -154,7 +160,7 @@ export default function RhythmNavbar({
           <Tooltip content={isFullscreen ? 'Thu nhỏ (F11)' : 'Toàn màn hình (F11)'}>
             <button
               onClick={toggleFullscreen}
-              className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.1] border border-white/[0.08] text-white flex items-center justify-center text-xs transition-colors cursor-pointer"
+              className="w-8 h-8 rounded-full bg-white/[0.05] hover:bg-white/[0.12] border border-[#ff85a2]/20 text-[#ffaec9] hover:text-white flex items-center justify-center text-xs transition-colors cursor-pointer"
             >
               {isFullscreen ? '⤢' : '⛶'}
             </button>
@@ -163,13 +169,13 @@ export default function RhythmNavbar({
       </header>
 
       {/* BOTTOM STATUS BAR */}
-      <footer className="fixed bottom-0 left-0 right-0 h-6 bg-[#090914]/90 backdrop-blur-md border-t border-white/[0.04] px-4 flex items-center justify-between text-[10px] text-[#7c849c] z-40 select-none">
+      <footer className="fixed bottom-0 left-0 right-0 h-6 bg-[#120817]/95 backdrop-blur-md border-t border-[#ff85a2]/15 px-4 flex items-center justify-between text-[10px] text-[#b89cb9] z-40 select-none">
         <div className="flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#66bb6a] shadow-[0_0_6px_#66bb6a]" />
-          <span>Online • Triarhythm v1.2 lazer</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-[#a7f3d0] shadow-[0_0_6px_#a7f3d0]" />
+          <span>🐰 Triarhythm ~ Cute Bunny & Ribbon Edition 🎀</span>
         </div>
         <div className="flex items-center gap-3 font-mono">
-          <span>TriRing9 Inverted Triangle Layout</span>
+          <span>TriRing9 Inverted Triangle</span>
           <span>IndexedDB + Web Audio</span>
         </div>
       </footer>

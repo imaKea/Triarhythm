@@ -5,107 +5,128 @@
 @tailwind utilities;
 
 :root {
-  /* osu! Color Palette */
-  --osu-bg-dark: #1a1a2e;
-  --osu-bg-darker: #111122;
-  --osu-bg-panel: #222238;
-  --osu-bg-hover: #2f2f4a;
-  --osu-pink: #ff66ab;
-  --osu-pink-dark: #cc5289;
-  --osu-pink-light: #ff8ac0;
-  --osu-pink-glow: rgba(255, 102, 171, 0.4);
-  --osu-purple: #6c5ce7;
-  --osu-purple-dark: #4834d4;
+  /* Cute Bunny & Ribbon Kawaii Palette */
+  --kawaii-pink: #ff85a2;
+  --kawaii-pink-light: #ffaec9;
+  --kawaii-pink-soft: #ffd6e0;
+  --kawaii-pink-dark: #ff4d80;
+  --kawaii-pink-glow: rgba(255, 133, 162, 0.45);
+  --kawaii-cream: #fff5f8;
+  --kawaii-white: #ffffff;
+  --kawaii-bg: #160c1a;
+  --kawaii-panel: #28162e;
+  --kawaii-panel-hover: #351d3d;
+
+  /* osu! Legacy compatibility mapped to Kawaii Pink & White */
+  --osu-bg-dark: #1e1124;
+  --osu-bg-darker: #160c1a;
+  --osu-bg-panel: #28162e;
+  --osu-bg-hover: #351d3d;
+  --osu-pink: #ff85a2;
+  --osu-pink-dark: #ff4d80;
+  --osu-pink-light: #ffaec9;
+  --osu-pink-glow: rgba(255, 133, 162, 0.45);
+  --osu-purple: #b388ff;
+  --osu-purple-dark: #7c4dff;
   --osu-blue: #4fc3f7;
-  --osu-yellow: #ffdd57;
-  --osu-green: #66bb6a;
-  --osu-red: #ef5350;
+  --osu-yellow: #ffe082;
+  --osu-green: #a7f3d0;
+  --osu-red: #ff6b81;
   --osu-text: #ffffff;
-  --osu-text-sub: #b8c0d4;
-  --osu-text-dim: #7c849c;
-  --osu-border: rgba(255, 255, 255, 0.08);
-  --osu-border-hover: rgba(255, 102, 171, 0.4);
-  --app-font: "Torus", "Nunito", "Be Vietnam Pro", system-ui, -apple-system, sans-serif;
+  --osu-text-sub: #e2cbe4;
+  --osu-text-dim: #a890aa;
+  --osu-border: rgba(255, 174, 201, 0.16);
+  --osu-border-hover: rgba(255, 133, 162, 0.5);
+  --app-font: "Nunito", "Be Vietnam Pro", "Torus", system-ui, -apple-system, sans-serif;
 }
 
 @layer base {
   body {
-    background-color: #0d0d1a;
+    background-color: #140b17;
     color: var(--osu-text);
     min-height: 100vh;
     font-family: var(--app-font);
     background-image:
-      radial-gradient(ellipse 80% 60% at 50% 0%, rgba(108, 92, 231, 0.12) 0%, transparent 70%),
-      radial-gradient(ellipse 60% 50% at 80% 100%, rgba(255, 102, 171, 0.08) 0%, transparent 70%);
+      radial-gradient(ellipse 90% 60% at 50% -10%, rgba(255, 133, 162, 0.22) 0%, transparent 70%),
+      radial-gradient(ellipse 70% 60% at 90% 100%, rgba(255, 174, 201, 0.16) 0%, transparent 65%),
+      radial-gradient(ellipse 60% 50% at 10% 90%, rgba(255, 77, 128, 0.12) 0%, transparent 60%);
   }
 }
 
-/* Custom Scrollbar - osu! style */
+/* Custom Scrollbar - Cute Kawaii Pink style */
 .custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(22, 12, 26, 0.5);
+  border-radius: 9999px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--osu-pink-dark);
-  border-radius: 3px;
+  background: linear-gradient(180deg, #ffaec9 0%, #ff85a2 100%);
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--osu-pink);
+  background: linear-gradient(180deg, #ffbcd2 0%, #ff4d80 100%);
+  box-shadow: 0 0 10px rgba(255, 133, 162, 0.6);
 }
 
-/* osu! Beatmap Card */
+/* Cute Beatmap Card */
 .osu-card {
   display: flex;
-  background: linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(17, 17, 34, 0.95) 100%);
-  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(40, 22, 46, 0.95) 0%, rgba(26, 14, 30, 0.95) 100%);
+  border-radius: 16px;
   overflow: hidden;
   cursor: pointer;
   height: 100px;
-  border: 1px solid var(--osu-border);
-  transition: all 0.2s ease;
+  border: 1px solid rgba(255, 174, 201, 0.18);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .osu-card:hover {
-  border-color: var(--osu-pink);
-  box-shadow: 0 4px 20px var(--osu-pink-glow);
-  transform: translateY(-1px);
+  border-color: #ff85a2;
+  box-shadow: 0 6px 24px rgba(255, 133, 162, 0.35);
+  transform: translateY(-2px) scale(1.005);
 }
 .osu-card-selected {
-  border-color: var(--osu-pink) !important;
-  box-shadow: 0 0 0 2px rgba(255, 102, 171, 0.3), 0 4px 20px var(--osu-pink-glow) !important;
-  background: linear-gradient(135deg, rgba(42, 26, 50, 0.95) 0%, rgba(26, 17, 34, 0.95) 100%) !important;
+  border-color: #ff85a2 !important;
+  box-shadow: 0 0 0 2px rgba(255, 133, 162, 0.4), 0 6px 28px rgba(255, 133, 162, 0.45) !important;
+  background: linear-gradient(135deg, rgba(58, 29, 66, 0.95) 0%, rgba(38, 19, 44, 0.95) 100%) !important;
 }
 
-/* osu! Primary Button */
+/* Cute Primary Button */
 .osu-btn {
-  background: linear-gradient(135deg, var(--osu-pink) 0%, var(--osu-pink-dark) 100%);
+  background: linear-gradient(135deg, #ff85a2 0%, #ff4d80 100%);
   color: #ffffff;
-  border-radius: 50px;
-  font-weight: 700;
-  transition: all 0.2s;
-  border: none;
+  border-radius: 9999px;
+  font-weight: 800;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   letter-spacing: 0.05em;
+  box-shadow: 0 4px 18px rgba(255, 133, 162, 0.35);
 }
 .osu-btn:hover {
-  background: linear-gradient(135deg, #ff7ab8 0%, var(--osu-pink) 100%);
-  box-shadow: 0 0 20px var(--osu-pink-glow);
-  transform: scale(1.02);
+  background: linear-gradient(135deg, #ffaec9 0%, #ff6b93 100%);
+  box-shadow: 0 0 26px rgba(255, 133, 162, 0.65);
+  transform: scale(1.03);
+}
+.osu-btn:active {
+  transform: scale(0.97);
 }
 
 .osu-btn-ghost {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--osu-text-sub);
-  border: 1px solid var(--osu-border);
-  border-radius: 50px;
-  font-weight: 600;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff5f8;
+  border: 1px solid rgba(255, 174, 201, 0.2);
+  border-radius: 9999px;
+  font-weight: 700;
   transition: all 0.2s;
 }
 .osu-btn-ghost:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 133, 162, 0.18);
   color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 133, 162, 0.45);
+  box-shadow: 0 0 14px rgba(255, 133, 162, 0.25);
 }
 
 /* Animations */
@@ -127,6 +148,34 @@
 }
 .animate-slideDown {
   animation: slideDown 0.3s ease-out;
+}
+
+@keyframes kawaii-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes kawaii-wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-6deg); }
+  75% { transform: rotate(6deg); }
+}
+
+@keyframes kawaii-sparkle {
+  0%, 100% { opacity: 0.85; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); filter: drop-shadow(0 0 6px #ffaec9); }
+}
+
+.animate-kawaii-bounce {
+  animation: kawaii-bounce 2s ease-in-out infinite;
+}
+
+.animate-kawaii-wiggle {
+  animation: kawaii-wiggle 1.5s ease-in-out infinite;
+}
+
+.animate-kawaii-sparkle {
+  animation: kawaii-sparkle 2.5s ease-in-out infinite;
 }
 
 /* Screen transition animations (250-350ms fade + slide) */

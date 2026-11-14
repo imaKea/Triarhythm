@@ -76,49 +76,53 @@ export default function ProfileModal({
       className="p-0 overflow-hidden"
     >
       {/* Profile Header Banner */}
-      <div className="relative p-6 bg-gradient-to-br from-[#2a1a38] via-[#1a1a2e] to-[#111122] border-b border-white/[0.08] flex items-center gap-5">
-        <Avatar
-          src={avatarUrl}
-          name={name || user.username}
-          size="xl"
-          status="online"
-          className="ring-4 ring-[#ff66ab]/40 shadow-xl"
-        />
+      <div className="relative p-6 bg-gradient-to-br from-[#381a3d] via-[#241229] to-[#180c1a] border-b border-[#ff85a2]/20 flex items-center gap-5">
+        <div className="relative">
+          <Avatar
+            src={avatarUrl}
+            name={name || user.username}
+            size="xl"
+            status="online"
+            className="ring-4 ring-[#ff85a2]/50 shadow-[0_0_20px_rgba(255,133,162,0.4)]"
+          />
+          <span className="absolute -top-1.5 -right-1.5 text-base">🎀</span>
+        </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black text-white truncate font-torus">
-              {name || user.username}
+            <h1 className="text-2xl font-black text-white truncate font-torus flex items-center gap-2">
+              <span>{name || user.username}</span>
+              <span className="text-sm">🐰</span>
             </h1>
-            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#ff66ab]/20 text-[#ff66ab] border border-[#ff66ab]/30">
-              {user.role === 'admin' ? 'ADMIN' : 'PLAYER'}
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#ff85a2]/20 text-[#ffaec9] border border-[#ff85a2]/35">
+              {user.role === 'admin' ? 'ADMIN 🛡️' : 'PLAYER 🎀'}
             </span>
           </div>
-          <p className="text-xs text-[#7c849c] font-mono mt-0.5">@{user.username}</p>
+          <p className="text-xs text-[#b89cb9] font-mono mt-0.5">@{user.username}</p>
 
           {/* Core Stats Row */}
           <div className="flex items-center gap-4 mt-3 text-xs font-mono">
             <div>
-              <span className="text-[#7c849c] block text-[10px]">TOTAL PP</span>
-              <span className="text-base font-black text-[#ff66ab]">
+              <span className="text-[#ffaec9] block text-[10px] font-bold">TOTAL PP</span>
+              <span className="text-base font-black text-white">
                 {Number(totalPP || 0).toLocaleString()}pp
               </span>
             </div>
             <div>
-              <span className="text-[#7c849c] block text-[10px]">ACCURACY</span>
+              <span className="text-[#ffaec9] block text-[10px] font-bold">ACCURACY</span>
               <span className="text-base font-black text-white">
                 {Number(user.rating ? (user.rating / 15 * 100) : 98.5).toFixed(2)}%
               </span>
             </div>
             <div>
-              <span className="text-[#7c849c] block text-[10px]">PLAYS</span>
+              <span className="text-[#ffaec9] block text-[10px] font-bold">PLAYS</span>
               <span className="text-base font-black text-white">
                 {Number(user.play_count || scores.length).toLocaleString()}
               </span>
             </div>
             <div>
-              <span className="text-[#7c849c] block text-[10px]">SCORE</span>
-              <span className="text-base font-black text-[#b8c0d4]">
+              <span className="text-[#ffaec9] block text-[10px] font-bold">SCORE</span>
+              <span className="text-base font-black text-[#ffd6e0]">
                 {Number(user.total_score || 0).toLocaleString()}
               </span>
             </div>
@@ -127,13 +131,13 @@ export default function ProfileModal({
       </div>
 
       {/* Tabs navigation */}
-      <div className="px-6 pt-4 pb-2 bg-[#111122] flex items-center justify-between border-b border-white/[0.06]">
+      <div className="px-6 pt-4 pb-2 bg-[#1a0e21] flex items-center justify-between border-b border-[#ff85a2]/15">
         <Tabs
           activeTab={activeTab}
           onChange={setActiveTab}
           tabs={[
-            { id: 'best', label: 'Best Performances (Top PP)', badge: bestScores.length },
-            { id: 'recent', label: 'Recent Plays', badge: scores.length },
+            { id: 'best', label: 'Top PP 🐰', badge: bestScores.length },
+            { id: 'recent', label: 'Recent Plays 🎀', badge: scores.length },
             { id: 'edit', label: 'Chỉnh sửa Profile' }
           ]}
         />

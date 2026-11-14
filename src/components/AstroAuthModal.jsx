@@ -43,34 +43,35 @@ export default function AstroAuthModal({ isOpen, onClose, onLoginSuccess }) {
     }
   };
 
-  const inputClass = "w-full px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-white placeholder-[#6b7280] focus:border-[#ff66ab]/50 focus:outline-none transition-colors text-sm";
+  const inputClass = "w-full px-4 py-2.5 rounded-2xl bg-[#28152e] border border-[#ff85a2]/25 text-white placeholder-[#b89cb9] focus:border-[#ff85a2] focus:shadow-[0_0_12px_rgba(255,133,162,0.3)] focus:outline-none transition-all text-sm";
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn select-none">
-      <div className="w-full max-w-sm bg-[#111122] rounded-2xl border border-white/[0.06] p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 bg-[#140b17]/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn select-none">
+      <div className="w-full max-w-sm bg-[#1f1126] rounded-3xl border border-[#ff85a2]/30 p-6 shadow-[0_20px_50px_rgba(16,8,20,0.85),0_0_25px_rgba(255,133,162,0.25)]">
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff66ab] to-[#cc5289] flex items-center justify-center shadow-[0_0_12px_rgba(255,102,171,0.4)]">
-              <span className="text-white font-black text-xs">▲</span>
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#ffaec9] via-[#ff85a2] to-[#ff4d80] flex items-center justify-center shadow-[0_0_14px_rgba(255,133,162,0.5)] text-base select-none">
+              🐰
             </div>
             <div>
-              <h3 className="font-bold text-base text-white">
-                {isRegister ? 'Create Account' : 'Sign In'}
+              <h3 className="font-bold text-base text-white flex items-center gap-1.5 font-torus">
+                <span>{isRegister ? 'Tạo tài khoản' : 'Đăng nhập'}</span>
+                <span>🎀</span>
               </h3>
-              <p className="text-[10px] text-[#6b7280]">Sync scores & leaderboards</p>
+              <p className="text-[10px] text-[#ffaec9]">Đồng bộ điểm số & bảng xếp hạng</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-7 h-7 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-[#6b7280] hover:text-white flex items-center justify-center text-xs transition-colors cursor-pointer"
+            className="w-7 h-7 rounded-full bg-white/[0.06] hover:bg-white/[0.14] text-[#ffaec9] hover:text-white flex items-center justify-center text-xs transition-colors cursor-pointer border border-[#ff85a2]/20"
           >
             ✕
           </button>
         </div>
 
         {errorMsg && (
-          <div className="mb-4 p-2.5 rounded-xl bg-[#ef5350]/10 border border-[#ef5350]/30 text-[#ef5350] text-xs">
+          <div className="mb-4 p-2.5 rounded-2xl bg-rose-500/15 border border-rose-500/35 text-rose-300 text-xs">
             {errorMsg}
           </div>
         )}
@@ -81,7 +82,7 @@ export default function AstroAuthModal({ isOpen, onClose, onLoginSuccess }) {
             required
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            placeholder="Username or email"
+            placeholder="Tên người dùng hoặc email"
             className={inputClass}
           />
 
@@ -92,14 +93,14 @@ export default function AstroAuthModal({ isOpen, onClose, onLoginSuccess }) {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email address"
+                placeholder="Địa chỉ email"
                 className={inputClass}
               />
               <input
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Display name"
+                placeholder="Tên hiển thị (Nickname)"
                 className={inputClass}
               />
             </>
@@ -110,40 +111,41 @@ export default function AstroAuthModal({ isOpen, onClose, onLoginSuccess }) {
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
+            placeholder="Mật khẩu"
             className={inputClass}
           />
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 mt-1 rounded-full osu-btn text-sm font-bold tracking-wide cursor-pointer disabled:opacity-50"
+            className="w-full py-2.5 mt-1 rounded-full osu-btn text-sm font-black tracking-wide cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-[0_4px_18px_rgba(255,133,162,0.4)]"
           >
-            {loading ? 'Connecting...' : (isRegister ? 'Sign Up' : 'Sign In')}
+            <span>🐰</span>
+            <span>{loading ? 'Đang kết nối...' : (isRegister ? 'Tạo tài khoản 🎀' : 'Đăng nhập 🎀')}</span>
           </button>
         </form>
 
-        <div className="mt-4 text-center text-xs text-[#6b7280]">
+        <div className="mt-4 text-center text-xs text-[#b89cb9]">
           {isRegister ? (
             <span>
-              Already have an account?{' '}
+              Đã có tài khoản?{' '}
               <button
                 type="button"
                 onClick={() => { setIsRegister(false); setErrorMsg(''); }}
-                className="text-[#ff66ab] hover:underline font-bold cursor-pointer"
+                className="text-[#ffaec9] hover:text-white font-bold underline ml-1 cursor-pointer"
               >
-                Sign In
+                Đăng nhập ngay
               </button>
             </span>
           ) : (
             <span>
-              Don't have an account?{' '}
+              Chưa có tài khoản?{' '}
               <button
                 type="button"
                 onClick={() => { setIsRegister(true); setErrorMsg(''); }}
-                className="text-[#ff66ab] hover:underline font-bold cursor-pointer"
+                className="text-[#ffaec9] hover:text-white font-bold underline ml-1 cursor-pointer"
               >
-                Sign Up
+                Đăng ký ngay
               </button>
             </span>
           )}

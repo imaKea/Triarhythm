@@ -7,24 +7,40 @@ export default {
   theme: {
     extend: {
       colors: {
+        kawaii: {
+          pink: '#ff85a2',
+          'pink-light': '#ffaec9',
+          'pink-soft': '#ffd6e0',
+          'pink-dark': '#ff4d80',
+          'pink-deep': '#e02868',
+          cream: '#fff5f8',
+          white: '#ffffff',
+          dark: '#1e1124',
+          darker: '#160c1a',
+          deep: '#100814',
+          panel: '#28162e',
+          'panel-hover': '#351d3d',
+          'text-sub': '#e2cbe4',
+          'text-dim': '#a890aa'
+        },
         osu: {
-          pink: '#ff66ab',
-          'pink-dark': '#cc5289',
-          'pink-light': '#ff8ac0',
-          purple: '#6c5ce7',
-          'purple-dark': '#4834d4',
+          pink: '#ff85a2',
+          'pink-dark': '#ff4d80',
+          'pink-light': '#ffaec9',
+          purple: '#b388ff',
+          'purple-dark': '#7c4dff',
           blue: '#4fc3f7',
-          yellow: '#ffdd57',
-          green: '#66bb6a',
-          red: '#ef5350',
-          dark: '#1a1a2e',
-          darker: '#111122',
-          deep: '#0d0d1a',
-          panel: '#222238',
-          'panel-hover': '#2f2f4a',
+          yellow: '#ffe082',
+          green: '#a7f3d0',
+          red: '#ff6b81',
+          dark: '#1e1124',
+          darker: '#160c1a',
+          deep: '#100814',
+          panel: '#28162e',
+          'panel-hover': '#351d3d',
           text: '#ffffff',
-          'text-sub': '#b8c0d4',
-          'text-dim': '#7c849c'
+          'text-sub': '#e2cbe4',
+          'text-dim': '#a890aa'
         },
         neon: {
           red: '#ff1744',
@@ -42,9 +58,12 @@ export default {
         mono: ['JetBrains Mono', 'Fira Code', 'monospace']
       },
       boxShadow: {
-        'osu-pink': '0 0 20px rgba(255, 102, 171, 0.4)',
-        'osu-pink-lg': '0 0 30px rgba(255, 102, 171, 0.6)',
-        'osu-panel': '0 8px 32px rgba(0, 0, 0, 0.45)'
+        'osu-pink': '0 0 20px rgba(255, 133, 162, 0.45)',
+        'osu-pink-lg': '0 0 35px rgba(255, 133, 162, 0.65)',
+        'osu-panel': '0 8px 32px rgba(22, 12, 26, 0.65)',
+        'kawaii-pink': '0 0 20px rgba(255, 133, 162, 0.45)',
+        'kawaii-pink-lg': '0 0 35px rgba(255, 133, 162, 0.65)',
+        'kawaii-card': '0 8px 30px rgba(255, 133, 162, 0.18)'
       },
       borderRadius: {
         osu: '12px',

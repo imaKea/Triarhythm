@@ -149,25 +149,28 @@ export default function AstroSettingsModal({
     >
       <div className="flex h-full select-none">
         {/* LEFT SIDEBAR */}
-        <div className="w-56 bg-[#111122] border-r border-white/[0.06] p-4 flex flex-col justify-between shrink-0">
+        <div className="w-56 bg-[#1a0e21] border-r border-[#ff85a2]/20 p-4 flex flex-col justify-between shrink-0">
           <div className="flex flex-col gap-3">
             {/* Header */}
             <div className="px-2 pt-1">
-              <span className="text-xs font-black tracking-widest text-[#ff66ab] uppercase">
-                Settings
+              <span className="text-xs font-black tracking-widest text-[#ffaec9] uppercase flex items-center gap-1">
+                <span>🎀</span>
+                <span>Settings</span>
               </span>
-              <h2 className="text-lg font-black text-white font-torus">TÙY CHỈNH</h2>
+              <h2 className="text-lg font-black text-white font-torus flex items-center gap-1.5">
+                <span>🐰 TÙY CHỈNH</span>
+              </h2>
             </div>
 
             {/* Search Input */}
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7c849c] text-xs">⌕</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#ffaec9] text-xs">⌕</span>
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search..."
-                className="w-full bg-[#1a1a2e] border border-white/[0.08] focus:border-[#ff66ab]/50 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-[#7c849c] outline-none"
+                placeholder="Tìm cài đặt... 🎀"
+                className="w-full bg-[#25132b] border border-[#ff85a2]/25 focus:border-[#ff85a2] focus:shadow-[0_0_10px_rgba(255,133,162,0.25)] rounded-2xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-[#b89cb9] outline-none transition-all"
               />
             </div>
 
@@ -184,10 +187,10 @@ export default function AstroSettingsModal({
                       setActiveCategory(cat.id);
                     }}
                     onMouseEnter={() => !isActive && playHover()}
-                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer text-left ${
+                    className={`px-3 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer text-left ${
                       isActive
-                        ? 'bg-gradient-to-r from-[#ff66ab] to-[#cc5289] text-white shadow-[0_2px_10px_rgba(255,102,171,0.35)]'
-                        : 'text-[#8890a4] hover:bg-white/[0.04] hover:text-white'
+                        ? 'bg-gradient-to-r from-[#ff85a2] via-[#ff6b93] to-[#ff4d80] text-white shadow-[0_2px_12px_rgba(255,133,162,0.45)] scale-[1.02]'
+                        : 'text-[#d8bfd8] hover:bg-white/[0.06] hover:text-white'
                     }`}
                   >
                     <span>{cat.icon}</span>
