@@ -258,7 +258,9 @@ export function useMapEditor({ initialBeatmap = null, onTestPlay = null } = {}) 
   // Add / drag notes
   // ---------------------------------------------------------------------
   const handleAddNote = useCallback((laneIndex, time) => {
-    const noteType = laneIndex === 'ring' ? 'ring' : (activeTool === 'tap' ? 'tap' : activeTool);
+    if (activeTool === 'select') return;
+
+    const noteType = laneIndex === 'ring' ? 'ring' : activeTool;
     const noteObj = createNote({
       type: noteType,
       lane: laneIndex === 'ring' ? undefined : laneIndex,
@@ -470,7 +472,10 @@ export function useMapEditor({ initialBeatmap = null, onTestPlay = null } = {}) 
 
       if (e.ctrlKey || e.metaKey) {
         const key = e.key.toLowerCase();
-        if (key === 'a') {
+        if (key === 's') {
+          e.preventDefault();
+          handleSaveToDatabase();
+        } else if (key === 'a') {
           e.preventDefault();
           handleSelectAll();
         } else if (key === 'c') {
@@ -486,6 +491,18 @@ export function useMapEditor({ initialBeatmap = null, onTestPlay = null } = {}) 
           e.preventDefault();
           handleUndo();
         }
+      } else if (e.key === 'F5') {
+        e.preventDefault();
+        handleTestPlay();
+      } else if (e.code === 'Digit1') {
+        e.preventDefault();
+        setActiveTool('select');
+      } else if (e.code === 'Digit2') {
+        e.preventDefault();
+        setActiveTool('tap');
+      } else if (e.code === 'Digit3') {
+        e.preventDefault();
+        setActiveTool('hold');
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
         handleDeleteSelected();

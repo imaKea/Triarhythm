@@ -59,11 +59,11 @@ export function drawEditorPreview(ctx, width, height, beatmap, selectedIndices, 
     ctx.lineWidth = 1.2;
     ctx.stroke();
 
-    // Nhãn phím
-    ctx.font = 'bold 9px Orbitron, sans-serif';
+    // Nhãn phím (font Torus / sans-serif chuẩn osu!)
+    ctx.font = 'bold 10px "Torus", "Nunito", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
     ctx.fillText(lane.label, p.x, p.y);
   }
 
@@ -78,12 +78,33 @@ export function drawEditorPreview(ctx, width, height, beatmap, selectedIndices, 
 
   // 5. Nốt đang bay tới tại curTime (Live Preview)
   const travelTime = 450;
-  for (let i = 0; i < beatmap.notes.length; i++) {
+  for (let i = 0; i < (beatmap.notes || []).length; i++) {
     const note = beatmap.notes[i];
     const pHead = (curTime - (note.time - travelTime)) / travelTime;
     const isSelected = selectedIndices.has(i);
 
-    // Nốt Ring tam giác
+    // --- NỐT TYPING ---
+    if (note.type === 'typing') {
+      if (curTime >= note.time - 1200 && curTime <= (note.endTime || note.time + 3000)) {
+        ctx.save();
+        ctx.fillStyle = isSelected ? 'rgba(255, 234, 0, 0.9)' : 'rgba(168, 85, 247, 0.9)';
+        ctx.font = 'bold 14px "Torus", "Nunito", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const typingY = originPix.y - 70 * (scale / 240);
+        ctx.fillText(`⌨ ${note.text || 'TRIARHYTHM'}`, originPix.x, typingY);
+
+        // Khung viền typing
+        const textWidth = ctx.measureText(`⌨ ${note.text || 'TRIARHYTHM'}`).width;
+        ctx.strokeStyle = isSelected ? '#ffea00' : '#a855f7';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(originPix.x - textWidth / 2 - 8, typingY - 12, textWidth + 16, 24);
+        ctx.restore();
+      }
+      continue;
+    }
+
+    // --- NỐT RING TAM GIÁC ---
     if (note.type === 'ring') {
       const isHoldRing = Boolean(note.isHold && note.endTime && note.endTime > note.time);
       if (pHead >= 0 && pHead <= 1.1) {
@@ -104,25 +125,22 @@ export function drawEditorPreview(ctx, width, height, beatmap, selectedIndices, 
         ctx.stroke();
         ctx.restore();
       } else if (isHoldRing && curTime >= note.time && curTime <= note.endTime) {
-        // Giai đoạn đang giữ nốt hold ring: phần thân giữa đầu và đuôi có opacity thấp, phía trong đuôi không có màu
+        // Giai đoạn đang giữ nốt hold ring
         const holdElapsed = curTime - note.time;
         const totalHold = note.endTime - note.time;
         const expandScale = Math.max(0.01, Math.min(1.0, holdElapsed / totalHold));
         const ox = originPix.x;
         const oy = originPix.y;
 
-        // 1. Phần thân: Vùng giữa đầu ngoài (1.0) và đuôi trong (expandScale) có opacity thấp (dùng evenodd)
         if (expandScale < 1.0) {
           ctx.save();
           ctx.beginPath();
-          // Subpath 1: Outer head
           ctx.moveTo(tlPix.x, tlPix.y);
           ctx.quadraticCurveTo(cpTopPix.x, cpTopPix.y, trPix.x, trPix.y);
           ctx.quadraticCurveTo(cpRightPix.x, cpRightPix.y, bPix.x, bPix.y);
           ctx.quadraticCurveTo(cpLeftPix.x, cpLeftPix.y, tlPix.x, tlPix.y);
           ctx.closePath();
 
-          // Subpath 2: Inner tail
           ctx.moveTo(ox + (tlPix.x - ox) * expandScale, oy + (tlPix.y - oy) * expandScale);
           ctx.quadraticCurveTo(ox + (cpTopPix.x - ox) * expandScale, oy + (cpTopPix.y - oy) * expandScale, ox + (trPix.x - ox) * expandScale, oy + (trPix.y - oy) * expandScale);
           ctx.quadraticCurveTo(ox + (cpRightPix.x - ox) * expandScale, oy + (cpRightPix.y - oy) * expandScale, ox + (bPix.x - ox) * expandScale, oy + (bPix.y - oy) * expandScale);
@@ -134,7 +152,6 @@ export function drawEditorPreview(ctx, width, height, beatmap, selectedIndices, 
           ctx.restore();
         }
 
-        // 2. Viền phần đầu ngoài
         ctx.save();
         ctx.beginPath();
         ctx.moveTo(tlPix.x, tlPix.y);
@@ -146,26 +163,51 @@ export function drawEditorPreview(ctx, width, height, beatmap, selectedIndices, 
         ctx.lineWidth = 3.5;
         ctx.stroke();
         ctx.restore();
+      }
+      continue;
+    }
 
-        // 3. Viền phần đuôi trong (nở từ tâm ra, phía trong hoàn toàn rỗng / không màu)
-        if (expandScale > 0 && expandScale <= 1.0) {
+    // --- NỐT SLIDE ---
+    if (note.type === 'slide') {
+      const startLane = TRI_RING_LAYOUT.tapLanes[note.lane ?? 0];
+      const endLane = TRI_RING_LAYOUT.tapLanes[note.endLane ?? 1];
+      if (startLane && endLane) {
+        const startPix = layoutToPixels(startLane.x, startLane.y, width, height);
+        const endPix = layoutToPixels(endLane.x, endLane.y, width, height);
+
+        // Vẽ đường slide nối giữa 2 lane
+        if (pHead >= 0 && curTime <= (note.endTime || note.time + 1000)) {
           ctx.save();
           ctx.beginPath();
-          ctx.moveTo(ox + (tlPix.x - ox) * expandScale, oy + (tlPix.y - oy) * expandScale);
-          ctx.quadraticCurveTo(ox + (cpTopPix.x - ox) * expandScale, oy + (cpTopPix.y - oy) * expandScale, ox + (trPix.x - ox) * expandScale, oy + (trPix.y - oy) * expandScale);
-          ctx.quadraticCurveTo(ox + (cpRightPix.x - ox) * expandScale, oy + (cpRightPix.y - oy) * expandScale, ox + (bPix.x - ox) * expandScale, oy + (bPix.y - oy) * expandScale);
-          ctx.quadraticCurveTo(ox + (cpLeftPix.x - ox) * expandScale, oy + (cpLeftPix.y - oy) * expandScale, ox + (tlPix.x - ox) * expandScale, oy + (tlPix.y - oy) * expandScale);
-          ctx.closePath();
-          ctx.strokeStyle = '#00e676';
-          ctx.lineWidth = 2.5;
+          ctx.moveTo(startPix.x, startPix.y);
+          ctx.quadraticCurveTo(originPix.x, originPix.y, endPix.x, endPix.y);
+          ctx.strokeStyle = isSelected ? '#ffea00' : 'rgba(255, 230, 0, 0.6)';
+          ctx.lineWidth = isSelected ? 4 : 2.5;
+          ctx.setLineDash([4, 4]);
           ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Vẽ ngôi sao đầu slide
+          if (curTime >= note.time && curTime <= note.endTime) {
+            const slideProgress = (curTime - note.time) / (note.endTime - note.time);
+            const curSlideX = (1 - slideProgress) * (1 - slideProgress) * startPix.x +
+                              2 * (1 - slideProgress) * slideProgress * originPix.x +
+                              slideProgress * slideProgress * endPix.x;
+            const curSlideY = (1 - slideProgress) * (1 - slideProgress) * startPix.y +
+                              2 * (1 - slideProgress) * slideProgress * originPix.y +
+                              slideProgress * slideProgress * endPix.y;
+            ctx.fillStyle = '#ffe600';
+            ctx.beginPath();
+            ctx.arc(curSlideX, curSlideY, 12 * (scale / 240), 0, Math.PI * 2);
+            ctx.fill();
+          }
           ctx.restore();
         }
       }
       continue;
     }
 
-    // Nốt Tap / Hold / Break
+    // --- NỐT TAP / HOLD / BREAK ---
     const lane = TRI_RING_LAYOUT.tapLanes[note.lane];
     if (!lane) continue;
     const targetPix = layoutToPixels(lane.x, lane.y, width, height);
@@ -179,7 +221,7 @@ export function drawEditorPreview(ctx, width, height, beatmap, selectedIndices, 
       ctx.beginPath();
       ctx.arc(curX, curY, radius, 0, Math.PI * 2);
 
-      let color = '#ff2a70';
+      let color = '#ff2a70'; // Tap
       if (note.type === 'break') color = '#ff3d00';
       if (note.type === 'hold') color = '#ff9100';
       if (isSelected) color = '#ffea00';
@@ -205,15 +247,17 @@ export function drawOverview(ctx, width, height, notes, totalDurationMs) {
   ctx.fillRect(0, 0, width, height);
 
   // Vẽ từng note dưới dạng vạch màu
-  for (let i = 0; i < notes.length; i++) {
+  for (let i = 0; i < (notes || []).length; i++) {
     const n = notes[i];
     const x = (n.time / totalDurationMs) * width;
     if (x < 0 || x > width) continue;
 
-    let col = (n.isHold && n.endTime > n.time) ? '#00e676' : '#00e5ff'; // Ring Tap: cyan, Ring Hold: green
+    let col = (n.isHold && n.endTime > n.time) ? '#00e676' : '#00e5ff';
     if (n.type === 'tap') col = '#ff2a70';
     else if (n.type === 'break') col = '#ff3d00';
     else if (n.type === 'hold') col = '#ff9100';
+    else if (n.type === 'slide') col = '#ffe600';
+    else if (n.type === 'typing') col = '#a855f7';
 
     ctx.fillStyle = col;
     ctx.fillRect(Math.floor(x), 0, 1.5, height);

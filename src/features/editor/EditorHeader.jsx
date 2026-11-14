@@ -1,5 +1,6 @@
 import React from 'react';
 import { formatTime } from './editorModel.js';
+import { toast, playClick } from '../../ui/index.js';
 
 export default function EditorHeader({ editor, onClose }) {
   const {
@@ -10,42 +11,59 @@ export default function EditorHeader({ editor, onClose }) {
   } = editor;
 
   const onExit = () => {
+    playClick();
     if (editor.audioRef.current) editor.audioRef.current.pause();
     onClose();
   };
 
   const onSave = async () => {
+    playClick();
     const ok = await handleSaveToDatabase();
-    if (ok) alert('Saved beatmap successfully to Database!');
-    else alert('Validation error: please check errors panel before saving.');
+    if (ok) toast.success('Đã lưu beatmap thành công vào Database!');
+    else toast.error('Lỗi kiểm tra beatmap: vui lòng kiểm tra panel cảnh báo trước khi lưu.');
   };
 
   const onDraft = async () => {
+    playClick();
     const ok = await handleSaveDraft();
-    alert(ok ? 'Draft saved!' : 'Failed to save draft.');
+    if (ok) toast.info('Đã lưu bản nháp (Draft)!');
+    else toast.error('Không thể lưu bản nháp.');
+  };
+
+  const onExport = () => {
+    playClick();
+    handleExportJSON();
+    toast.success('Đã xuất file beatmap JSON!');
+  };
+
+  const onTest = () => {
+    playClick();
+    handleTestPlay();
   };
 
   return (
-    <div className="h-14 bg-[#16213e] border-b border-white/10 px-5 flex items-center justify-between shrink-0 font-sans select-none">
+    <header className="h-14 bg-[#111122]/95 border-b border-white/[0.08] px-5 flex items-center justify-between shrink-0 font-sans select-none backdrop-blur-md z-30 shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
+      {/* Left: Exit + Title + Metadata */}
       <div className="flex items-center gap-4">
         <button
           onClick={onExit}
-          className="px-3.5 py-1.5 rounded-xl bg-[#2a2a3e] hover:bg-[#3a3a4e] text-slate-200 font-bold text-xs border border-white/10 cursor-pointer transition-colors"
+          className="px-3.5 py-1.5 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-[#8890a4] hover:text-white font-bold text-xs border border-white/[0.08] cursor-pointer transition-colors flex items-center gap-1.5"
         >
-          ← Exit
+          <span>←</span>
+          <span>Thoát</span>
         </button>
 
-        <div className="flex flex-col">
+        <div className="flex flex-col leading-none">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-sm text-white">
+            <span className="font-torus font-black text-sm text-white tracking-wide">
               Beatmap Editor
             </span>
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 font-bold">
+            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[#ff66ab]/20 text-[#ff66ab] border border-[#ff66ab]/40 font-bold">
               {beatmap.metadata?.title || 'Untitled'} [{beatmap.metadata?.difficultyName || 'Normal'}]
             </span>
           </div>
-          <span className="text-[11px] text-slate-400 font-mono">
-            {beatmap.notes.length} notes • BPM {bpm} • 1/{snapDivisor} beat ({Math.round(snapMs)}ms)
+          <span className="text-[11px] text-[#7c849c] font-mono mt-1">
+            {beatmap.notes?.length || 0} notes • BPM {bpm} • 1/{snapDivisor} beat ({Math.round(snapMs)}ms)
           </span>
         </div>
       </div>
@@ -53,25 +71,34 @@ export default function EditorHeader({ editor, onClose }) {
       {/* Center: Playback Controls */}
       <div className="flex items-center gap-3">
         <button
-          onClick={handleTogglePlay}
-          className={`px-4 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+          onClick={() => {
+            playClick();
+            handleTogglePlay();
+          }}
+          className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 shadow-md ${
             isPlaying
-              ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 hover:bg-amber-500/30'
-              : 'bg-indigo-600 text-white border-indigo-500 hover:bg-indigo-500 shadow-md'
+              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
+              : 'bg-gradient-to-r from-[#ff66ab] to-[#cc5289] text-white border-transparent hover:brightness-110 shadow-[0_0_12px_rgba(255,102,171,0.4)]'
           }`}
+          title="Play / Pause (Phím Space)"
         >
           <span>{isPlaying ? '⏸' : '▶'}</span>
-          <span>{isPlaying ? 'Pause' : 'Play'}</span>
+          <span>{isPlaying ? 'Tạm dừng' : 'Phát'}</span>
         </button>
 
         {/* Speed selectors */}
-        <div className="flex items-center bg-[#2a2a3e] rounded-xl p-0.5 border border-white/10">
+        <div className="flex items-center bg-[#1a1a2e] rounded-full p-0.5 border border-white/[0.08]">
           {[0.5, 0.75, 1.0].map((s) => (
             <button
               key={s}
-              onClick={() => handleSpeedChange(s)}
-              className={`px-2 py-1 rounded-lg text-xs font-bold cursor-pointer transition-colors ${
-                playbackSpeed === s ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'
+              onClick={() => {
+                playClick();
+                handleSpeedChange(s);
+              }}
+              className={`px-2.5 py-1 rounded-full text-xs font-bold cursor-pointer transition-colors ${
+                playbackSpeed === s
+                  ? 'bg-[#ff66ab] text-white shadow-sm'
+                  : 'text-[#8890a4] hover:text-white'
               }`}
             >
               {s}x
@@ -79,16 +106,18 @@ export default function EditorHeader({ editor, onClose }) {
           ))}
         </div>
 
+        {/* Current Time Display */}
         <span
           ref={timeDisplayRef}
-          className="font-mono text-xs font-bold text-white bg-[#2a2a3e] px-3 py-1.5 rounded-xl border border-white/10"
+          className="font-mono text-xs font-bold text-white bg-[#1a1a2e] px-3.5 py-1.5 rounded-full border border-white/[0.08]"
         >
           {formatTime(currentTime)}
         </span>
 
-        <label className="px-3 py-1.5 rounded-xl bg-[#2a2a3e] hover:bg-[#3a3a4e] text-slate-200 text-xs font-semibold border border-white/10 cursor-pointer flex items-center gap-1 transition-colors">
+        {/* Audio upload */}
+        <label className="px-3.5 py-1.5 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-[#8890a4] hover:text-white text-xs font-bold border border-white/[0.08] cursor-pointer flex items-center gap-1.5 transition-colors">
           <span>🎵</span>
-          <span>{audioUrl ? 'Change Audio' : 'Upload Audio'}</span>
+          <span>{audioUrl ? 'Đổi nhạc' : 'Tải file nhạc'}</span>
           <input
             type="file"
             accept="audio/*,.mp3,.ogg,.wav"
@@ -101,14 +130,17 @@ export default function EditorHeader({ editor, onClose }) {
       {/* Right Actions */}
       <div className="flex items-center gap-2">
         <button
-          onClick={handleUndo}
+          onClick={() => {
+            playClick();
+            handleUndo();
+          }}
           disabled={history.length === 0}
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-1 ${
+          className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all flex items-center gap-1 ${
             history.length > 0
-              ? 'bg-[#2a2a3e] hover:bg-[#3a3a4e] text-indigo-300 border-white/10'
-              : 'bg-[#1a1a2e] text-slate-600 border-white/5 cursor-not-allowed'
+              ? 'bg-white/[0.06] hover:bg-white/[0.12] text-[#8890a4] hover:text-white border-white/[0.08] cursor-pointer'
+              : 'bg-white/[0.02] text-[#555a6d] border-transparent cursor-not-allowed'
           }`}
-          title="Undo (Ctrl + Z)"
+          title="Hoàn tác (Ctrl + Z)"
         >
           <span>↩</span>
           <span>Undo</span>
@@ -116,33 +148,37 @@ export default function EditorHeader({ editor, onClose }) {
 
         <button
           onClick={onSave}
-          className="px-3.5 py-1.5 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/50 text-xs font-bold cursor-pointer transition-colors"
-          title="Save to MySQL & IndexedDB"
+          className="px-3.5 py-1.5 rounded-full bg-emerald-600/25 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/40 text-xs font-bold cursor-pointer transition-colors"
+          title="Lưu vào MySQL & IndexedDB (Ctrl + S)"
         >
-          💾 Save
+          💾 Lưu map
         </button>
 
         <button
           onClick={onDraft}
-          className="px-3 py-1.5 rounded-xl bg-[#2a2a3e] hover:bg-[#3a3a4e] text-slate-300 border border-white/10 text-xs font-semibold cursor-pointer"
+          className="px-3 py-1.5 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-[#8890a4] hover:text-white border border-white/[0.08] text-xs font-semibold cursor-pointer transition-colors"
+          title="Lưu bản nháp"
         >
-          Draft
+          Bản nháp
         </button>
 
         <button
-          onClick={handleTestPlay}
-          className="px-4 py-1.5 rounded-xl rt-btn-primary text-xs font-bold cursor-pointer shadow-md"
+          onClick={onTest}
+          className="px-4 py-1.5 rounded-full bg-gradient-to-r from-[#ff66ab] to-[#cc5289] text-white text-xs font-bold cursor-pointer shadow-[0_0_12px_rgba(255,102,171,0.4)] hover:brightness-110 transition-all flex items-center gap-1.5"
+          title="Chơi thử map (F5 - Đếm ngược 3-2-1)"
         >
-          🎮 Test Play
+          <span>🎮</span>
+          <span>Test Play</span>
         </button>
 
         <button
-          onClick={handleExportJSON}
-          className="px-3 py-1.5 rounded-xl bg-[#2a2a3e] hover:bg-[#3a3a4e] text-slate-300 text-xs border border-white/10 cursor-pointer"
+          onClick={onExport}
+          className="px-3 py-1.5 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-[#8890a4] hover:text-white text-xs border border-white/[0.08] cursor-pointer transition-colors"
+          title="Xuất file JSON"
         >
           Export
         </button>
       </div>
-    </div>
+    </header>
   );
 }

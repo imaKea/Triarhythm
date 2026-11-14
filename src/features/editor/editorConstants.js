@@ -1,48 +1,65 @@
 /**
  * Các hằng số hiển thị của Map Editor (dùng chung cho hook + panel).
+ * Đồng bộ trực tiếp từ TRI_RING_LAYOUT trong layout.config.js (Single Source of Truth).
  */
 
-export const KEY_TO_LANE = {
-  Digit4: 0, Digit5: 0, Numpad4: 0, Numpad5: 0,
-  Digit6: 1, Digit7: 1, Numpad6: 1, Numpad7: 1,
-  Digit8: 2, Digit9: 2, Numpad8: 2, Numpad9: 2,
-  KeyR: 3,
-  KeyF: 4,
-  KeyV: 5,
-  KeyI: 6,
-  KeyJ: 7,
-  KeyN: 8
-};
+import { TRI_RING_LAYOUT } from '../../config/layout.config.js';
+
+// Xây dựng bảng tra cứu KEY_TO_LANE tự động từ defaultKeybinds của TRI_RING_LAYOUT
+export const KEY_TO_LANE = {};
+for (const [laneStr, keys] of Object.entries(TRI_RING_LAYOUT.defaultKeybinds)) {
+  if (laneStr === 'ring') continue;
+  const laneNum = Number(laneStr);
+  for (const k of keys) {
+    KEY_TO_LANE[k] = laneNum;
+  }
+}
+
+// Xây dựng danh sách 9 ô tròn và nút Ring từ TRI_RING_LAYOUT
+const LANE_COLORS = [
+  'text-amber-300',
+  'text-cyan-300',
+  'text-emerald-300',
+  'text-pink-300',
+  'text-rose-300',
+  'text-orange-300',
+  'text-blue-300',
+  'text-indigo-300',
+  'text-purple-300'
+];
 
 export const LANES_DEF = [
-  { id: 0, label: '0 (4·5)', short: '0: 4·5', col: 'text-amber-300' },
-  { id: 1, label: '1 (6·7)', short: '1: 6·7', col: 'text-cyan-300' },
-  { id: 2, label: '2 (8·9)', short: '2: 8·9', col: 'text-emerald-300' },
-  { id: 3, label: '3 (R)', short: '3: R', col: 'text-pink-300' },
-  { id: 4, label: '4 (F)', short: '4: F', col: 'text-rose-300' },
-  { id: 5, label: '5 (V)', short: '5: V', col: 'text-orange-300' },
-  { id: 6, label: '6 (I)', short: '6: I', col: 'text-blue-300' },
-  { id: 7, label: '7 (J)', short: '7: J', col: 'text-indigo-300' },
-  { id: 8, label: '8 (N)', short: '8: N', col: 'text-purple-300' },
-  { id: 'ring', label: 'RING (SPACE)', short: 'RING', col: 'text-cyan-400 font-bold' }
+  ...TRI_RING_LAYOUT.tapLanes.map((l) => ({
+    id: l.lane,
+    label: `${l.lane} (${l.defaultKey})`,
+    short: `${l.lane}: ${l.defaultKey}`,
+    edge: l.edge,
+    col: LANE_COLORS[l.lane] || 'text-white'
+  })),
+  { id: 'ring', label: 'RING (SPACE/B/ENTER)', short: 'RING', col: 'text-cyan-400 font-bold' }
 ];
 
 export const TRACK_HEADER_WIDTH = 84;
 
+// Công cụ vẽ note đầy đủ theo chuẩn game: Select, Tap, Hold, Break, Ring, Slide, Typing
 export const TOOL_OPTIONS = [
-  { id: 'tap', label: 'Tap', col: 'bg-[#ff2a70]' },
-  { id: 'break', label: 'Break', col: 'bg-[#ff3d00]' },
-  { id: 'hold', label: 'Hold', col: 'bg-[#ff9100]' },
-  { id: 'ring', label: 'Ring', col: 'bg-[#00e5ff]' }
+  { id: 'select', label: 'Select', icon: '↖', col: 'bg-[#8890a4]', key: '1' },
+  { id: 'tap', label: 'Tap', icon: '●', col: 'bg-[#ff2a70]', key: '2' },
+  { id: 'hold', label: 'Hold', icon: '▬', col: 'bg-[#ff9100]', key: '3' },
+  { id: 'break', label: 'Break', icon: '★', col: 'bg-[#ff3d00]', key: '4' },
+  { id: 'ring', label: 'Ring', icon: '◯', col: 'bg-[#00e5ff]', key: '5' },
+  { id: 'slide', label: 'Slide', icon: '⤹', col: 'bg-[#ffe600]', key: '6' },
+  { id: 'typing', label: 'Typing', icon: '⌨', col: 'bg-[#a855f7]', key: '7' },
 ];
 
+// Màu Beat Snap Divisor chuẩn osu! (1/1 trắng/đỏ, 1/2 xanh, 1/3 tím, 1/4 vàng...)
 export const SNAP_OPTIONS = [
-  { div: 1, label: '1/1', color: '#ffffff' },
-  { div: 2, label: '1/2', color: '#ef4444' },
-  { div: 3, label: '1/3', color: '#a855f7' },
-  { div: 4, label: '1/4', color: '#3b82f6' },
-  { div: 6, label: '1/6', color: '#ec4899' },
-  { div: 8, label: '1/8', color: '#eab308' },
-  { div: 12, label: '1/12', color: '#8b5cf6' },
-  { div: 16, label: '1/16', color: '#6366f1' }
+  { div: 1, label: '1/1', color: '#ffffff' },  // Trắng / Đỏ (1 beat)
+  { div: 2, label: '1/2', color: '#e53935' },  // Đỏ (1/2 beat)
+  { div: 3, label: '1/3', color: '#8e24aa' },  // Tím (1/3 beat)
+  { div: 4, label: '1/4', color: '#1e88e5' },  // Xanh dương (1/4 beat)
+  { div: 6, label: '1/6', color: '#ec4899' },  // Hồng (1/6 beat)
+  { div: 8, label: '1/8', color: '#fdd835' },  // Vàng (1/8 beat)
+  { div: 12, label: '1/12', color: '#00acc1' },// Cyan (1/12 beat)
+  { div: 16, label: '1/16', color: '#78909c' } // Xám (1/16 beat)
 ];

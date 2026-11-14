@@ -14,9 +14,9 @@ export default function EditorTimeline({ editor }) {
   } = editor;
 
   return (
-    <div className="flex-1 bg-[#1a1a2e] flex flex-col overflow-hidden relative">
+    <div className="flex-1 bg-[#0d0d1a] flex flex-col overflow-hidden relative">
       {/* Header các cột Lane */}
-      <div className="h-8 bg-[#16213e] border-b border-white/10 flex items-center px-2 text-[10px] font-mono font-bold shrink-0">
+      <div className="h-8 bg-[#111122]/95 border-b border-white/[0.08] flex items-center px-2 text-[10px] font-mono font-bold shrink-0">
         <div className="w-9 text-slate-400 text-center">TIME</div>
         <div className="flex-1 grid grid-cols-10 h-full">
           {LANES_DEF.map((l) => (
@@ -123,10 +123,12 @@ export default function EditorTimeline({ editor }) {
               const topPix = note.time * timeScale;
               const isSelected = selectedIndices.has(index);
 
-              let bgColor = 'bg-pink-500';
-              if (note.type === 'break') bgColor = 'bg-red-500';
-              if (note.type === 'hold') bgColor = 'bg-amber-500';
-              if (note.type === 'ring') bgColor = 'bg-cyan-400 text-black font-black';
+              let bgColor = 'bg-[#ff2a70] text-white';
+              if (note.type === 'break') bgColor = 'bg-[#ff3d00] text-white';
+              if (note.type === 'hold') bgColor = 'bg-[#ff9100] text-white';
+              if (note.type === 'ring') bgColor = 'bg-[#00e5ff] text-black font-black';
+              if (note.type === 'slide') bgColor = 'bg-[#ffe600] text-black font-black';
+              if (note.type === 'typing') bgColor = 'bg-[#a855f7] text-white font-black';
 
               const holdHeight = note.endTime ? (note.endTime - note.time) * timeScale : 0;
 

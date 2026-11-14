@@ -75,7 +75,16 @@ export function snapTime(time, snapMs) {
   return Math.max(0, Math.round(safeTime / safeSnap) * safeSnap);
 }
 
-export function createNote({ type = 'tap', lane, time, snapMs, holdDuration = DEFAULT_HOLD_DURATION } = {}) {
+export function createNote({
+  type = 'tap',
+  lane,
+  time,
+  snapMs,
+  holdDuration = DEFAULT_HOLD_DURATION,
+  endLane = 1,
+  path = null,
+  text = 'TRIARHYTHM'
+} = {}) {
   const snapped = snapTime(time, snapMs);
   if (type === 'ring') return { type: 'ring', time: snapped };
 
@@ -85,6 +94,29 @@ export function createNote({ type = 'tap', lane, time, snapMs, holdDuration = DE
       time: snapped,
       endTime: snapped + Math.max(snapMs || 1, holdDuration),
       lane
+    };
+  }
+
+  if (type === 'slide') {
+    return {
+      type: 'slide',
+      time: snapped,
+      endTime: snapped + Math.max(snapMs || 1, holdDuration),
+      lane: lane ?? 0,
+      endLane: endLane ?? ((lane ?? 0) + 1) % 9,
+      path: path || [
+        { lane: lane ?? 0, time: snapped },
+        { lane: endLane ?? ((lane ?? 0) + 1) % 9, time: snapped + Math.max(snapMs || 1, holdDuration) }
+      ]
+    };
+  }
+
+  if (type === 'typing') {
+    return {
+      type: 'typing',
+      time: snapped,
+      text: text || 'TRIARHYTHM',
+      lane: lane ?? 0
     };
   }
 

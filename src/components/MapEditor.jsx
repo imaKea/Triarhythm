@@ -16,7 +16,7 @@ export default function MapEditor({ initialBeatmap = null, onClose, onTestPlay }
   const { audioRef, audioUrl, overviewCanvasRef, overviewProgressRef, overviewThumbRef, currentTime, totalDurationMs } = editor;
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#1a1a2e] text-white flex flex-col font-sans select-none overflow-hidden animate-fadeIn">
+    <div className="fixed inset-0 z-50 bg-[#090914] text-white flex flex-col font-sans select-none overflow-hidden animate-fadeIn">
       {/* Audio element ẩn để đồng bộ */}
       <audio
         ref={audioRef}
@@ -28,36 +28,36 @@ export default function MapEditor({ initialBeatmap = null, onClose, onTestPlay }
 
       <EditorHeader editor={editor} onClose={onClose} />
 
-      {/* SONG OVERVIEW SCRUBBER */}
+      {/* SONG OVERVIEW SCRUBBER (osu! timeline overview) */}
       <div
         onMouseDown={editor.handleOverviewMouseDown}
-        className="h-6 bg-[#16213e] border-b border-white/10 px-4 flex items-center relative cursor-pointer select-none group shrink-0"
-        title="Click or drag to scrub through the audio track"
+        className="h-6 bg-[#0d0d1a] border-b border-white/[0.08] px-4 flex items-center relative cursor-pointer select-none group shrink-0"
+        title="Nhấp hoặc kéo chuột để tua nhanh âm thanh"
       >
-        <div className="w-full h-2.5 bg-[#2a2a3e] rounded-full relative overflow-hidden border border-white/10">
+        <div className="w-full h-2 rounded-full relative overflow-hidden bg-white/[0.06] border border-white/[0.08]">
           <canvas
             ref={overviewCanvasRef}
             width={1200}
-            height={10}
+            height={8}
             className="w-full h-full block pointer-events-none"
           />
           <div
             ref={overviewProgressRef}
             style={{ width: `${Math.min(100, (currentTime / totalDurationMs) * 100)}%` }}
-            className="h-full bg-indigo-500/40 absolute top-0 left-0 pointer-events-none"
+            className="h-full bg-gradient-to-r from-[#ff66ab]/30 to-[#ff66ab]/60 absolute top-0 left-0 pointer-events-none"
           />
         </div>
 
         <div
           ref={overviewThumbRef}
           style={{ left: `${Math.min(100, (currentTime / totalDurationMs) * 100)}%` }}
-          className="absolute w-3.5 h-3.5 bg-indigo-400 rounded-full border-2 border-white shadow-[0_0_8px_rgba(99,102,241,0.8)] -translate-x-1/2 pointer-events-none group-hover:scale-125 transition-transform"
+          className="absolute w-3 h-3 bg-[#ff66ab] rounded-full border-2 border-white shadow-[0_0_10px_rgba(255,102,171,0.8)] -translate-x-1/2 pointer-events-none group-hover:scale-125 transition-transform"
         />
 
-        <div className="absolute left-6 text-[9px] font-mono text-indigo-300 font-bold pointer-events-none drop-shadow">
+        <div className="absolute left-6 text-[9px] font-mono text-[#ff80bf] font-bold pointer-events-none drop-shadow">
           {formatTime(currentTime)}
         </div>
-        <div className="absolute right-6 text-[9px] font-mono text-slate-400 font-bold pointer-events-none drop-shadow">
+        <div className="absolute right-6 text-[9px] font-mono text-[#8890a4] font-bold pointer-events-none drop-shadow">
           {formatTime(totalDurationMs)}
         </div>
       </div>
