@@ -120,6 +120,10 @@ describe('Maimai / Simai Chart Parser (maimaiParser.js)', () => {
     expect(pkg.assets.audio).toBeDefined();
     expect(pkg.assets.background).toBeDefined();
 
+    // Blob giải nén phải có MIME type để Laravel `mimes` validation chấp nhận upload
+    expect(pkg.assets.audio.type).toMatch(/^audio\//);
+    expect(pkg.assets.background.type).toMatch(/^image\//);
+
     // Kiểm tra độ khó Re:Master
     const remaster = pkg.charts.find((c) => c.difficultyName === 'Re:Master');
     expect(remaster.difficultyLevel).toBe('14');

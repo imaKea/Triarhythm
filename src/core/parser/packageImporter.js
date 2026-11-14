@@ -27,6 +27,41 @@ function normalizePath(p) {
   return p.replace(/\\/g, '/').replace(/^\.\//, '');
 }
 
+// JSZip `async('blob')` không gán MIME type, khiến Laravel `mimes` validation
+// từ chối file upload. Suy ra MIME từ phần mở rộng của entry.
+const MIME_BY_EXT = {
+  mp3: 'audio/mpeg',
+  ogg: 'audio/ogg',
+  wav: 'audio/wav',
+  m4a: 'audio/mp4',
+  aac: 'audio/aac',
+  flac: 'audio/flac',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  mp4: 'video/mp4',
+  webm: 'video/webm',
+  mkv: 'video/x-matroska',
+  mov: 'video/quicktime',
+  avi: 'video/x-msvideo',
+  flv: 'video/x-flv',
+};
+
+export function mimeFromFileName(name = '') {
+  const ext = String(name).split('.').pop().toLowerCase();
+  return MIME_BY_EXT[ext] || '';
+}
+
+/**
+ * Đọc entry trong zip thành Blob có MIME type đúng (nếu nhận diện được).
+ */
+async function readEntryBlob(entry) {
+  const blob = await entry.async('blob');
+  const type = mimeFromFileName(entry?.name || '');
+  return type ? new Blob([blob], { type }) : blob;
+}
+
 /**
  * Tìm file hình ảnh nền (bg.jpg, bg.png...) trong zip
  */
@@ -194,7 +229,7 @@ export async function importPackage(fileOrBuffer, options = {}) {
     // Tìm file nhạc bài hát: track.mp3, track.ogg... hoặc file nhạc lớn nhất
     const audioEntry = findZipEntry(zipData, maidataFolder, 'track.mp3');
     if (audioEntry) {
-      extractedAssets.audio = await audioEntry.async('blob');
+      extractedAssets.audio = await readEntryBlob(audioEntry);
       try {
         extractedAssets.audioBuffer = await audioEntry.async('arraybuffer');
       } catch (e) {}
@@ -203,13 +238,13 @@ export async function importPackage(fileOrBuffer, options = {}) {
     // Tìm file ảnh bìa / hình nền: bg.jpg, bg.png, cover.jpg, jacket.png...
     const bgEntry = findZipImage(zipData, maidataFolder, maimaiParsed.metadata?.image || 'bg.jpg');
     if (bgEntry) {
-      extractedAssets.background = await bgEntry.async('blob');
+      extractedAssets.background = await readEntryBlob(bgEntry);
     }
 
     // Tìm file video / BGA / PV: pv.mp4, movie.mp4, video.mp4, track.mp4...
     const videoEntry = findZipVideo(zipData, maidataFolder, maimaiParsed.metadata?.bga || maimaiParsed.metadata?.video || 'pv.mp4');
     if (videoEntry) {
-      extractedAssets.video = await videoEntry.async('blob');
+      extractedAssets.video = await readEntryBlob(videoEntry);
     }
 
     const charts = maimaiParsed.difficulties.map((diff) => ({
@@ -319,7 +354,7 @@ export async function importPackage(fileOrBuffer, options = {}) {
   // 3a. Audio chính của bài hát
   const audioEntry = findZipEntry(zipData, targetFolder, primaryBeatmap.assets.audio);
   if (audioEntry) {
-    extractedAssets.audio = await audioEntry.async('blob');
+    extractedAssets.audio = await readEntryBlob(audioEntry);
     try {
       extractedAssets.audioBuffer = await audioEntry.async('arraybuffer');
     } catch (e) {}
@@ -328,13 +363,13 @@ export async function importPackage(fileOrBuffer, options = {}) {
   // 3b. Ảnh nền
   const bgEntry = findZipImage(zipData, targetFolder, primaryBeatmap.assets?.background || 'bg.jpg');
   if (bgEntry) {
-    extractedAssets.background = await bgEntry.async('blob');
+    extractedAssets.background = await readEntryBlob(bgEntry);
   }
 
   // 3c. Video nền
   const videoEntry = findZipVideo(zipData, targetFolder, primaryBeatmap.assets?.video || 'video.mp4');
   if (videoEntry) {
-    extractedAssets.video = await videoEntry.async('blob');
+    extractedAssets.video = await readEntryBlob(videoEntry);
   }
 
   // 3d. Hitsounds khớp regex
