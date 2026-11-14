@@ -9,11 +9,15 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { TRI_RING_LAYOUT, layoutToPixels } from '../../config/layout.config.js';
 import { dbManager } from '../../core/storage/db.js';
+import { apiClient } from '../../core/api/client.js';
 import { validateBeatmap } from '../../core/beatmap/validator.js';
 import {
   createBlankBeatmap,
   pushHistory,
   undoHistory,
+  redoHistory,
+  flipNotesHorizontal,
+  flipNotesVertical,
   createClipboard,
   notesFromClipboard,
   createNote,
@@ -24,7 +28,7 @@ import {
   formatTime
 } from './editorModel.js';
 import { drawEditorPreview, drawOverview } from './editorPreview.js';
-import { KEY_TO_LANE, TRACK_HEADER_WIDTH } from './editorConstants.js';
+import { KEY_TO_LANE, TRACK_HEADER_WIDTH, SNAP_OPTIONS } from './editorConstants.js';
 
 function createInitialBeatmap(initialBeatmap) {
   if (initialBeatmap) {
@@ -47,6 +51,7 @@ export function useMapEditor({ initialBeatmap = null, onTestPlay = null } = {}) 
   // State
   // ---------------------------------------------------------------------
   const [beatmap, setBeatmap] = useState(() => createInitialBeatmap(initialBeatmap));
+  const [activeTab, setActiveTab] = useState('compose'); // 'setup' | 'compose' | 'timing' | 'verify'
   const [editorOrientation, setEditorOrientation] = useState('vertical');
   const [audioUrl, setAudioUrl] = useState(() => createInitialAudioUrl(initialBeatmap));
   const [songDuration, setSongDuration] = useState(180000);
@@ -59,6 +64,16 @@ export function useMapEditor({ initialBeatmap = null, onTestPlay = null } = {}) 
   const [zoom, setZoom] = useState(1.0);
   const [activeTool, setActiveTool] = useState('tap');
   const [holdDuration, setHoldDuration] = useState(1000);
+  const [metronomeEnabled, setMetronomeEnabled] = useState(false);
+
+  // View toggles
+  const [showRayGuides, setShowRayGuides] = useState(true);
+  const [showWaveform, setShowWaveform] = useState(true);
+  const [showGrid, setShowGrid] = useState(true);
+
+  // Dirty state & Autosave
+  const [isDirty, setIsDirty] = useState(false);
+  const [lastSavedTime, setLastSavedTime] = useState(null);
 
   // Virtualization
   const [timelineScroll, setTimelineScroll] = useState(0);
@@ -68,6 +83,7 @@ export function useMapEditor({ initialBeatmap = null, onTestPlay = null } = {}) 
   const [selectedIndices, setSelectedIndices] = useState(new Set());
   const [clipboard, setClipboard] = useState([]);
   const [history, setHistory] = useState([]);
+  const [redoStack, setRedoStack] = useState([]);
 
   // Validator
   const [validation, setValidation] = useState(null);
@@ -89,6 +105,10 @@ export function useMapEditor({ initialBeatmap = null, onTestPlay = null } = {}) 
   const currentTimeRef = useRef(0);
   const isPlayingRef = useRef(false);
   const playbackSpeedRef = useRef(1.0);
+  const metronomeEnabledRef = useRef(false);
+  const lastMetronomeBeatRef = useRef(-1);
+  const audioContextRef = useRef(null);
+
   const lastPerfTimeRef = useRef(null);
   const lastStateSyncRef = useRef(0);
   const dragStateRef = useRef(null);
@@ -98,6 +118,7 @@ export function useMapEditor({ initialBeatmap = null, onTestPlay = null } = {}) 
   useEffect(() => { currentTimeRef.current = currentTime; }, [currentTime]);
   useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
   useEffect(() => { playbackSpeedRef.current = playbackSpeed; }, [playbackSpeed]);
+  useEffect(() => { metronomeEnabledRef.current = metronomeEnabled; }, [metronomeEnabled]);
 
   // ---------------------------------------------------------------------
   // Derived values
@@ -108,7 +129,7 @@ export function useMapEditor({ initialBeatmap = null, onTestPlay = null } = {}) 
   const snapMs = beatLength / snapDivisor;
 
   const maxNoteTime = useMemo(() => {
-    return beatmap.notes.reduce((max, n) => Math.max(max, n.endTime || n.time || 0), 0);
+    return (beatmap.notes || []).reduce((max, n) => Math.max(max, n.endTime || n.time || 0), 0);
   }, [beatmap.notes]);
 
   const totalDurationMs = Math.max(songDuration, maxNoteTime + 20000, 180000);
@@ -116,10 +137,16 @@ export function useMapEditor({ initialBeatmap = null, onTestPlay = null } = {}) 
   const totalPixels = totalDurationMs * timeScale;
 
   // ---------------------------------------------------------------------
-  // Notes + history
+  // Notes + history + dirty flag
   // ---------------------------------------------------------------------
+  const markDirty = useCallback(() => {
+    setIsDirty(true);
+  }, []);
+
   const updateNotesWithHistory = useCallback((newNotes) => {
     setHistory((prev) => pushHistory(prev, beatmap.notes));
+    setRedoStack([]);
+    setIsDirty(true);
     setBeatmap((prev) => ({ ...prev, notes: newNotes }));
   }, [beatmap.notes]);
 
@@ -127,11 +154,113 @@ export function useMapEditor({ initialBeatmap = null, onTestPlay = null } = {}) 
     setHistory((prev) => {
       const result = undoHistory(prev, null);
       if (!result.undone) return prev;
+      setRedoStack((redo) => [...redo, beatmap.notes]);
       setBeatmap((bm) => ({ ...bm, notes: result.notes }));
       setSelectedIndices(new Set());
+      setIsDirty(true);
       return result.history;
     });
+  }, [beatmap.notes]);
+
+  const handleRedo = useCallback(() => {
+    setRedoStack((prevRedo) => {
+      if (!prevRedo || prevRedo.length === 0) return prevRedo;
+      const nextNotes = prevRedo[prevRedo.length - 1];
+      setHistory((prevHist) => pushHistory(prevHist, beatmap.notes));
+      setBeatmap((bm) => ({ ...bm, notes: nextNotes }));
+      setSelectedIndices(new Set());
+      setIsDirty(true);
+      return prevRedo.slice(0, -1);
+    });
+  }, [beatmap.notes]);
+
+  // Lật đối xứng ngang và dọc
+  const handleFlipHorizontal = useCallback(() => {
+    const flipped = flipNotesHorizontal(beatmap.notes, selectedIndices);
+    updateNotesWithHistory(flipped);
+  }, [beatmap.notes, selectedIndices, updateNotesWithHistory]);
+
+  const handleFlipVertical = useCallback(() => {
+    const flipped = flipNotesVertical(beatmap.notes, selectedIndices);
+    updateNotesWithHistory(flipped);
+  }, [beatmap.notes, selectedIndices, updateNotesWithHistory]);
+
+  // Đổi snap divisor theo bước
+  const SNAP_DIVISORS = [1, 2, 3, 4, 6, 8, 12, 16];
+  const handleCycleSnap = useCallback((direction) => {
+    setSnapDivisor((current) => {
+      const idx = SNAP_DIVISORS.indexOf(current);
+      if (idx === -1) return 4;
+      if (direction > 0) {
+        return SNAP_DIVISORS[Math.min(SNAP_DIVISORS.length - 1, idx + 1)];
+      } else {
+        return SNAP_DIVISORS[Math.max(0, idx - 1)];
+      }
+    });
   }, []);
+
+  // Metronome tick sound
+  const playMetronomeTick = useCallback((isMeasureStart) => {
+    try {
+      if (!audioContextRef.current) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) audioContextRef.current = new AudioCtx();
+      }
+      const ctx = audioContextRef.current;
+      if (!ctx) return;
+      if (ctx.state === 'suspended') ctx.resume();
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const now = ctx.currentTime;
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(isMeasureStart ? 1200 : 700, now);
+
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.05);
+    } catch (_) {}
+  }, []);
+
+  // Autosave draft mỗi 30s
+  useEffect(() => {
+    const mapId = beatmap.metadata?.id || 'default_draft';
+    const draftKey = `triarhythm_draft_${mapId}`;
+
+    const interval = setInterval(async () => {
+      if (isDirty) {
+        try {
+          const payload = buildBeatmapSavePayload(beatmap, { existing: initialBeatmap || null });
+          localStorage.setItem(draftKey, JSON.stringify({ payload, savedAt: Date.now() }));
+          await dbManager.saveBeatmap({ ...payload, isDraft: true }).catch(() => {});
+          setLastSavedTime(Date.now());
+        } catch (err) {
+          console.warn('[Editor] Autosave draft failed:', err);
+        }
+      }
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [isDirty, beatmap, initialBeatmap]);
+
+  // Cảnh báo beforeunload khi có thay đổi chưa lưu
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = 'Bạn có thay đổi chưa lưu trong beatmap. Bạn có chắc muốn rời đi?';
+        return e.returnValue;
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
 
   // ---------------------------------------------------------------------
   // Playback
@@ -468,7 +597,7 @@ export function useMapEditor({ initialBeatmap = null, onTestPlay = null } = {}) 
   // ---------------------------------------------------------------------
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.target.tagName === 'INPUT' && e.target.type === 'text') return;
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
 
       if (e.ctrlKey || e.metaKey) {
         const key = e.key.toLowerCase();
@@ -489,7 +618,20 @@ export function useMapEditor({ initialBeatmap = null, onTestPlay = null } = {}) 
           handleCut();
         } else if (key === 'z') {
           e.preventDefault();
-          handleUndo();
+          if (e.shiftKey) handleRedo();
+          else handleUndo();
+        } else if (key === 'y') {
+          e.preventDefault();
+          handleRedo();
+        } else if (key === 'h') {
+          e.preventDefault();
+          handleFlipHorizontal();
+        } else if (key === 'j') {
+          e.preventDefault();
+          handleFlipVertical();
+        } else if (key === 't') {
+          e.preventDefault();
+          handleTestPlay();
         }
       } else if (e.key === 'F5') {
         e.preventDefault();
@@ -503,6 +645,24 @@ export function useMapEditor({ initialBeatmap = null, onTestPlay = null } = {}) 
       } else if (e.code === 'Digit3') {
         e.preventDefault();
         setActiveTool('hold');
+      } else if (e.code === 'Digit4') {
+        e.preventDefault();
+        setActiveTool('break');
+      } else if (e.code === 'Digit5') {
+        e.preventDefault();
+        setActiveTool('ring');
+      } else if (e.code === 'Digit6') {
+        e.preventDefault();
+        setActiveTool('slide');
+      } else if (e.code === 'Digit7') {
+        e.preventDefault();
+        setActiveTool('typing');
+      } else if (e.key === ',' || e.code === 'Comma') {
+        e.preventDefault();
+        handleCycleSnap(-1);
+      } else if (e.key === '.' || e.code === 'Period') {
+        e.preventDefault();
+        handleCycleSnap(1);
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
         handleDeleteSelected();
@@ -534,7 +694,12 @@ export function useMapEditor({ initialBeatmap = null, onTestPlay = null } = {}) 
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleSelectAll, handleCopy, handlePaste, handleCut, handleUndo, handleDeleteSelected, handleTogglePlay, handleSeek, handleAddNote, beatLength, meter, snapMs, totalDurationMs, maxNoteTime]);
+  }, [
+    handleSelectAll, handleCopy, handlePaste, handleCut, handleUndo, handleRedo,
+    handleFlipHorizontal, handleFlipVertical, handleTestPlay, handleCycleSnap,
+    handleDeleteSelected, handleTogglePlay, handleSeek, handleAddNote,
+    beatLength, meter, snapMs, totalDurationMs, maxNoteTime
+  ]);
 
   // ---------------------------------------------------------------------
   // Timeline scroll / zoom / overview
@@ -666,6 +831,17 @@ export function useMapEditor({ initialBeatmap = null, onTestPlay = null } = {}) 
           lastStateSyncRef.current = perfTime;
           setCurrentTime(nowMs);
         }
+
+        // Metronome click on beat
+        if (metronomeEnabledRef.current) {
+          const tpTime = beatmap.timingPoints?.[0]?.time || 0;
+          const currentBeatIdx = Math.floor((nowMs - tpTime) / beatLength);
+          if (currentBeatIdx !== lastMetronomeBeatRef.current && currentBeatIdx >= 0) {
+            lastMetronomeBeatRef.current = currentBeatIdx;
+            const isMeasureStart = currentBeatIdx % meter === 0;
+            playMetronomeTick(isMeasureStart);
+          }
+        }
       } else {
         lastPerfTimeRef.current = null;
       }
@@ -766,7 +942,8 @@ export function useMapEditor({ initialBeatmap = null, onTestPlay = null } = {}) 
   }, [buildPayload]);
 
   /**
-   * Lưu chính thức: chặn nếu validator báo lỗi.
+   * Lưu chính thức: ghi IndexedDB + đồng bộ MySQL nếu đăng nhập + reset dirty.
+   * Chặn nếu validator báo lỗi.
    * @returns {Promise<boolean>} đã lưu hay chưa
    */
   const handleSaveToDatabase = useCallback(async () => {
@@ -775,6 +952,24 @@ export function useMapEditor({ initialBeatmap = null, onTestPlay = null } = {}) 
 
     try {
       await dbManager.saveBeatmap(payload);
+
+      // Đồng bộ MySQL nếu đã đăng nhập
+      if (apiClient.getToken()) {
+        try {
+          await apiClient.saveMap(payload);
+          if (payload.audioBlob || payload.backgroundBlob || payload.videoBlob) {
+            await apiClient.uploadMapAssets(payload.id, {
+              audio: payload.audioBlob,
+              background: payload.backgroundBlob,
+              video: payload.videoBlob
+            }).catch(() => {});
+          }
+        } catch (apiErr) {
+          console.warn('[Editor] MySQL sync warning:', apiErr);
+        }
+      }
+
+      setIsDirty(false);
       setValidation(null);
       setValidationSource(null);
       return true;
@@ -792,6 +987,7 @@ export function useMapEditor({ initialBeatmap = null, onTestPlay = null } = {}) 
     const { payload } = runValidation('draft');
     try {
       await dbManager.saveBeatmap(payload);
+      setIsDirty(false);
       return true;
     } catch (err) {
       setValidation({ valid: false, errors: [`Lỗi lưu nháp: ${err.message}`], warnings: [] });
@@ -828,6 +1024,7 @@ export function useMapEditor({ initialBeatmap = null, onTestPlay = null } = {}) 
   return {
     // state
     beatmap,
+    activeTab,
     editorOrientation,
     audioUrl,
     songDuration,
@@ -838,22 +1035,34 @@ export function useMapEditor({ initialBeatmap = null, onTestPlay = null } = {}) 
     zoom,
     activeTool,
     holdDuration,
+    metronomeEnabled,
+    showRayGuides,
+    showWaveform,
+    showGrid,
+    isDirty,
     timelineScroll,
     viewportSize,
     selectedIndices,
     clipboard,
     history,
+    redoStack,
     isDraggingNote,
     validation,
     validationSource,
 
     // setters
     setBeatmap,
+    setActiveTab,
     setEditorOrientation,
     setSnapDivisor,
     setZoom,
     setActiveTool,
     setHoldDuration,
+    setMetronomeEnabled,
+    setShowRayGuides,
+    setShowWaveform,
+    setShowGrid,
+    markDirty,
 
     // refs
     canvasRef,
@@ -880,6 +1089,10 @@ export function useMapEditor({ initialBeatmap = null, onTestPlay = null } = {}) 
 
     // actions
     handleUndo,
+    handleRedo,
+    handleFlipHorizontal,
+    handleFlipVertical,
+    handleCycleSnap,
     handleTogglePlay,
     handleSeek,
     handleAudioLoadedMetadata,

@@ -9,6 +9,9 @@ import {
   moveNote,
   pushHistory,
   undoHistory,
+  redoHistory,
+  flipNotesHorizontal,
+  flipNotesVertical,
   buildBeatmapSavePayload,
   serializeBeatmapExport,
   getExportFilename,
@@ -128,7 +131,7 @@ describe('undo history', () => {
 
     const result = undoHistory(history, after);
     expect(result.undone).toBe(true);
-    expect(result.notes).toBe(before);
+    expect(result.notes).toEqual(before);
     expect(result.history).toEqual([]);
   });
 
@@ -137,6 +140,44 @@ describe('undo history', () => {
     const result = undoHistory([], current);
     expect(result.undone).toBe(false);
     expect(result.notes).toBe(current);
+  });
+
+  it('redo khôi phục snapshot trong redoStack', () => {
+    const step1 = [{ type: 'tap', time: 1000, lane: 0 }];
+    const step2 = [{ type: 'tap', time: 1000, lane: 0 }, { type: 'tap', time: 2000, lane: 1 }];
+    const redoStack = [step2];
+
+    const result = redoHistory([step1], redoStack, step1);
+    expect(result.redone).toBe(true);
+    expect(result.notes).toEqual(step2);
+    expect(result.redoStack).toHaveLength(0);
+  });
+});
+
+describe('flipNotesHorizontal & flipNotesVertical', () => {
+  const sampleNotes = [
+    { type: 'tap', time: 1000, lane: 0 },
+    { type: 'tap', time: 1500, lane: 3 },
+    { type: 'ring', time: 2000 },
+    { type: 'slide', time: 2500, lane: 4, endLane: 5 }
+  ];
+
+  it('flipNotesHorizontal lật đối xứng qua trục dọc x=0', () => {
+    const flipped = flipNotesHorizontal(sampleNotes);
+    expect(flipped[0].lane).toBe(2); // 0 -> 2
+    expect(flipped[1].lane).toBe(6); // 3 (R) -> 6 (I)
+    expect(flipped[2].type).toBe('ring'); // ring giữ nguyên
+    expect(flipped[3].lane).toBe(7); // 4 (F) -> 7 (J)
+    expect(flipped[3].endLane).toBe(8); // 5 (V) -> 8 (N)
+  });
+
+  it('flipNotesVertical lật đối xứng trên xuống dưới', () => {
+    const flipped = flipNotesVertical(sampleNotes);
+    expect(flipped[0].lane).toBe(5); // 0 -> 5
+    expect(flipped[1].lane).toBe(4); // 3 -> 4
+    expect(flipped[2].type).toBe('ring'); // ring giữ nguyên
+    expect(flipped[3].lane).toBe(3); // 4 -> 3
+    expect(flipped[3].endLane).toBe(0); // 5 -> 0
   });
 });
 

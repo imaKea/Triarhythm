@@ -201,7 +201,7 @@ export function moveNote(notes, index, { time, lane, type } = {}, snapMs) {
 // =========================================================================
 
 export function pushHistory(history, notes, limit = HISTORY_LIMIT) {
-  const next = [...(history || []), notes];
+  const next = [...(history || []), JSON.parse(JSON.stringify(notes))];
   return next.length > limit ? next.slice(next.length - limit) : next;
 }
 
@@ -214,6 +214,95 @@ export function undoHistory(history, currentNotes) {
     notes: history[history.length - 1],
     undone: true
   };
+}
+
+export function redoHistory(undoStack, redoStack, currentNotes) {
+  if (!redoStack || redoStack.length === 0) {
+    return { undoStack, redoStack: redoStack || [], notes: currentNotes, redone: false };
+  }
+  const nextNotes = redoStack[redoStack.length - 1];
+  const newUndo = pushHistory(undoStack, currentNotes);
+  const newRedo = redoStack.slice(0, -1);
+  return {
+    undoStack: newUndo,
+    redoStack: newRedo,
+    notes: nextNotes,
+    redone: true
+  };
+}
+
+// =========================================================================
+// Flip Horizontal & Vertical (Symmetry for triangle layout)
+// =========================================================================
+
+// Đối xứng ngang qua trục x=0 (trái <-> phải):
+// 0 <-> 2, 1 <-> 1, 3(R) <-> 6(I), 4(F) <-> 7(J), 5(V) <-> 8(N)
+export const HORIZONTAL_FLIP_MAP = {
+  0: 2, 2: 0,
+  1: 1,
+  3: 6, 6: 3,
+  4: 7, 7: 4,
+  5: 8, 8: 5
+};
+
+// Đối xứng dọc (trên <-> dưới):
+// 0 <-> 5, 2 <-> 8, 3 <-> 4, 6 <-> 7, 1 <-> 1
+export const VERTICAL_FLIP_MAP = {
+  0: 5, 5: 0,
+  2: 8, 8: 2,
+  3: 4, 4: 3,
+  6: 7, 7: 6,
+  1: 1
+};
+
+export function flipNotesHorizontal(notes, selectedIndices = null) {
+  const shouldFlipAll = !selectedIndices || (selectedIndices instanceof Set ? selectedIndices.size === 0 : selectedIndices.length === 0);
+  const selSet = selectedIndices instanceof Set ? selectedIndices : new Set(selectedIndices || []);
+
+  return (notes || []).map((n, idx) => {
+    if (!shouldFlipAll && !selSet.has(idx)) return n;
+    if (n.type === 'ring') return n;
+
+    const flipped = { ...n };
+    if (flipped.lane !== undefined && HORIZONTAL_FLIP_MAP[flipped.lane] !== undefined) {
+      flipped.lane = HORIZONTAL_FLIP_MAP[flipped.lane];
+    }
+    if (flipped.endLane !== undefined && HORIZONTAL_FLIP_MAP[flipped.endLane] !== undefined) {
+      flipped.endLane = HORIZONTAL_FLIP_MAP[flipped.endLane];
+    }
+    if (Array.isArray(flipped.path)) {
+      flipped.path = flipped.path.map((p) => ({
+        ...p,
+        lane: HORIZONTAL_FLIP_MAP[p.lane] !== undefined ? HORIZONTAL_FLIP_MAP[p.lane] : p.lane
+      }));
+    }
+    return flipped;
+  });
+}
+
+export function flipNotesVertical(notes, selectedIndices = null) {
+  const shouldFlipAll = !selectedIndices || (selectedIndices instanceof Set ? selectedIndices.size === 0 : selectedIndices.length === 0);
+  const selSet = selectedIndices instanceof Set ? selectedIndices : new Set(selectedIndices || []);
+
+  return (notes || []).map((n, idx) => {
+    if (!shouldFlipAll && !selSet.has(idx)) return n;
+    if (n.type === 'ring') return n;
+
+    const flipped = { ...n };
+    if (flipped.lane !== undefined && VERTICAL_FLIP_MAP[flipped.lane] !== undefined) {
+      flipped.lane = VERTICAL_FLIP_MAP[flipped.lane];
+    }
+    if (flipped.endLane !== undefined && VERTICAL_FLIP_MAP[flipped.endLane] !== undefined) {
+      flipped.endLane = VERTICAL_FLIP_MAP[flipped.endLane];
+    }
+    if (Array.isArray(flipped.path)) {
+      flipped.path = flipped.path.map((p) => ({
+        ...p,
+        lane: VERTICAL_FLIP_MAP[p.lane] !== undefined ? VERTICAL_FLIP_MAP[p.lane] : p.lane
+      }));
+    }
+    return flipped;
+  });
 }
 
 // =========================================================================
