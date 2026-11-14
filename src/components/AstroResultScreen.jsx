@@ -204,19 +204,12 @@ export default function AstroResultScreen({
     };
   }, [beatmapId]);
 
-  // Keyboard navigation shortcuts (R: Retry, P: Replay, Esc/Space: Back)
+  // Keyboard navigation shortcuts: chỉ giữ [Esc] để quay lại Song Select,
+  // không bắt phím R / P để tránh xung đột với phím gõ lane (phím R là Lane 3) khi vừa kết thúc bài.
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-      if (e.key === 'r' || e.key === 'R') {
-        e.preventDefault();
-        playClick();
-        if (onRetry) onRetry();
-      } else if (e.key === 'p' || e.key === 'P') {
-        e.preventDefault();
-        playClick();
-        if (onReplay) onReplay();
-      } else if (e.key === 'Escape' || e.key === ' ' || e.key === 'Enter') {
+      if (e.key === 'Escape') {
         e.preventDefault();
         playClick();
         if (onBack) onBack();
@@ -224,7 +217,7 @@ export default function AstroResultScreen({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onRetry, onReplay, onBack]);
+  }, [onBack]);
 
   const rawScore = result?.score ?? Math.round((result?.achievement || 0) * 10000);
   const animatedScore = useAnimatedNumber(rawScore, 1000);
@@ -574,9 +567,7 @@ export default function AstroResultScreen({
       {/* Bottom Action Footer Bar */}
       <footer className="relative z-10 flex items-center justify-between px-8 py-4 border-t border-white/[0.08] bg-[#0e0f1e]/90 backdrop-blur-md">
         <div className="flex items-center gap-2 text-xs font-mono text-[#7c849c]">
-          <span className="px-2 py-0.5 rounded bg-white/[0.06] text-white">R</span> Retry •
-          <span className="px-2 py-0.5 rounded bg-white/[0.06] text-white ml-2">P</span> Replay •
-          <span className="px-2 py-0.5 rounded bg-white/[0.06] text-white ml-2">Esc</span> Song Select
+          <span className="px-2 py-0.5 rounded bg-white/[0.06] text-white">Esc</span> Quay lại chọn bài
         </div>
 
         <div className="flex items-center gap-3">
