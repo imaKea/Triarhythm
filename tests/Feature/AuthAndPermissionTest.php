@@ -41,22 +41,24 @@ class AuthAndPermissionTest extends TestCase
 
     public function test_regular_user_cannot_delete_others_map(): void
     {
+        $ownerToken = Str::random(40);
         $owner = User::create([
             'name' => 'Map Owner',
             'username' => 'owner_' . Str::random(8),
             'email' => Str::random(8) . '@example.com',
             'password' => Hash::make('password'),
             'role' => 'user',
-            'api_token' => hash('sha256', 'owner_token'),
+            'api_token' => hash('sha256', $ownerToken),
         ]);
 
+        $otherToken = Str::random(40);
         $otherUser = User::create([
             'name' => 'Other User',
             'username' => 'other_' . Str::random(8),
             'email' => Str::random(8) . '@example.com',
             'password' => Hash::make('password'),
             'role' => 'user',
-            'api_token' => hash('sha256', 'other_token'),
+            'api_token' => hash('sha256', $otherToken),
         ]);
 
         $songId = 'test_map_' . Str::random(6);
@@ -68,13 +70,13 @@ class AuthAndPermissionTest extends TestCase
         ]);
 
         // other user attempts to delete owner's map -> 403 Forbidden
-        $response = $this->withHeader('Authorization', 'Bearer other_token')
+        $response = $this->withHeader('Authorization', "Bearer {$otherToken}")
             ->deleteJson("/api/maps/{$songId}");
 
         $response->assertStatus(403);
 
         // owner can delete their own map -> 200 OK
-        $ownerResponse = $this->withHeader('Authorization', 'Bearer owner_token')
+        $ownerResponse = $this->withHeader('Authorization', "Bearer {$ownerToken}")
             ->deleteJson("/api/maps/{$songId}");
 
         $ownerResponse->assertStatus(200);

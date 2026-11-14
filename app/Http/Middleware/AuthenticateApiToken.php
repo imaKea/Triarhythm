@@ -33,6 +33,13 @@ class AuthenticateApiToken
             ], 401);
         }
 
+        if ($user->is_banned) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tài khoản của bạn đã bị tạm khóa bởi Quản trị viên.',
+            ], 403);
+        }
+
         // Gắn user vào request resolver để $request->user() trả về user hiện tại
         $request->setUserResolver(fn () => $user);
 

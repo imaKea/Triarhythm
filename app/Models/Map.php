@@ -18,6 +18,7 @@ class Map extends Model
         'artist',
         'creator',
         'source',
+        'status',
         'bpm',
         'preview_time',
         'cover_url',

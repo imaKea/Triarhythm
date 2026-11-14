@@ -10,7 +10,8 @@ import RingPreview from './components/RingPreview.jsx';
 import UIKitScreen from './components/UIKitScreen.jsx';
 import PlayerLoader from './components/PlayerLoader.jsx';
 import ProfileModal from './components/ProfileModal.jsx';
-import { ToastContainer } from './ui/index.js';
+import AdminPanel from './components/AdminPanel.jsx';
+import { ToastContainer, toast } from './ui/index.js';
 import { dbManager } from './core/storage/db.js';
 import { initializeDefaultData } from './core/storage/seedData.js';
 import { importFiles } from './core/parser/index.js';
@@ -147,6 +148,7 @@ export default function App() {
       await apiClient.logout();
     } catch (_) {}
     setCurrentUser(null);
+    toast.success('Đã đăng xuất tài khoản thành công!');
   };
 
   // Bắt đầu chơi game với bài đã chọn (chuyển qua PLAYER_LOADER trước)
@@ -322,6 +324,28 @@ export default function App() {
         {currentScreen === 'UI_KIT' && (
           <UIKitScreen onBack={() => setCurrentScreen('SONG_SELECT')} />
         )}
+
+        {/* MÀN HÌNH 7: ADMIN PANEL (Quản trị viên) */}
+        {currentScreen === 'ADMIN' && (
+          currentUser?.role === 'admin' ? (
+            <AdminPanel
+              currentUser={currentUser}
+              onBack={() => setCurrentScreen('SONG_SELECT')}
+            />
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center p-8 gap-4 text-center">
+              <span className="text-5xl">🔒</span>
+              <h2 className="text-xl font-torus font-black text-white">TRUY CẬP BỊ TỪ CHỐI</h2>
+              <p className="text-xs text-[#8890a4]">Bạn cần có quyền Quản trị viên (Admin) để truy cập trang này.</p>
+              <button
+                onClick={() => setCurrentScreen('SONG_SELECT')}
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#ff66ab] to-[#cc5289] text-white text-xs font-bold shadow-lg cursor-pointer"
+              >
+                Quay lại Chọn bài
+              </button>
+            </div>
+          )
+        )}
       </main>
 
       {/* MODAL CÀI ĐẶT */}
@@ -353,6 +377,7 @@ export default function App() {
         onClose={() => setIsProfileOpen(false)}
         user={currentUser}
         onUpdateUser={setCurrentUser}
+        onLogout={handleLogout}
       />
 
       {/* GLOBAL TOAST NOTIFICATIONS */}

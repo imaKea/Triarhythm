@@ -20,6 +20,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'is_banned',
         'avatar',
         'country',
         'rating',
@@ -45,6 +46,7 @@ class User extends Authenticatable
             'total_score' => 'integer',
             'play_count' => 'integer',
             'settings' => 'array',
+            'is_banned' => 'boolean',
         ];
     }
 

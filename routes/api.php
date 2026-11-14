@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\LeaderboardController;
 use App\Http\Controllers\Api\MapController;
@@ -46,4 +47,24 @@ Route::prefix('scores')->group(function () {
 Route::prefix('leaderboard')->group(function () {
     Route::get('/global', [LeaderboardController::class, 'global']);
     Route::get('/map/{song_id}', [LeaderboardController::class, 'map']);
+});
+
+// Admin Panel Routes (Bảo vệ bởi auth.api và role admin)
+Route::prefix('admin')->middleware(['auth.api', 'admin'])->group(function () {
+    Route::get('/dashboard', [AdminController::class, 'dashboard']);
+    Route::get('/users', [AdminController::class, 'users']);
+    Route::put('/users/{id}/role', [AdminController::class, 'updateUserRole']);
+    Route::put('/users/{id}/ban', [AdminController::class, 'toggleUserBan']);
+    Route::put('/users/{id}/reset-password', [AdminController::class, 'resetUserPassword']);
+    Route::delete('/users/{id}', [AdminController::class, 'deleteUser']);
+
+    Route::get('/maps', [AdminController::class, 'maps']);
+    Route::put('/maps/{id}', [AdminController::class, 'updateMap']);
+    Route::delete('/maps/{id}', [AdminController::class, 'deleteMap']);
+
+    Route::get('/scores', [AdminController::class, 'scores']);
+    Route::delete('/scores/{id}', [AdminController::class, 'deleteScore']);
+    Route::post('/scores/recalculate-pp', [AdminController::class, 'recalculateAllPP']);
+
+    Route::get('/logs', [AdminController::class, 'logs']);
 });

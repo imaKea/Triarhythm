@@ -161,6 +161,82 @@ class ApiClient {
     if (difficulty) params.set('difficulty', difficulty);
     return await this.request(`/leaderboard/map/${encodeURIComponent(songId)}?${params.toString()}`);
   }
+
+  // --- ADMIN PANEL API ---
+  async adminGetDashboard() {
+    return await this.request('/admin/dashboard');
+  }
+
+  async adminGetUsers(params = {}) {
+    const qs = new URLSearchParams(params).toString();
+    return await this.request(`/admin/users${qs ? '?' + qs : ''}`);
+  }
+
+  async adminUpdateUserRole(userId, role) {
+    return await this.request(`/admin/users/${userId}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ role }),
+    });
+  }
+
+  async adminToggleUserBan(userId) {
+    return await this.request(`/admin/users/${userId}/ban`, {
+      method: 'PUT',
+    });
+  }
+
+  async adminResetUserPassword(userId, password = '') {
+    return await this.request(`/admin/users/${userId}/reset-password`, {
+      method: 'PUT',
+      body: JSON.stringify(password ? { password } : {}),
+    });
+  }
+
+  async adminDeleteUser(userId) {
+    return await this.request(`/admin/users/${userId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async adminGetMaps(params = {}) {
+    const qs = new URLSearchParams(params).toString();
+    return await this.request(`/admin/maps${qs ? '?' + qs : ''}`);
+  }
+
+  async adminUpdateMap(mapId, data) {
+    return await this.request(`/admin/maps/${mapId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async adminDeleteMap(mapId) {
+    return await this.request(`/admin/maps/${mapId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async adminGetScores(params = {}) {
+    const qs = new URLSearchParams(params).toString();
+    return await this.request(`/admin/scores${qs ? '?' + qs : ''}`);
+  }
+
+  async adminDeleteScore(scoreId) {
+    return await this.request(`/admin/scores/${scoreId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async adminRecalculatePP() {
+    return await this.request('/admin/scores/recalculate-pp', {
+      method: 'POST',
+    });
+  }
+
+  async adminGetLogs(params = {}) {
+    const qs = new URLSearchParams(params).toString();
+    return await this.request(`/admin/logs${qs ? '?' + qs : ''}`);
+  }
 }
 
 export const apiClient = new ApiClient();

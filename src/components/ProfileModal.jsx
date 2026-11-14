@@ -7,6 +7,7 @@ export default function ProfileModal({
   onClose,
   user,
   onUpdateUser,
+  onLogout,
 }) {
   const [activeTab, setActiveTab] = useState('best'); // 'best' | 'recent' | 'edit'
   const [scores, setScores] = useState([]);
@@ -246,7 +247,18 @@ export default function ProfileModal({
               </span>
             </div>
 
-            <div className="pt-2 flex justify-end">
+            <div className="pt-4 border-t border-white/[0.06] flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  if (onLogout) onLogout();
+                }}
+                className="px-3.5 py-2 rounded-xl bg-red-500/15 hover:bg-red-500/30 text-red-400 hover:text-red-300 border border-red-500/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <span>⎋</span>
+                <span>Đăng xuất tài khoản</span>
+              </button>
               <Button type="submit" variant="primary" size="md" disabled={isSaving}>
                 {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
               </Button>

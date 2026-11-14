@@ -9,6 +9,7 @@ export default function RhythmNavbar({
   onOpenAuth,
   onOpenProfile,
   onOpenSettings,
+  onLogout,
 }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -33,6 +34,7 @@ export default function RhythmNavbar({
     { id: 'SONG_SELECT', label: 'play', icon: '▶' },
     { id: 'LEADERBOARD', label: 'rankings', icon: '★' },
     { id: 'EDITOR', label: 'edit', icon: '✎' },
+    ...(currentUser?.role === 'admin' ? [{ id: 'ADMIN', label: 'admin', icon: '🛡️' }] : []),
     { id: 'UI_KIT', label: 'ui kit', icon: '🎨' },
   ];
 
@@ -98,28 +100,44 @@ export default function RhythmNavbar({
         {/* Right: User card & controls */}
         <div className="flex items-center gap-3">
           {currentUser ? (
-            <div
-              onClick={() => {
-                playClick();
-                if (onOpenProfile) onOpenProfile();
-              }}
-              className="flex items-center gap-2.5 px-3 py-1 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-[#ff66ab]/40 transition-all cursor-pointer group"
-              title="Xem hồ sơ người chơi"
-            >
-              <Avatar
-                src={currentUser.avatar}
-                name={currentUser.name || currentUser.username}
-                size="sm"
-                status="online"
-              />
-              <div className="flex flex-col text-left leading-none">
-                <span className="text-xs font-bold text-white group-hover:text-[#ff66ab] transition-colors truncate max-w-[100px]">
-                  {currentUser.name || currentUser.username}
-                </span>
-                <span className="text-[10px] text-[#ff66ab] font-mono font-bold mt-0.5">
-                  {currentUser.total_pp ? `${Number(currentUser.total_pp).toLocaleString()}pp` : `${currentUser.rating || 0}★`}
-                </span>
+            <div className="flex items-center gap-2">
+              <div
+                onClick={() => {
+                  playClick();
+                  if (onOpenProfile) onOpenProfile();
+                }}
+                className="flex items-center gap-2.5 px-3 py-1 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-[#ff66ab]/40 transition-all cursor-pointer group"
+                title="Xem hồ sơ người chơi"
+              >
+                <Avatar
+                  src={currentUser.avatar}
+                  name={currentUser.name || currentUser.username}
+                  size="sm"
+                  status="online"
+                />
+                <div className="flex flex-col text-left leading-none">
+                  <span className="text-xs font-bold text-white group-hover:text-[#ff66ab] transition-colors truncate max-w-[100px]">
+                    {currentUser.name || currentUser.username}
+                  </span>
+                  <span className="text-[10px] text-[#ff66ab] font-mono font-bold mt-0.5">
+                    {currentUser.total_pp ? `${Number(currentUser.total_pp).toLocaleString()}pp` : `${currentUser.rating || 0}★`}
+                  </span>
+                </div>
               </div>
+
+              {/* Nút Đăng xuất */}
+              <Tooltip content="Đăng xuất tài khoản">
+                <button
+                  onClick={() => {
+                    playClick();
+                    if (onLogout) onLogout();
+                  }}
+                  className="w-8 h-8 rounded-full bg-red-500/10 hover:bg-red-500/25 border border-red-500/30 text-red-400 hover:text-red-300 flex items-center justify-center text-xs transition-all cursor-pointer shadow-sm"
+                  title="Đăng xuất"
+                >
+                  ⎋
+                </button>
+              </Tooltip>
             </div>
           ) : (
             <button
