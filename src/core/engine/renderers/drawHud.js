@@ -102,12 +102,12 @@ export function drawHud(renderer, gameState, width, height) {
     const barY = 6;
 
     ctx.save();
-    // Nền console mờ pastel
+    // Nền console tối viền bạc mờ chuẩn arcade
     ctx.beginPath();
     ctx.roundRect(barX, barY, barW, barH, 13);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.fillStyle = 'rgba(10, 13, 19, 0.96)';
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255, 124, 160, 0.5)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.32)';
     ctx.lineWidth = 1.2;
     ctx.stroke();
 
@@ -126,7 +126,7 @@ export function drawHud(renderer, gameState, width, height) {
 
     for (let i = 0; i < ticksCount; i++) {
       const isFilled = (i + 1) / ticksCount <= prog;
-      ctx.fillStyle = isFilled ? '#ff4d80' : 'rgba(255, 255, 255, 0.5)';
+      ctx.fillStyle = isFilled ? '#ffffff' : 'rgba(255, 255, 255, 0.14)';
       ctx.fillRect(tickStartX + i * tickSpacing, tickY, tickW, tickH);
     }
 
@@ -155,7 +155,7 @@ export function drawHud(renderer, gameState, width, height) {
     ctx.font = "900 13px 'JetBrains Mono', monospace";
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#5b2a47';
+    ctx.fillStyle = '#ffffff';
     ctx.fillText(`${gameState.achievement.toFixed(4)}%`, barX + barW - 12, barY + barH / 2);
     ctx.restore();
 
@@ -212,7 +212,7 @@ export function drawSkipPrompt(renderer, width, height) {
   // Nền viên thuốc capsule
   ctx.beginPath();
   ctx.roundRect(promptX, promptY, promptW, promptH, 17);
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+  ctx.fillStyle = 'rgba(10, 14, 22, 0.94)';
   ctx.fill();
 
   // Viền phát sáng neon hồng
@@ -227,7 +227,7 @@ export function drawSkipPrompt(renderer, width, height) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.font = 'bold 11px "Torus", "Nunito", sans-serif';
-  ctx.fillStyle = '#5b2a47';
+  ctx.fillStyle = '#ffffff';
   ctx.fillText('⏩ NHẤN SPACE ĐỂ SKIP', width / 2, promptY + promptH / 2);
 
   ctx.restore();
@@ -245,16 +245,16 @@ export function drawURBar(renderer, width, height, urValue, isTypingActive = fal
 
   ctx.save();
   // Nền bar
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
   ctx.fillRect(cx - barWidth / 2, cy - barHeight / 2, barWidth, barHeight);
 
   // Vạch cửa sổ Critical Perfect (±25ms)
   const cpWidth = (barWidth * 25) / 150;
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.70)';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
   ctx.fillRect(cx - cpWidth, cy - barHeight / 2, cpWidth * 2, barHeight);
 
   // Vạch trung tâm 0ms
-  ctx.fillStyle = '#ff4d80';
+  ctx.fillStyle = '#ffffff';
   ctx.fillRect(cx - 1, cy - 6, 2, 12);
 
   // Vẽ các tick của các lần nhấn phím gần nhất (giữ nguyên màu judgement)
@@ -269,7 +269,7 @@ export function drawURBar(renderer, width, height, urValue, isTypingActive = fal
   ctx.globalAlpha = 1.0;
   ctx.textAlign = 'center';
   ctx.font = `9px 'JetBrains Mono', monospace`;
-  ctx.fillStyle = '#a8556f';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
   ctx.fillText(`UR: ${urValue.toFixed(1)}`, cx, cy + 14);
 
   ctx.restore();
