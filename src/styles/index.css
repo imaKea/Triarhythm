@@ -1,27 +1,46 @@
-@import url('https://fonts.googleapis.com/css2?family=Torus:wght@400;600;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  /* Cute Bunny & Ribbon Kawaii Palette */
+  font-family: "Nunito", sans-serif;
+  color: #5b2a47;
+  background: #fff5f8;
+  font-synthesis: none;
+
+  /* Kawaii Palette Tokens */
+  --pink: #ff85a2;
+  --hot: #ff4d80;
+  --plum: #5b2a47;
+  --pale: #fff5f8;
+  --red: #e94267;
+  --line: #f3dbe4;
+
   --kawaii-pink: #ff85a2;
   --kawaii-pink-light: #ffaec9;
   --kawaii-pink-soft: #ffd6e0;
   --kawaii-pink-dark: #ff4d80;
-  --kawaii-pink-glow: rgba(255, 133, 162, 0.45);
+  --kawaii-hot: #ff4d80;
+  --kawaii-plum: #5b2a47;
+  --kawaii-pale: #fff5f8;
   --kawaii-cream: #fff5f8;
   --kawaii-white: #ffffff;
-  --kawaii-bg: #160c1a;
-  --kawaii-panel: #28162e;
-  --kawaii-panel-hover: #351d3d;
+  --kawaii-line: #f3dbe4;
+  --kawaii-bg: #fff5f8;
+  --kawaii-panel: #ffffff;
+  --kawaii-panel-hover: #fff0f4;
+  --kawaii-text: #5b2a47;
+  --kawaii-text-sub: #a8556f;
+  --kawaii-text-dim: #946b80;
+  --kawaii-pink-glow: rgba(255, 133, 162, 0.45);
 
-  /* osu! Legacy compatibility mapped to Kawaii Pink & White */
-  --osu-bg-dark: #1e1124;
-  --osu-bg-darker: #160c1a;
-  --osu-bg-panel: #28162e;
-  --osu-bg-hover: #351d3d;
+  /* Legacy compatibility mapped to Kawaii Light Pink & White */
+  --osu-bg-dark: #fff5f8;
+  --osu-bg-darker: #fff0f4;
+  --osu-bg-panel: #ffffff;
+  --osu-bg-hover: #ffe8ef;
   --osu-pink: #ff85a2;
   --osu-pink-dark: #ff4d80;
   --osu-pink-light: #ffaec9;
@@ -32,12 +51,12 @@
   --osu-yellow: #ffe082;
   --osu-green: #a7f3d0;
   --osu-red: #ff6b81;
-  --osu-text: #ffffff;
-  --osu-text-sub: #e2cbe4;
-  --osu-text-dim: #a890aa;
-  --osu-border: rgba(255, 174, 201, 0.16);
-  --osu-border-hover: rgba(255, 133, 162, 0.5);
-  --app-font: "Nunito", "Be Vietnam Pro", "Torus", system-ui, -apple-system, sans-serif;
+  --osu-text: #5b2a47;
+  --osu-text-sub: #a8556f;
+  --osu-text-dim: #946b80;
+  --osu-border: #f3dbe4;
+  --osu-border-hover: #ff85a2;
+  --app-font: "Nunito", "Be Vietnam Pro", system-ui, -apple-system, sans-serif;
 }
 
 @layer base {
@@ -48,14 +67,13 @@
   }
 
   body {
-    background-color: #140b17;
-    color: var(--osu-text);
+    background-color: #fff5f8;
+    color: var(--kawaii-plum);
     min-height: 100vh;
     font-family: var(--app-font);
     background-image:
-      radial-gradient(ellipse 90% 60% at 50% -10%, rgba(255, 133, 162, 0.22) 0%, transparent 70%),
-      radial-gradient(ellipse 70% 60% at 90% 100%, rgba(255, 174, 201, 0.16) 0%, transparent 65%),
-      radial-gradient(ellipse 60% 50% at 10% 90%, rgba(255, 77, 128, 0.12) 0%, transparent 60%);
+      radial-gradient(circle at 18% 24%, #ffffff 0 8%, transparent 28%),
+      linear-gradient(135deg, #fff8fa, #fff1f6);
   }
 
   canvas {
@@ -72,13 +90,13 @@
   height: 7px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(22, 12, 26, 0.5);
+  background: rgba(255, 241, 245, 0.7);
   border-radius: 9999px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg, #ffaec9 0%, #ff85a2 100%);
   border-radius: 9999px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.8);
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(180deg, #ffbcd2 0%, #ff4d80 100%);
@@ -88,23 +106,24 @@
 /* Cute Beatmap Card */
 .osu-card {
   display: flex;
-  background: linear-gradient(135deg, rgba(40, 22, 46, 0.95) 0%, rgba(26, 14, 30, 0.95) 100%);
-  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.93);
+  border-radius: 20px;
   overflow: hidden;
   cursor: pointer;
   height: 100px;
-  border: 1px solid rgba(255, 174, 201, 0.18);
+  border: 1px solid #f2dce5;
+  box-shadow: 0 10px 30px rgba(126, 47, 79, 0.06);
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .osu-card:hover {
   border-color: #ff85a2;
-  box-shadow: 0 6px 24px rgba(255, 133, 162, 0.35);
-  transform: translateY(-2px) scale(1.005);
+  box-shadow: 0 14px 40px rgba(255, 133, 162, 0.2);
+  transform: translateY(-2px);
 }
 .osu-card-selected {
-  border-color: #ff85a2 !important;
-  box-shadow: 0 0 0 2px rgba(255, 133, 162, 0.4), 0 6px 28px rgba(255, 133, 162, 0.45) !important;
-  background: linear-gradient(135deg, rgba(58, 29, 66, 0.95) 0%, rgba(38, 19, 44, 0.95) 100%) !important;
+  border-color: #ff4d80 !important;
+  box-shadow: 0 0 0 2px rgba(255, 77, 128, 0.35), 0 12px 36px rgba(255, 133, 162, 0.3) !important;
+  background: linear-gradient(135deg, rgba(255, 245, 248, 0.98) 0%, rgba(255, 235, 242, 0.98) 100%) !important;
 }
 
 /* Cute Primary Button */
@@ -114,13 +133,13 @@
   border-radius: 9999px;
   font-weight: 800;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.4);
   letter-spacing: 0.05em;
-  box-shadow: 0 4px 18px rgba(255, 133, 162, 0.35);
+  box-shadow: 0 4px 18px rgba(255, 77, 128, 0.25);
 }
 .osu-btn:hover {
   background: linear-gradient(135deg, #ffaec9 0%, #ff6b93 100%);
-  box-shadow: 0 0 26px rgba(255, 133, 162, 0.65);
+  box-shadow: 0 0 26px rgba(255, 133, 162, 0.55);
   transform: scale(1.03);
 }
 .osu-btn:active {
@@ -128,18 +147,18 @@
 }
 
 .osu-btn-ghost {
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff5f8;
-  border: 1px solid rgba(255, 174, 201, 0.2);
+  background: rgba(255, 255, 255, 0.7);
+  color: #5b2a47;
+  border: 1px solid #f3dbe4;
   border-radius: 9999px;
   font-weight: 700;
   transition: all 0.2s;
 }
 .osu-btn-ghost:hover {
-  background: rgba(255, 133, 162, 0.18);
-  color: #ffffff;
-  border-color: rgba(255, 133, 162, 0.45);
-  box-shadow: 0 0 14px rgba(255, 133, 162, 0.25);
+  background: #fff0f4;
+  color: #ff4d80;
+  border-color: #ff85a2;
+  box-shadow: 0 4px 14px rgba(255, 133, 162, 0.18);
 }
 
 /* Animations */
@@ -152,8 +171,8 @@
   to { opacity: 1; transform: translateY(0); }
 }
 @keyframes pulse-pink {
-  0%, 100% { box-shadow: 0 0 0 0 var(--osu-pink-glow); }
-  50% { box-shadow: 0 0 20px 4px var(--osu-pink-glow); }
+  0%, 100% { box-shadow: 0 0 0 0 var(--kawaii-pink-glow); }
+  50% { box-shadow: 0 0 20px 4px var(--kawaii-pink-glow); }
 }
 
 .animate-fadeIn {
