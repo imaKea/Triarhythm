@@ -20,11 +20,11 @@ export default function IconButton({
 
   const variantClasses = {
     primary:
-      'bg-gradient-to-r from-[#ff66ab] to-[#cc5289] text-white shadow-[0_2px_12px_rgba(255,102,171,0.3)] hover:shadow-[0_2px_18px_rgba(255,102,171,0.6)] hover:scale-105 active:scale-95',
+      'bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] text-white shadow-[0_2px_12px_rgba(255,77,128,0.25)] hover:shadow-[0_4px_18px_rgba(255,133,162,0.5)] hover:scale-105 active:scale-95',
     ghost:
-      'bg-white/[0.06] hover:bg-white/[0.14] text-[#b8c0d4] hover:text-white border border-white/[0.08] hover:border-white/[0.2] hover:scale-105 active:scale-95',
+      'bg-white/80 hover:bg-[#fff0f4] text-[#5b2a47] hover:text-[#ff4d80] border border-[#f3dbe4] hover:border-[#ff85a2] hover:scale-105 active:scale-95 shadow-[0_2px_8px_rgba(126,47,79,0.04)]',
     danger:
-      'bg-red-500/15 hover:bg-red-500/25 text-red-300 hover:text-white border border-red-500/25 hover:border-red-500/50 hover:scale-105 active:scale-95'
+      'bg-[#ffeef2] hover:bg-[#ffd9e2] text-[#e94267] border border-[#f5b8c7] hover:scale-105 active:scale-95'
   }[variant] || '';
 
   const disabledClasses = disabled

@@ -42,7 +42,7 @@ export default function Dropdown({
 
   return (
     <div ref={containerRef} className={`relative flex flex-col gap-1.5 select-none ${className}`} {...props}>
-      {label && <label className="text-xs font-bold text-[#b8c0d4]">{label}</label>}
+      {label && <label className="text-xs font-bold text-[#5b2a47]">{label}</label>}
 
       {/* Trigger Button */}
       <button
@@ -50,19 +50,19 @@ export default function Dropdown({
         disabled={disabled}
         onClick={handleToggle}
         onMouseEnter={() => !disabled && playHover()}
-        className={`w-full h-10 px-4 rounded-xl bg-[#1a1a2e]/90 hover:bg-[#222238] border border-white/[0.08] hover:border-[#ff66ab]/40 transition-all flex items-center justify-between text-sm ${
+        className={`w-full h-10 px-4 rounded-xl bg-white hover:bg-[#fff0f4] border border-[#f3dbe4] hover:border-[#ff85a2] transition-all flex items-center justify-between text-sm ${
           disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
-        } ${isOpen ? 'border-[#ff66ab] shadow-[0_0_12px_rgba(255,102,171,0.25)]' : ''}`}
+        } ${isOpen ? 'border-[#ff4d80] shadow-[0_2px_12px_rgba(255,77,128,0.2)]' : ''}`}
       >
         <div className="flex items-center gap-2 truncate">
           {selectedOpt?.icon && <span>{selectedOpt.icon}</span>}
-          <span className={selectedOpt ? 'text-white font-medium' : 'text-[#7c849c]'}>
+          <span className={selectedOpt ? 'text-[#5b2a47] font-bold' : 'text-[#a8556f]'}>
             {selectedOpt ? selectedOpt.label : placeholder}
           </span>
         </div>
         <span
-          className={`text-xs text-[#7c849c] transition-transform duration-200 ${
-            isOpen ? 'rotate-180 text-[#ff66ab]' : ''
+          className={`text-xs text-[#a8556f] transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-[#ff4d80]' : ''
           }`}
         >
           ▼
@@ -71,7 +71,7 @@ export default function Dropdown({
 
       {/* Menu Options */}
       {isOpen && (
-        <div className="absolute top-[calc(100%+6px)] left-0 right-0 z-50 p-1.5 rounded-xl bg-[#1a1a2e]/95 backdrop-blur-xl border border-white/[0.12] shadow-[0_12px_36px_rgba(0,0,0,0.6)] animate-slideDown max-h-60 overflow-y-auto custom-scrollbar">
+        <div className="absolute top-[calc(100%+6px)] left-0 right-0 z-50 p-1.5 rounded-xl bg-white/95 backdrop-blur-xl border border-[#f3dbe4] shadow-[0_12px_36px_rgba(126,47,79,0.12)] animate-slideDown max-h-60 overflow-y-auto custom-scrollbar">
           {options.map((opt) => {
             const isSelected = opt.value === value;
             return (
@@ -81,15 +81,15 @@ export default function Dropdown({
                 onMouseEnter={() => playHover()}
                 className={`px-3 py-2 rounded-lg text-sm flex items-center justify-between transition-colors cursor-pointer ${
                   isSelected
-                    ? 'bg-[#ff66ab]/20 text-[#ff66ab] font-bold'
-                    : 'text-[#b8c0d4] hover:bg-white/[0.08] hover:text-white'
+                    ? 'bg-[#fff0f4] text-[#ff4d80] font-bold'
+                    : 'text-[#5b2a47] hover:bg-[#ffe5ec] hover:text-[#ff4d80]'
                 }`}
               >
                 <div className="flex items-center gap-2 truncate">
                   {opt.icon && <span>{opt.icon}</span>}
                   <span>{opt.label}</span>
                 </div>
-                {isSelected && <span className="text-[#ff66ab] text-xs">✓</span>}
+                {isSelected && <span className="text-[#ff4d80] text-xs">✓</span>}
               </div>
             );
           })}

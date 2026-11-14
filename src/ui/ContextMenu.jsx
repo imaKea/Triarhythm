@@ -55,12 +55,12 @@ export default function ContextMenu({
     <div
       ref={menuRef}
       style={{ left: `${adjustedX}px`, top: `${adjustedY}px` }}
-      className="fixed z-50 min-w-[180px] p-1.5 rounded-xl bg-[#1a1a2e]/95 backdrop-blur-xl border border-white/[0.12] shadow-[0_12px_36px_rgba(0,0,0,0.7)] animate-slideDown select-none"
+      className="fixed z-50 min-w-[180px] p-1.5 rounded-2xl bg-white/95 backdrop-blur-xl border border-[#f3dbe4] shadow-[0_12px_36px_rgba(126,47,79,0.12)] animate-slideDown select-none"
       {...props}
     >
       {items.map((item, idx) => {
         if (item.divider) {
-          return <div key={`div-${idx}`} className="my-1 border-t border-white/[0.08]" />;
+          return <div key={`div-${idx}`} className="my-1 border-t border-[#f3dbe4]" />;
         }
 
         return (
@@ -68,10 +68,10 @@ export default function ContextMenu({
             key={item.id || idx}
             onClick={() => handleItemClick(item)}
             onMouseEnter={() => playHover()}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between gap-3 cursor-pointer transition-colors ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center justify-between gap-3 cursor-pointer transition-colors ${
               item.danger
-                ? 'text-red-400 hover:bg-red-500/20 hover:text-red-300'
-                : 'text-[#b8c0d4] hover:bg-white/[0.08] hover:text-white'
+                ? 'text-[#e94267] hover:bg-[#ffeef2]'
+                : 'text-[#5b2a47] hover:bg-[#fff0f4] hover:text-[#ff4d80]'
             }`}
           >
             <div className="flex items-center gap-2">
@@ -79,7 +79,7 @@ export default function ContextMenu({
               <span>{item.label}</span>
             </div>
             {item.shortcut && (
-              <span className="text-[10px] text-[#7c849c] font-mono">{item.shortcut}</span>
+              <span className="text-[10px] text-[#a8556f] font-mono">{item.shortcut}</span>
             )}
           </div>
         );

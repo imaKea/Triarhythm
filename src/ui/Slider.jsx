@@ -35,8 +35,8 @@ export default function Slider({
     <div className={`flex flex-col gap-1.5 select-none ${disabled ? 'opacity-40 cursor-not-allowed' : ''} ${className}`} {...props}>
       {(label || displayVal) && (
         <div className="flex items-center justify-between text-xs">
-          {label && <span className="font-bold text-[#b8c0d4]">{label}</span>}
-          <span className="font-mono font-bold text-[#ff66ab] px-2 py-0.5 rounded bg-[#ff66ab]/10 border border-[#ff66ab]/20">
+          {label && <span className="font-bold text-[#5b2a47]">{label}</span>}
+          <span className="font-mono font-bold text-[#ff4d80] px-2 py-0.5 rounded bg-[#fff0f4] border border-[#f3dbe4]">
             {displayVal}
           </span>
         </div>
@@ -48,10 +48,10 @@ export default function Slider({
         onMouseLeave={() => setIsHovered(false)}
       >
         {/* Track background */}
-        <div className="absolute left-0 right-0 h-2 rounded-full bg-[#111122] border border-white/[0.08] overflow-hidden">
+        <div className="absolute left-0 right-0 h-2 rounded-full bg-[#ffe5ec] border border-[#f3dbe4] overflow-hidden">
           {/* Fill bar */}
           <div
-            className="h-full bg-gradient-to-r from-[#cc5289] to-[#ff66ab] shadow-[0_0_10px_rgba(255,102,171,0.5)] transition-all duration-75"
+            className="h-full bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] shadow-[0_2px_8px_rgba(255,77,128,0.25)] transition-all duration-75"
             style={{ width: `${percentage}%` }}
           />
         </div>
@@ -70,7 +70,7 @@ export default function Slider({
 
         {/* Bubble Thumb */}
         <div
-          className={`absolute top-1/2 -translate-y-1/2 w-4.5 h-4.5 rounded-full bg-white border-2 border-[#ff66ab] shadow-[0_0_10px_rgba(255,102,171,0.8)] pointer-events-none transition-transform duration-100 ${
+          className={`absolute top-1/2 -translate-y-1/2 w-4.5 h-4.5 rounded-full bg-white border-2 border-[#ff4d80] shadow-[0_2px_8px_rgba(255,77,128,0.4)] pointer-events-none transition-transform duration-100 ${
             isHovered ? 'scale-125' : 'scale-100'
           }`}
           style={{ left: `calc(${percentage}% - 9px)` }}

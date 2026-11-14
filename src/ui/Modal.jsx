@@ -44,22 +44,22 @@ export default function Modal({
   return (
     <div
       onClick={handleBackdropClick}
-      className="fixed inset-0 z-50 bg-[#140b17]/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn select-none"
+      className="fixed inset-0 z-50 bg-[#5b2a47]/30 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn select-none"
       {...props}
     >
       <div
-        className={`w-full ${maxWidth} bg-[#1f1126]/95 border border-[#ff85a2]/25 rounded-3xl p-6 shadow-[0_20px_50px_rgba(16,8,20,0.85),0_0_25px_rgba(255,133,162,0.2)] animate-slideDown flex flex-col gap-4 relative ${className}`}
+        className={`w-full ${maxWidth} bg-white/95 border border-[#f3dbe4] rounded-3xl p-6 shadow-[0_20px_60px_rgba(126,47,79,0.15)] animate-slideDown flex flex-col gap-4 relative ${className}`}
       >
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
             {title && (
-              <h2 className="text-xl font-black text-white tracking-wide flex items-center gap-2 font-torus">
-                <span className="text-[#ff85a2] animate-kawaii-wiggle inline-block">🎀</span>
+              <h2 className="text-xl font-black text-[#5b2a47] tracking-wide flex items-center gap-2 font-torus">
+                <span className="text-[#ff4d80] animate-kawaii-wiggle inline-block">🎀</span>
                 <span>{title}</span>
               </h2>
             )}
-            {description && <p className="text-xs text-[#d8bfd8] mt-0.5">{description}</p>}
+            {description && <p className="text-xs text-[#a8556f] mt-0.5">{description}</p>}
           </div>
           {onClose && (
             <IconButton
@@ -73,7 +73,7 @@ export default function Modal({
         </div>
 
         {/* Content */}
-        <div className="text-sm text-[#b8c0d4]">{children}</div>
+        <div className="text-sm text-[#5b2a47]">{children}</div>
       </div>
     </div>
   );

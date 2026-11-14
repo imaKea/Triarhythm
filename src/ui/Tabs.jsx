@@ -18,7 +18,7 @@ export default function Tabs({
 
   return (
     <div
-      className={`inline-flex items-center gap-1 p-1 bg-[#1d0f23]/90 backdrop-blur-md rounded-full border border-[#ff85a2]/25 select-none ${className}`}
+      className={`inline-flex items-center gap-1 p-1 bg-[#fff1f5] backdrop-blur-md rounded-full border border-[#f3dbe4] select-none ${className}`}
       {...props}
     >
       {tabs.map((tab) => {
@@ -31,8 +31,8 @@ export default function Tabs({
             onMouseEnter={() => !isActive && playHover()}
             className={`relative px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
               isActive
-                ? 'bg-gradient-to-r from-[#ff85a2] via-[#ff6b93] to-[#ff4d80] text-white shadow-[0_2px_14px_rgba(255,133,162,0.45)] scale-[1.02]'
-                : 'text-[#d8bfd8] hover:text-white hover:bg-white/[0.08]'
+                ? 'bg-gradient-to-r from-[#ff85a2] via-[#ff6b93] to-[#ff4d80] text-white shadow-[0_2px_14px_rgba(255,77,128,0.25)] scale-[1.02]'
+                : 'text-[#5b2a47] hover:text-[#ff4d80] hover:bg-white'
             }`}
           >
             {tab.icon && <span className="text-xs">{tab.icon}</span>}
@@ -40,7 +40,7 @@ export default function Tabs({
             {tab.badge !== undefined && (
               <span
                 className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                  isActive ? 'bg-white/25 text-white' : 'bg-white/[0.08] text-[#ffaec9]'
+                  isActive ? 'bg-white/30 text-white' : 'bg-white text-[#ff4d80] border border-[#f3dbe4]'
                 }`}
               >
                 {tab.badge}

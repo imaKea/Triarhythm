@@ -21,13 +21,13 @@ export default function Button({
 
   const variantClasses = {
     primary:
-      'bg-gradient-to-r from-[#ff85a2] via-[#ff6b93] to-[#ff4d80] text-white font-extrabold border border-white/30 shadow-[0_4px_18px_rgba(255,133,162,0.35)] hover:shadow-[0_6px_28px_rgba(255,133,162,0.6)] hover:scale-[1.03] active:scale-[0.97]',
+      'bg-gradient-to-r from-[#ff85a2] via-[#ff6b93] to-[#ff4d80] text-white font-extrabold border border-white/40 shadow-[0_4px_18px_rgba(255,77,128,0.25)] hover:shadow-[0_6px_28px_rgba(255,133,162,0.5)] hover:scale-[1.03] active:scale-[0.97]',
     ghost:
-      'bg-white/[0.06] hover:bg-white/[0.14] text-[#fff5f8] hover:text-white font-bold border border-white/[0.1] hover:border-[#ff85a2]/40 active:scale-[0.98]',
+      'bg-white/80 hover:bg-[#fff0f4] text-[#5b2a47] hover:text-[#ff4d80] font-extrabold border border-[#f3dbe4] hover:border-[#ff85a2] shadow-[0_2px_8px_rgba(126,47,79,0.04)] active:scale-[0.98]',
     secondary:
-      'bg-[#ffd6e0]/15 hover:bg-[#ffd6e0]/30 text-[#ffaec9] hover:text-white font-bold border border-[#ffaec9]/40 hover:border-[#ffaec9]/80 active:scale-[0.98]',
+      'bg-[#fff1f5] hover:bg-[#ffe5ec] text-[#e94267] font-extrabold border border-[#f3dbe4] hover:border-[#ff85a2] shadow-[0_2px_8px_rgba(126,47,79,0.04)] active:scale-[0.98]',
     danger:
-      'bg-rose-500/20 hover:bg-rose-500/35 text-rose-300 hover:text-white font-bold border border-rose-500/30 hover:border-rose-500/60 active:scale-[0.98]'
+      'bg-[#ffeef2] hover:bg-[#ffd9e2] text-[#e94267] font-extrabold border border-[#f5b8c7] active:scale-[0.98]'
   }[variant] || '';
 
   const disabledClasses = disabled

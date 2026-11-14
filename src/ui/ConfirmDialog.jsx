@@ -27,9 +27,9 @@ export default function ConfirmDialog({
 
   return (
     <Modal isOpen={isOpen} onClose={handleCancel} title={title} maxWidth="max-w-md" {...props}>
-      <p className="text-sm text-[#b8c0d4] leading-relaxed my-2">{message}</p>
+      <p className="text-sm text-[#5b2a47] leading-relaxed my-2">{message}</p>
 
-      <div className="flex items-center justify-end gap-3 mt-4 pt-4 border-t border-white/[0.06]">
+      <div className="flex items-center justify-end gap-3 mt-4 pt-4 border-t border-[#f3dbe4]">
         <Button variant="ghost" size="sm" onClick={handleCancel} disabled={loading}>
           {cancelText}
         </Button>
