@@ -592,6 +592,102 @@ export function useMapEditor({ initialBeatmap = null, onTestPlay = null } = {}) 
     };
   }, [editorOrientation, timeScale, snapMs]);
 
+
+  // ---------------------------------------------------------------------
+  // Save / export / validate
+  // ---------------------------------------------------------------------
+  const buildPayload = useCallback(() => {
+    return buildBeatmapSavePayload(beatmap, { existing: initialBeatmap || null });
+  }, [beatmap, initialBeatmap]);
+
+  const runValidation = useCallback((source) => {
+    const payload = buildPayload();
+    const result = validateBeatmap(payload);
+    setValidation(result);
+    setValidationSource(source);
+    return { payload, result };
+  }, [buildPayload]);
+
+  /**
+   * Lưu chính thức: ghi IndexedDB + đồng bộ MySQL nếu đăng nhập + reset dirty.
+   * Chặn nếu validator báo lỗi.
+   * @returns {Promise<boolean>} đã lưu hay chưa
+   */
+  const handleSaveToDatabase = useCallback(async () => {
+    const { payload, result } = runValidation('save');
+    if (!result.valid) return false;
+
+    try {
+      await dbManager.saveBeatmap(payload);
+
+      // Đồng bộ MySQL nếu đã đăng nhập
+      if (apiClient.getToken()) {
+        try {
+          await apiClient.saveMap(payload);
+          if (payload.audioBlob || payload.backgroundBlob || payload.videoBlob) {
+            await apiClient.uploadMapAssets(payload.id, {
+              audio: payload.audioBlob,
+              background: payload.backgroundBlob,
+              video: payload.videoBlob
+            }).catch(() => {});
+          }
+        } catch (apiErr) {
+          console.warn('[Editor] MySQL sync warning:', apiErr);
+        }
+      }
+
+      setIsDirty(false);
+      setValidation(null);
+      setValidationSource(null);
+      return true;
+    } catch (err) {
+      setValidation({ valid: false, errors: [`Lỗi lưu beatmap: ${err.message}`], warnings: [] });
+      setValidationSource('save');
+      return false;
+    }
+  }, [runValidation]);
+
+  /**
+   * Lưu nháp: vẫn lưu dù còn lỗi, để không mất dữ liệu đang làm.
+   */
+  const handleSaveDraft = useCallback(async () => {
+    const { payload } = runValidation('draft');
+    try {
+      await dbManager.saveBeatmap(payload);
+      setIsDirty(false);
+      return true;
+    } catch (err) {
+      setValidation({ valid: false, errors: [`Lỗi lưu nháp: ${err.message}`], warnings: [] });
+      setValidationSource('draft');
+      return false;
+    }
+  }, [runValidation]);
+
+  /**
+   * Test Play: chặn nếu có lỗi nghiêm trọng.
+   */
+  const handleTestPlay = useCallback(() => {
+    const { payload, result } = runValidation('test');
+    if (!result.valid) return false;
+    if (onTestPlay) onTestPlay({ ...payload, audioSource: audioUrl });
+    return true;
+  }, [runValidation, onTestPlay, audioUrl]);
+
+  const handleExportJSON = useCallback(() => {
+    const blob = new Blob([serializeBeatmapExport(beatmap)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = getExportFilename(beatmap);
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [beatmap]);
+
+  const dismissValidation = useCallback(() => {
+    setValidation(null);
+    setValidationSource(null);
+  }, []);
+
   // ---------------------------------------------------------------------
   // Keyboard shortcuts
   // ---------------------------------------------------------------------
@@ -926,100 +1022,6 @@ export function useMapEditor({ initialBeatmap = null, onTestPlay = null } = {}) 
       });
   }, [beatmap.notes, timelineScroll, viewportSize, timeScale]);
 
-  // ---------------------------------------------------------------------
-  // Save / export / validate
-  // ---------------------------------------------------------------------
-  const buildPayload = useCallback(() => {
-    return buildBeatmapSavePayload(beatmap, { existing: initialBeatmap || null });
-  }, [beatmap, initialBeatmap]);
-
-  const runValidation = useCallback((source) => {
-    const payload = buildPayload();
-    const result = validateBeatmap(payload);
-    setValidation(result);
-    setValidationSource(source);
-    return { payload, result };
-  }, [buildPayload]);
-
-  /**
-   * Lưu chính thức: ghi IndexedDB + đồng bộ MySQL nếu đăng nhập + reset dirty.
-   * Chặn nếu validator báo lỗi.
-   * @returns {Promise<boolean>} đã lưu hay chưa
-   */
-  const handleSaveToDatabase = useCallback(async () => {
-    const { payload, result } = runValidation('save');
-    if (!result.valid) return false;
-
-    try {
-      await dbManager.saveBeatmap(payload);
-
-      // Đồng bộ MySQL nếu đã đăng nhập
-      if (apiClient.getToken()) {
-        try {
-          await apiClient.saveMap(payload);
-          if (payload.audioBlob || payload.backgroundBlob || payload.videoBlob) {
-            await apiClient.uploadMapAssets(payload.id, {
-              audio: payload.audioBlob,
-              background: payload.backgroundBlob,
-              video: payload.videoBlob
-            }).catch(() => {});
-          }
-        } catch (apiErr) {
-          console.warn('[Editor] MySQL sync warning:', apiErr);
-        }
-      }
-
-      setIsDirty(false);
-      setValidation(null);
-      setValidationSource(null);
-      return true;
-    } catch (err) {
-      setValidation({ valid: false, errors: [`Lỗi lưu beatmap: ${err.message}`], warnings: [] });
-      setValidationSource('save');
-      return false;
-    }
-  }, [runValidation]);
-
-  /**
-   * Lưu nháp: vẫn lưu dù còn lỗi, để không mất dữ liệu đang làm.
-   */
-  const handleSaveDraft = useCallback(async () => {
-    const { payload } = runValidation('draft');
-    try {
-      await dbManager.saveBeatmap(payload);
-      setIsDirty(false);
-      return true;
-    } catch (err) {
-      setValidation({ valid: false, errors: [`Lỗi lưu nháp: ${err.message}`], warnings: [] });
-      setValidationSource('draft');
-      return false;
-    }
-  }, [runValidation]);
-
-  /**
-   * Test Play: chặn nếu có lỗi nghiêm trọng.
-   */
-  const handleTestPlay = useCallback(() => {
-    const { payload, result } = runValidation('test');
-    if (!result.valid) return false;
-    if (onTestPlay) onTestPlay({ ...payload, audioSource: audioUrl });
-    return true;
-  }, [runValidation, onTestPlay, audioUrl]);
-
-  const handleExportJSON = useCallback(() => {
-    const blob = new Blob([serializeBeatmapExport(beatmap)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = getExportFilename(beatmap);
-    a.click();
-    URL.revokeObjectURL(url);
-  }, [beatmap]);
-
-  const dismissValidation = useCallback(() => {
-    setValidation(null);
-    setValidationSource(null);
-  }, []);
 
   return {
     // state
