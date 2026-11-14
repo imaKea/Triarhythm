@@ -33,6 +33,8 @@ export class GameplayRenderer {
     this.backgroundDim = 0.75;
     this.showRayGuides = true;
     this.showURBar = true;
+    this.showLegacyConsole = false; // Tắt arcade console bar, dùng osu! HUD ở React DOM
+    this.showCenterCombo = false;   // Tắt combo ở tâm, hiển thị ở góc dưới trái chuẩn osu!
     this.noteRadiusScale = 1.0;
     this.customKeybinds = null;
 

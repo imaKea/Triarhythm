@@ -1,5 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { TRI_RING_LAYOUT, formatKeyCode } from '../config/layout.config.js';
+import {
+  Button,
+  Toggle,
+  Slider,
+  Dropdown,
+  Modal,
+  toast,
+  playHover,
+  playClick,
+  playSelect,
+  isUISoundEnabled,
+  setUISoundEnabled
+} from '../ui/index.js';
 
 export default function AstroSettingsModal({
   isOpen,
@@ -10,11 +23,12 @@ export default function AstroSettingsModal({
   onOpenAuthModal,
   onLogout
 }) {
-  const [activeTab, setActiveTab] = useState('gameplay');
+  const [activeCategory, setActiveCategory] = useState('gameplay');
+  const [searchQuery, setSearchQuery] = useState('');
   const [listeningSlot, setListeningSlot] = useState(null);
+  const [uiSoundsActive, setUiSoundsActive] = useState(isUISoundEnabled());
 
-  const currentKeybinds = settings.customKeybinds || TRI_RING_LAYOUT.defaultKeybinds;
-
+  // Keybind capturing logic
   useEffect(() => {
     if (!listeningSlot || !isOpen) return;
 
@@ -28,12 +42,14 @@ export default function AstroSettingsModal({
       }
 
       const { laneKey, index } = listeningSlot;
-      const updated = { ...(settings.customKeybinds || TRI_RING_LAYOUT.defaultKeybinds) };
-      const existing = [...(updated[laneKey] || [])];
+      const updatedKeybinds = { ...(settings.customKeybinds || TRI_RING_LAYOUT.defaultKeybinds) };
+      const existing = [...(updatedKeybinds[laneKey] || [])];
       existing[index] = e.code;
-      updated[laneKey] = [...new Set(existing)];
-      onUpdateSettings({ ...settings, customKeybinds: updated });
+      updatedKeybinds[laneKey] = [...new Set(existing)];
+
+      onUpdateSettings({ ...settings, customKeybinds: updatedKeybinds });
       setListeningSlot(null);
+      toast.success(`Đã gán phím ${e.code} cho ${laneKey === 'ring' ? 'Ring (Space)' : `Lane ${laneKey}`}`);
     };
 
     window.addEventListener('keydown', handleKeyCapture, true);
@@ -44,261 +60,427 @@ export default function AstroSettingsModal({
 
   const update = (key, val) => onUpdateSettings({ ...settings, [key]: val });
 
-  const handleResetKeybinds = () => {
-    onUpdateSettings({ ...settings, customKeybinds: { ...TRI_RING_LAYOUT.defaultKeybinds } });
-    setListeningSlot(null);
-  };
-
-  const tabs = [
-    { id: 'gameplay', label: 'Gameplay' },
-    { id: 'audio', label: 'Audio' },
-    { id: 'keybinds', label: 'Input' },
-    { id: 'account', label: 'Account' }
+  const categories = [
+    { id: 'general', label: 'General', icon: '⚙' },
+    { id: 'gameplay', label: 'Gameplay', icon: '🎯' },
+    { id: 'audio', label: 'Audio', icon: '🔊' },
+    { id: 'input', label: 'Input', icon: '⌨' },
+    { id: 'graphics', label: 'Graphics', icon: '🖼' },
+    { id: 'account', label: 'Account', icon: '👤' }
   ];
 
-  const SliderRow = ({ label, value, displayValue, min, max, step, onChange }) => (
-    <div className="py-3">
-      <div className="flex justify-between items-center mb-2">
-        <span className="text-sm font-semibold text-white">{label}</span>
-        <span className="text-sm text-[#ff66ab] font-bold font-mono">{displayValue}</span>
-      </div>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={onChange}
-        className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#ff66ab] [&::-webkit-slider-thumb]:shadow-[0_0_8px_rgba(255,102,171,0.5)] [&::-webkit-slider-thumb]:cursor-pointer"
-      />
-    </div>
-  );
+  // Export settings to JSON
+  const handleExportSettings = () => {
+    playClick();
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(settings, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute('href', dataStr);
+    downloadAnchor.setAttribute('download', 'triarhythm-settings.json');
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    toast.success('Đã xuất file cài đặt JSON thành công!');
+  };
+
+  // Import settings from JSON
+  const handleImportSettings = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const imported = JSON.parse(event.target.result);
+        onUpdateSettings({ ...settings, ...imported });
+        toast.success('Đã nhập cài đặt từ file thành công!');
+      } catch (err) {
+        toast.error('File cài đặt không hợp lệ: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  // Reset category defaults
+  const handleResetCategory = () => {
+    playClick();
+    if (activeCategory === 'input') {
+      onUpdateSettings({ ...settings, customKeybinds: { ...TRI_RING_LAYOUT.defaultKeybinds } });
+      toast.info('Đã khôi phục phím bấm mặc định.');
+    } else if (activeCategory === 'audio') {
+      onUpdateSettings({
+        ...settings,
+        masterVol: 100,
+        musicVol: 85,
+        hitVol: 95,
+        uiVol: 80,
+        userOffset: 0
+      });
+      toast.info('Đã khôi phục âm lượng & offset mặc định.');
+    } else if (activeCategory === 'graphics') {
+      onUpdateSettings({
+        ...settings,
+        backgroundDim: 0.75,
+        backgroundBlur: 0.2,
+        showVideo: true,
+        showFpsCounter: false
+      });
+      toast.info('Đã khôi phục đồ họa mặc định.');
+    } else if (activeCategory === 'gameplay') {
+      onUpdateSettings({
+        ...settings,
+        noteSpeed: 10.0,
+        countdownBeforeStart: true,
+        showRayGuides: true,
+        showURBar: true,
+        showKeyOverlay: true,
+        showCombo: true
+      });
+      toast.info('Đã khôi phục cài đặt gameplay.');
+    }
+  };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn select-none">
-      <div className="w-full max-w-xl bg-[#111122] border border-white/[0.06] rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[560px]">
-        {/* Header */}
-        <div className="h-14 px-5 bg-[#0d0d1a] border-b border-white/[0.04] flex items-center justify-between shrink-0">
-          <h2 className="text-base font-bold text-white">Settings</h2>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title=""
+      maxWidth="max-w-4xl"
+      className="p-0 overflow-hidden h-[620px]"
+    >
+      <div className="flex h-full select-none">
+        {/* LEFT SIDEBAR */}
+        <div className="w-56 bg-[#111122] border-r border-white/[0.06] p-4 flex flex-col justify-between shrink-0">
+          <div className="flex flex-col gap-3">
+            {/* Header */}
+            <div className="px-2 pt-1">
+              <span className="text-xs font-black tracking-widest text-[#ff66ab] uppercase">
+                Settings
+              </span>
+              <h2 className="text-lg font-black text-white font-torus">TÙY CHỈNH</h2>
+            </div>
 
-          <div className="flex items-center gap-0.5">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => { setActiveTab(tab.id); setListeningSlot(null); }}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === tab.id
-                    ? 'bg-[#ff66ab] text-white shadow-[0_0_10px_rgba(255,102,171,0.3)]'
-                    : 'text-[#6b7280] hover:text-white'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+            {/* Search Input */}
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7c849c] text-xs">⌕</span>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search..."
+                className="w-full bg-[#1a1a2e] border border-white/[0.08] focus:border-[#ff66ab]/50 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-[#7c849c] outline-none"
+              />
+            </div>
+
+            {/* Category Navigation Pills */}
+            <nav className="flex flex-col gap-1 mt-2">
+              {categories.map((cat) => {
+                const isActive = activeCategory === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => {
+                      playSelect();
+                      setActiveCategory(cat.id);
+                    }}
+                    onMouseEnter={() => !isActive && playHover()}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer text-left ${
+                      isActive
+                        ? 'bg-gradient-to-r from-[#ff66ab] to-[#cc5289] text-white shadow-[0_2px_10px_rgba(255,102,171,0.35)]'
+                        : 'text-[#8890a4] hover:bg-white/[0.04] hover:text-white'
+                    }`}
+                  >
+                    <span>{cat.icon}</span>
+                    <span>{cat.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
           </div>
 
-          <button
-            onClick={onClose}
-            className="w-7 h-7 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-[#6b7280] hover:text-white flex items-center justify-center text-xs transition-colors cursor-pointer"
-          >
-            ✕
-          </button>
+          {/* Bottom Backup & Export actions */}
+          <div className="pt-4 border-t border-white/[0.06] flex flex-col gap-2">
+            <Button variant="ghost" size="sm" onClick={handleExportSettings} icon="💾">
+              Export Settings
+            </Button>
+            <label className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.06] hover:bg-white/[0.1] text-[#b8c0d4] text-xs font-bold cursor-pointer transition-colors">
+              <span>📂</span>
+              <span>Import Settings</span>
+              <input type="file" accept=".json" onChange={handleImportSettings} className="hidden" />
+            </label>
+          </div>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 custom-scrollbar">
-          {/* GAMEPLAY */}
-          {activeTab === 'gameplay' && (
-            <div className="flex flex-col divide-y divide-white/[0.04]">
-              <SliderRow
-                label="Scroll Speed"
-                value={settings.noteSpeed || 10}
-                displayValue={Number(settings.noteSpeed || 10).toFixed(1)}
-                min="2.0" max="15.0" step="0.5"
-                onChange={(e) => update('noteSpeed', parseFloat(e.target.value))}
-              />
-              <SliderRow
-                label="Background Dim"
-                value={settings.backgroundDim || 0.75}
-                displayValue={`${Math.round((settings.backgroundDim || 0.75) * 100)}%`}
-                min="0.0" max="1.0" step="0.05"
-                onChange={(e) => update('backgroundDim', parseFloat(e.target.value))}
-              />
-              <SliderRow
-                label="Audio Offset"
-                value={settings.userOffset || 0}
-                displayValue={`${(settings.userOffset || 0) > 0 ? '+' : ''}${settings.userOffset || 0}ms`}
-                min="-200" max="200" step="5"
-                onChange={(e) => update('userOffset', parseInt(e.target.value, 10))}
-              />
-
-              <div className="py-3 flex gap-3">
-                <label className="flex-1 flex items-center justify-between p-3 rounded-xl bg-white/[0.03] cursor-pointer hover:bg-white/[0.05] transition-colors">
-                  <span className="text-xs font-semibold text-white">Visual Guides</span>
-                  <input
-                    type="checkbox"
-                    checked={settings.showRayGuides !== false}
-                    onChange={(e) => update('showRayGuides', e.target.checked)}
-                    className="w-4 h-4 accent-[#ff66ab] cursor-pointer"
-                  />
-                </label>
-
-                <label className="flex-1 flex items-center justify-between p-3 rounded-xl bg-white/[0.03] cursor-pointer hover:bg-white/[0.05] transition-colors">
-                  <span className="text-xs font-semibold text-white">Autoplay</span>
-                  <input
-                    type="checkbox"
-                    checked={Boolean(settings.isAutoplay)}
-                    onChange={(e) => update('isAutoplay', e.target.checked)}
-                    className="w-4 h-4 accent-[#ff66ab] cursor-pointer"
-                  />
-                </label>
-              </div>
+        {/* RIGHT CONTENT AREA */}
+        <div className="flex-1 bg-[#1a1a2e]/90 flex flex-col overflow-hidden">
+          {/* Header of Content */}
+          <div className="h-14 px-6 border-b border-white/[0.06] flex items-center justify-between shrink-0 bg-[#16162a]/95">
+            <div className="flex items-center gap-2">
+              <span className="text-base">{categories.find((c) => c.id === activeCategory)?.icon}</span>
+              <h3 className="font-torus font-black text-base text-white uppercase tracking-wider">
+                {categories.find((c) => c.id === activeCategory)?.label}
+              </h3>
             </div>
-          )}
 
-          {/* AUDIO */}
-          {activeTab === 'audio' && (
-            <div className="flex flex-col divide-y divide-white/[0.04]">
-              <SliderRow
-                label="Music Volume"
-                value={settings.musicVol ?? 85}
-                displayValue={`${settings.musicVol ?? 85}%`}
-                min="0" max="100" step="1"
-                onChange={(e) => update('musicVol', parseInt(e.target.value, 10))}
-              />
-              <SliderRow
-                label="Hitsound Volume"
-                value={settings.hitVol ?? 95}
-                displayValue={`${settings.hitVol ?? 95}%`}
-                min="0" max="100" step="1"
-                onChange={(e) => update('hitVol', parseInt(e.target.value, 10))}
-              />
-            </div>
-          )}
+            <Button variant="ghost" size="sm" onClick={handleResetCategory} icon="↺">
+              Reset mục này
+            </Button>
+          </div>
 
-          {/* KEYBINDS */}
-          {activeTab === 'keybinds' && (
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-[#6b7280]">Click a key to rebind, press Escape to cancel</span>
-                <button
-                  onClick={handleResetKeybinds}
-                  className="px-3 py-1 rounded-full bg-white/[0.06] hover:bg-white/[0.1] text-xs font-semibold text-[#b8c0d4] transition-colors cursor-pointer"
-                >
-                  Reset
-                </button>
-              </div>
+          {/* Body with controls */}
+          <div className="flex-1 p-6 overflow-y-auto custom-scrollbar space-y-6">
+            {/* GENERAL */}
+            {activeCategory === 'general' && (
+              <div className="space-y-4">
+                <Toggle
+                  checked={uiSoundsActive}
+                  onChange={(val) => {
+                    setUiSoundsActive(val);
+                    setUISoundEnabled(val);
+                    toast.info(`Âm thanh UI: ${val ? 'BẬT' : 'TẮT'}`);
+                  }}
+                  label="Âm thanh giao diện (UI Sounds)"
+                  description="Phát hiệu ứng âm thanh tổng hợp Web Audio khi hover, click, gạt toggle hoặc trượt slider"
+                />
 
-              {listeningSlot && (
-                <div className="p-2.5 rounded-xl bg-[#ff66ab]/10 border border-[#ff66ab]/30 text-center text-xs font-semibold text-[#ff66ab] animate-pulse">
-                  Press any key for {listeningSlot.laneKey === 'ring' ? 'Ring' : `Lane ${listeningSlot.laneKey}`}...
+                <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] text-xs text-[#b8c0d4] space-y-2">
+                  <div className="font-bold text-white">Ngôn ngữ hiển thị (Language)</div>
+                  <p>Hệ thống hiện đang hỗ trợ toàn diện Tiếng Việt (Vietnamese) với phông chữ Torus / Nunito / Be Vietnam Pro sắc nét.</p>
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* Keybind Groups */}
-              {[
-                { title: 'Top Row', lanes: [
-                  { key: '0', label: 'Lane 0' }, { key: '1', label: 'Lane 1' }, { key: '2', label: 'Lane 2' }
-                ]},
-                { title: 'Side Keys', lanes: [
-                  { key: '3', label: 'Lane 3' }, { key: '6', label: 'Lane 6' },
-                  { key: '4', label: 'Lane 4' }, { key: '7', label: 'Lane 7' },
-                  { key: '5', label: 'Lane 5' }, { key: '8', label: 'Lane 8' }
-                ]},
-                { title: 'Center Ring', lanes: [
-                  { key: 'ring', label: 'Ring / Slides' }
-                ]}
-              ].map((group) => (
-                <div key={group.title}>
-                  <div className="text-[10px] font-bold text-[#6b7280] uppercase tracking-wider mb-1.5">{group.title}</div>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {group.lanes.map(({ key, label }) => {
-                      const codes = currentKeybinds[key] || [];
-                      return (
-                        <div key={key} className={`p-2.5 bg-white/[0.02] rounded-lg flex items-center justify-between ${group.lanes.length === 1 ? 'col-span-2' : ''}`}>
-                          <span className="text-xs text-[#b8c0d4]">{label}</span>
-                          <div className="flex items-center gap-1">
-                            {codes.slice(0, 2).map((code, idx) => {
-                              const isListening = listeningSlot?.laneKey === key && listeningSlot?.index === idx;
-                              return (
-                                <button
-                                  key={idx}
-                                  onClick={() => setListeningSlot({ laneKey: key, index: idx })}
-                                  className={`px-2.5 py-1 rounded-lg font-mono text-[11px] font-bold border transition-all cursor-pointer ${
-                                    isListening
-                                      ? 'bg-[#ff66ab] text-white border-[#ff66ab] shadow-[0_0_8px_rgba(255,102,171,0.5)]'
-                                      : 'bg-white/[0.04] text-white/80 border-white/[0.06] hover:border-[#ff66ab]/50'
-                                  }`}
-                                >
-                                  {formatKeyCode(code)}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+            {/* GAMEPLAY */}
+            {activeCategory === 'gameplay' && (
+              <div className="space-y-5">
+                <Slider
+                  label="Tốc độ nốt bay (Note Speed)"
+                  value={settings.noteSpeed || 10.0}
+                  min={5.0}
+                  max={15.0}
+                  step={0.1}
+                  formatValue={(v) => `${v.toFixed(1)}x`}
+                  onChange={(val) => update('noteSpeed', val)}
+                />
 
-          {/* ACCOUNT */}
-          {activeTab === 'account' && (
-            <div className="flex flex-col gap-4">
-              <div className="p-4 rounded-xl bg-white/[0.02] flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={currentUser?.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=guest'}
-                    alt=""
-                    className="w-11 h-11 rounded-full border-2 border-[#ff66ab]/30"
-                  />
+                <Toggle
+                  checked={settings.countdownBeforeStart !== false}
+                  onChange={(val) => update('countdownBeforeStart', val)}
+                  label="Đếm ngược 3-2-1 trước khi bắt đầu bài hát"
+                  description="Hiển thị đếm nhịp 3-2-1 trước khi nốt nhạc đầu tiên xuất hiện để người chơi chuẩn bị"
+                />
+
+                <Toggle
+                  checked={settings.showRayGuides !== false}
+                  onChange={(val) => update('showRayGuides', val)}
+                  label="Hiện vạch tia định hướng (Ray Guides)"
+                  description="Hiển thị các đường tia mỏng nối từ tâm ra các ô judgement"
+                />
+
+                <Toggle
+                  checked={settings.showURBar !== false}
+                  onChange={(val) => update('showURBar', val)}
+                  label="Hiện thanh Unstable Rate (UR Bar)"
+                  description="Hiển thị biểu đồ độ lệch ms phán định ở góc dưới màn hình"
+                />
+
+                <Toggle
+                  checked={settings.showKeyOverlay !== false}
+                  onChange={(val) => update('showKeyOverlay', val)}
+                  label="Hiện Key Overlay (Bộ đếm phím bấm)"
+                  description="Hiển thị panel dọc đếm số lượt nhấn phím từng lane bên cạnh phải"
+                />
+
+                <Toggle
+                  checked={settings.showCombo !== false}
+                  onChange={(val) => update('showCombo', val)}
+                  label="Hiện Combo đếm nhịp ở góc dưới"
+                  description="Hiển thị chữ số combo nổi bật khi đánh trúng liên tiếp"
+                />
+              </div>
+            )}
+
+            {/* AUDIO */}
+            {activeCategory === 'audio' && (
+              <div className="space-y-5">
+                <Slider
+                  label="Âm lượng tổng (Master Volume)"
+                  value={settings.masterVol !== undefined ? settings.masterVol : 100}
+                  min={0}
+                  max={100}
+                  unit="%"
+                  onChange={(val) => update('masterVol', val)}
+                />
+
+                <Slider
+                  label="Âm lượng nhạc nền (Music Volume)"
+                  value={settings.musicVol !== undefined ? settings.musicVol : 85}
+                  min={0}
+                  max={100}
+                  unit="%"
+                  onChange={(val) => update('musicVol', val)}
+                />
+
+                <Slider
+                  label="Âm lượng Hitsound (Hiệu ứng gõ phím)"
+                  value={settings.hitVol !== undefined ? settings.hitVol : 95}
+                  min={0}
+                  max={100}
+                  unit="%"
+                  onChange={(val) => update('hitVol', val)}
+                />
+
+                <Slider
+                  label="Độ lệch âm thanh cá nhân (Audio Offset)"
+                  value={settings.userOffset || 0}
+                  min={-200}
+                  max={200}
+                  step={5}
+                  formatValue={(v) => `${v > 0 ? `+${v}` : v} ms`}
+                  onChange={(val) => update('userOffset', val)}
+                />
+
+                <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-between text-xs">
                   <div>
-                    <h4 className="font-bold text-sm text-white">
-                      {currentUser?.name || currentUser?.username || 'Guest'}
-                    </h4>
-                    <p className="text-[11px] text-[#6b7280]">
-                      {currentUser?.email || 'Not signed in'}
-                    </p>
-                    {currentUser && (
-                      <p className="text-[11px] text-[#ff66ab] font-bold mt-0.5">
-                        {Number(currentUser?.rating || 0).toFixed(0)}pp
-                      </p>
-                    )}
+                    <div className="font-bold text-white">Hiệu chuẩn độ trễ âm thanh</div>
+                    <div className="text-[11px] text-[#7c849c]">Bấm nút kiểm tra để nghe thử nhịp metronome</div>
                   </div>
+                  <Button variant="ghost" size="sm" onClick={() => playClick()}>
+                    Thử nhịp (Test Tick)
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* INPUT / KEYBINDS */}
+            {activeCategory === 'input' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-[#7c849c]">
+                    Nhấp vào ô phím để bắt đầu gán phím mới (nhấn Esc để huỷ):
+                  </p>
+                  <Button variant="ghost" size="sm" onClick={handleResetCategory} icon="↺">
+                    Phím mặc định
+                  </Button>
                 </div>
 
+                {/* Lanes Table */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  {[
+                    { key: 0, label: 'Lane 0 (Top-Left)' },
+                    { key: 1, label: 'Lane 1 (Top-Mid)' },
+                    { key: 2, label: 'Lane 2 (Top-Right)' },
+                    { key: 3, label: 'Lane 3 (Left-Upper)' },
+                    { key: 4, label: 'Lane 4 (Left-Mid)' },
+                    { key: 5, label: 'Lane 5 (Left-Lower)' },
+                    { key: 6, label: 'Lane 6 (Right-Upper)' },
+                    { key: 7, label: 'Lane 7 (Right-Mid)' },
+                    { key: 8, label: 'Lane 8 (Right-Lower)' },
+                    { key: 'ring', label: 'Ring Note (Space)' }
+                  ].map((laneDef) => {
+                    const currentKeys = (settings.customKeybinds || TRI_RING_LAYOUT.defaultKeybinds)[laneDef.key] || [];
+                    const isCapturing = listeningSlot?.laneKey === laneDef.key;
+
+                    return (
+                      <div
+                        key={laneDef.key}
+                        className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-between text-xs"
+                      >
+                        <span className="font-bold text-[#b8c0d4]">{laneDef.label}</span>
+                        <div className="flex gap-1.5">
+                          {currentKeys.slice(0, 2).map((kCode, kIdx) => {
+                            const isThisSlot = isCapturing && listeningSlot?.index === kIdx;
+                            return (
+                              <button
+                                key={kIdx}
+                                type="button"
+                                onClick={() => {
+                                  playClick();
+                                  setListeningSlot({ laneKey: laneDef.key, index: kIdx });
+                                }}
+                                className={`px-2.5 py-1 rounded-lg font-mono font-bold text-xs transition-all cursor-pointer ${
+                                  isThisSlot
+                                    ? 'bg-[#ff66ab] text-white animate-pulse shadow-[0_0_10px_#ff66ab]'
+                                    : 'bg-[#111122] hover:bg-[#222238] text-white border border-white/[0.1]'
+                                }`}
+                              >
+                                {isThisSlot ? 'Press key...' : formatKeyCode(kCode)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* GRAPHICS */}
+            {activeCategory === 'graphics' && (
+              <div className="space-y-5">
+                <Slider
+                  label="Làm tối hình nền (Background Dim)"
+                  value={Math.round((settings.backgroundDim !== undefined ? settings.backgroundDim : 0.75) * 100)}
+                  min={0}
+                  max={100}
+                  unit="%"
+                  onChange={(val) => update('backgroundDim', val / 100)}
+                />
+
+                <Slider
+                  label="Độ mờ hậu cảnh (Background Blur)"
+                  value={Math.round((settings.backgroundBlur !== undefined ? settings.backgroundBlur : 0.2) * 100)}
+                  min={0}
+                  max={100}
+                  unit="%"
+                  onChange={(val) => update('backgroundBlur', val / 100)}
+                />
+
+                <Toggle
+                  checked={settings.showVideo !== false}
+                  onChange={(val) => update('showVideo', val)}
+                  label="Bật video nền (Background Video)"
+                  description="Tự động đồng bộ và phát video kèm theo map nếu có"
+                />
+
+                <Toggle
+                  checked={Boolean(settings.showFpsCounter)}
+                  onChange={(val) => update('showFpsCounter', val)}
+                  label="Hiện bộ đếm FPS & khung hình"
+                  description="Hiển thị FPS counter thời gian thực ở góc màn hình"
+                />
+              </div>
+            )}
+
+            {/* ACCOUNT */}
+            {activeCategory === 'account' && (
+              <div className="space-y-4">
                 {currentUser ? (
-                  <button
-                    onClick={onLogout}
-                    className="px-4 py-1.5 rounded-full bg-[#ef5350]/10 hover:bg-[#ef5350]/20 text-[#ef5350] border border-[#ef5350]/30 text-xs font-bold transition-colors cursor-pointer"
-                  >
-                    Sign Out
-                  </button>
+                  <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-bold text-white">{currentUser.name || currentUser.username}</div>
+                      <div className="text-xs text-[#7c849c] font-mono">{currentUser.email || `@${currentUser.username}`}</div>
+                    </div>
+                    <Button variant="danger" size="sm" onClick={onLogout}>
+                      Đăng xuất
+                    </Button>
+                  </div>
                 ) : (
-                  <button
-                    onClick={onOpenAuthModal}
-                    className="px-4 py-1.5 rounded-full osu-btn text-xs font-bold cursor-pointer"
-                  >
-                    Sign In
-                  </button>
+                  <div className="p-6 rounded-xl bg-white/[0.03] border border-white/[0.06] text-center space-y-3">
+                    <p className="text-xs text-[#b8c0d4]">
+                      Đăng nhập để đồng bộ điểm số lên Bảng xếp hạng toàn cầu và lưu cài đặt trên đám mây.
+                    </p>
+                    <Button variant="primary" size="md" onClick={onOpenAuthModal}>
+                      Đăng nhập / Đăng ký
+                    </Button>
+                  </div>
                 )}
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="h-12 px-5 bg-[#0d0d1a] border-t border-white/[0.04] flex items-center justify-end shrink-0">
-          <button
-            onClick={onClose}
-            className="px-5 py-1.5 rounded-full osu-btn text-xs font-bold cursor-pointer"
-          >
-            Close
-          </button>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

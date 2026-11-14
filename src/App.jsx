@@ -8,6 +8,8 @@ import AstroSettingsModal from './components/AstroSettingsModal.jsx';
 import AstroAuthModal from './components/AstroAuthModal.jsx';
 import RingPreview from './components/RingPreview.jsx';
 import UIKitScreen from './components/UIKitScreen.jsx';
+import PlayerLoader from './components/PlayerLoader.jsx';
+import ProfileModal from './components/ProfileModal.jsx';
 import { ToastContainer } from './ui/index.js';
 import { dbManager } from './core/storage/db.js';
 import { initializeDefaultData } from './core/storage/seedData.js';
@@ -40,6 +42,8 @@ export default function App() {
   // Modals
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [loadingChart, setLoadingChart] = useState(null);
 
   // Target beatmap cho Map Editor
   const [editorBeatmap, setEditorBeatmap] = useState(null);
@@ -136,10 +140,12 @@ export default function App() {
     setCurrentUser(null);
   };
 
-  // Bắt đầu chơi game với bài đã chọn
+  // Bắt đầu chơi game với bài đã chọn (chuyển qua PLAYER_LOADER trước)
   const handleStartGame = (chart) => {
-    if (chart) setSelectedBeatmap(chart);
-    setCurrentScreen('GAMEPLAY');
+    const target = chart || selectedBeatmap;
+    if (target) setSelectedBeatmap(target);
+    setLoadingChart(target);
+    setCurrentScreen('PLAYER_LOADER');
   };
 
   // Mở Map Editor
@@ -202,6 +208,7 @@ export default function App() {
           onOpenAuth={() => setIsAuthOpen(true)}
           onLogout={handleLogout}
           onOpenSettings={() => setIsSettingsOpen(true)}
+          onOpenProfile={() => setIsProfileOpen(true)}
         />
       )}
 
@@ -252,6 +259,16 @@ export default function App() {
           <LeaderboardView
             currentUser={currentUser}
             onBack={() => setCurrentScreen('SONG_SELECT')}
+            onOpenProfile={() => setIsProfileOpen(true)}
+          />
+        )}
+
+        {/* MÀN HÌNH PRE-LOADER (1.2s trước gameplay) */}
+        {currentScreen === 'PLAYER_LOADER' && (
+          <PlayerLoader
+            chart={loadingChart}
+            onReady={() => setCurrentScreen('GAMEPLAY')}
+            durationMs={1200}
           />
         )}
 
@@ -319,6 +336,14 @@ export default function App() {
         onLoginSuccess={(user) => {
           setCurrentUser(user);
         }}
+      />
+
+      {/* MODAL HỒ SƠ NGƯỜI CHƠI (osu! lazer Profile) */}
+      <ProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        user={currentUser}
+        onUpdateUser={setCurrentUser}
       />
 
       {/* GLOBAL TOAST NOTIFICATIONS */}

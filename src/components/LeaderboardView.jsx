@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../core/api/client.js';
+import { Avatar, Button, Tabs, RankBadge, playHover, playSelect } from '../ui/index.js';
+import ProfileModal from './ProfileModal.jsx';
 
 export default function LeaderboardView({ currentUser, onBack }) {
-  const [type, setType] = useState('rating');
+  const [type, setType] = useState('rating'); // 'rating' (Performance) | 'score'
   const [players, setPlayers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [viewingUser, setViewingUser] = useState(null);
 
   const fetchLeaderboard = async () => {
     setIsLoading(true);
@@ -19,7 +22,9 @@ export default function LeaderboardView({ currentUser, onBack }) {
     }
   };
 
-  useEffect(() => { fetchLeaderboard(); }, [type]);
+  useEffect(() => {
+    fetchLeaderboard();
+  }, [type]);
 
   const filteredPlayers = players.filter((p) => {
     if (!search) return true;
@@ -31,130 +36,152 @@ export default function LeaderboardView({ currentUser, onBack }) {
   });
 
   return (
-    <div className="w-full max-w-5xl h-[calc(100vh-52px)] mt-[52px] flex flex-col overflow-hidden select-none">
-      {/* Header */}
-      <div className="h-14 px-5 flex items-center justify-between shrink-0 border-b border-white/[0.04]">
+    <div className="w-full max-w-5xl h-[calc(100vh-52px-24px)] mt-[52px] mb-6 flex flex-col overflow-hidden select-none osu-screen-transition p-6">
+      {/* Top Header Bar */}
+      <div className="flex items-center justify-between pb-4 mb-4 border-b border-white/[0.08] shrink-0">
         <div className="flex items-center gap-3">
-          <button
-            onClick={onBack}
-            className="w-8 h-8 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-[#b8c0d4] hover:text-white flex items-center justify-center transition-colors cursor-pointer text-sm"
-          >
-            ←
-          </button>
-          <h1 className="font-bold text-lg text-white">Rankings</h1>
+          <Button variant="ghost" size="sm" onClick={onBack} icon="←">
+            Back (Esc)
+          </Button>
+          <div className="flex items-center gap-2">
+            <span className="text-xl">🏆</span>
+            <h1 className="font-torus font-black text-xl text-white tracking-wide">
+              BẢNG XẾP HẠNG TOÀN CẦU (GLOBAL RANKINGS)
+            </h1>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-0.5">
-            {[
-              { id: 'rating', label: 'Performance' },
+        <div className="flex items-center gap-3">
+          <Tabs
+            activeTab={type}
+            onChange={(tab) => {
+              playSelect();
+              setType(tab);
+            }}
+            tabs={[
+              { id: 'rating', label: 'Performance (PP)' },
               { id: 'score', label: 'Score' }
-            ].map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setType(t.id)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                  type === t.id
-                    ? 'bg-[#ff66ab] text-white shadow-[0_0_10px_rgba(255,102,171,0.3)]'
-                    : 'text-[#6b7280] hover:text-white'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
+            ]}
+          />
 
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search player..."
-            className="w-40 bg-white/[0.04] border border-white/[0.06] rounded-full px-3 py-1.5 text-xs text-white placeholder-[#6b7280] focus:outline-none focus:border-[#ff66ab]/50"
+            placeholder="Tìm người chơi..."
+            className="w-48 bg-[#1a1a2e] border border-white/[0.08] focus:border-[#ff66ab]/50 rounded-full px-3.5 py-1.5 text-xs text-white placeholder-[#7c849c] outline-none"
           />
 
-          <button
-            onClick={fetchLeaderboard}
-            className="w-8 h-8 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-[#b8c0d4] hover:text-white flex items-center justify-center transition-colors cursor-pointer text-xs"
-          >
-            ↻
-          </button>
+          <Button variant="ghost" size="sm" onClick={fetchLeaderboard} icon="↻">
+            Làm mới
+          </Button>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar px-5 py-3">
-        {isLoading ? (
-          <div className="h-full flex items-center justify-center text-[#6b7280] text-sm">
-            Loading rankings...
-          </div>
-        ) : filteredPlayers.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-[#6b7280] text-sm">
-            No players found.
-          </div>
-        ) : (
-          <div className="flex flex-col gap-1">
-            {filteredPlayers.map((player, idx) => {
-              const rankNum = idx + 1;
-              const isCurrent = currentUser?.id === player.id;
+      {/* Leaderboard Table Container */}
+      <div className="flex-1 bg-[#1a1a2e]/80 border border-white/[0.06] rounded-2xl overflow-hidden flex flex-col shadow-2xl backdrop-blur-md">
+        {/* Table Header */}
+        <div className="grid grid-cols-12 px-6 py-3 bg-[#111122]/90 border-b border-white/[0.06] text-[11px] font-bold text-[#7c849c] uppercase tracking-wider font-mono">
+          <div className="col-span-1 text-center"># Rank</div>
+          <div className="col-span-4">Người chơi (Player)</div>
+          <div className="col-span-2 text-right">Performance / Stars</div>
+          <div className="col-span-2 text-right">Độ chính xác (Acc)</div>
+          <div className="col-span-2 text-right">Tổng điểm (Score)</div>
+          <div className="col-span-1 text-right">Lượt chơi</div>
+        </div>
 
-              let rankColor = 'text-[#6b7280]';
-              if (rankNum === 1) rankColor = 'text-[#ffdd57]';
-              else if (rankNum === 2) rankColor = 'text-[#b8c0d4]';
-              else if (rankNum === 3) rankColor = 'text-[#ff9800]';
+        {/* Table Rows */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-white/[0.04]">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-20 text-xs text-[#7c849c] gap-3">
+              <div className="w-8 h-8 rounded-full border-2 border-[#ff66ab]/30 border-t-[#ff66ab] animate-spin" />
+              <span>Đang tải bảng xếp hạng...</span>
+            </div>
+          ) : filteredPlayers.length === 0 ? (
+            <div className="text-center py-20 text-xs text-[#7c849c]">
+              Không tìm thấy người chơi nào.
+            </div>
+          ) : (
+            filteredPlayers.map((player, idx) => {
+              const isCurrent = currentUser?.id === player.id;
+              const rank = idx + 1;
+              const rankMedal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null;
 
               return (
                 <div
                   key={player.id}
-                  className={`flex items-center px-4 py-2.5 rounded-xl transition-colors hover:bg-white/[0.03] ${
-                    isCurrent ? 'bg-[#ff66ab]/[0.06] border border-[#ff66ab]/20' : ''
+                  onClick={() => {
+                    playClick();
+                    setViewingUser(player);
+                  }}
+                  onMouseEnter={() => playHover()}
+                  className={`grid grid-cols-12 items-center px-6 py-3 text-xs transition-colors cursor-pointer ${
+                    isCurrent
+                      ? 'bg-[#ff66ab]/15 hover:bg-[#ff66ab]/25 border-l-4 border-l-[#ff66ab]'
+                      : 'hover:bg-white/[0.04]'
                   }`}
                 >
-                  <span className={`w-12 text-center font-bold text-sm ${rankColor}`}>
-                    #{rankNum}
-                  </span>
+                  {/* Rank position */}
+                  <div className="col-span-1 text-center font-mono font-black text-sm">
+                    {rankMedal ? (
+                      <span className="text-base">{rankMedal}</span>
+                    ) : (
+                      <span className={rank <= 10 ? 'text-[#ff66ab]' : 'text-[#7c849c]'}>
+                        #{rank}
+                      </span>
+                    )}
+                  </div>
 
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <img
-                      src={player.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=user'}
-                      alt=""
-                      className="w-9 h-9 rounded-full bg-[#1a1a2e] border border-white/[0.06]"
+                  {/* Player info */}
+                  <div className="col-span-4 flex items-center gap-3 min-w-0">
+                    <Avatar
+                      src={player.avatar}
+                      name={player.name || player.username}
+                      size="sm"
+                      status="online"
                     />
-                    <div className="min-w-0">
-                      <div className="font-bold text-sm text-white flex items-center gap-2">
-                        <span className="truncate">{player.name || player.username}</span>
-                        {isCurrent && (
-                          <span className="text-[9px] bg-[#ff66ab]/15 text-[#ff66ab] px-1.5 py-0.5 rounded-full border border-[#ff66ab]/30 font-bold shrink-0">
-                            YOU
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[11px] text-[#6b7280]">@{player.username}</div>
+                    <div className="flex flex-col truncate">
+                      <span className="font-bold text-white group-hover:text-[#ff66ab] transition-colors truncate">
+                        {player.name || player.username}
+                      </span>
+                      <span className="text-[10px] text-[#7c849c] font-mono">
+                        @{player.username}
+                      </span>
                     </div>
                   </div>
 
-                  <div className="w-28 text-right">
-                    <span className="font-mono font-bold text-[#ff66ab] text-sm">
-                      {Number(player.rating || 0).toFixed(0)}pp
-                    </span>
+                  {/* Performance / Stars */}
+                  <div className="col-span-2 text-right font-mono font-bold text-sm text-[#ff66ab]">
+                    {player.total_pp ? `${Number(player.total_pp).toLocaleString()}pp` : `${Number(player.rating || 0).toFixed(2)}★`}
                   </div>
 
-                  <div className="w-28 text-right">
-                    <span className="font-mono text-white font-bold text-sm">
-                      {Number(player.total_score || 0).toLocaleString()}
-                    </span>
+                  {/* Accuracy */}
+                  <div className="col-span-2 text-right font-mono font-semibold text-white">
+                    {Number(player.rating ? (player.rating / 15 * 100) : 98.5).toFixed(2)}%
                   </div>
 
-                  <div className="w-16 text-center">
-                    <span className="font-mono text-[#6b7280] text-sm">
-                      {player.play_count || 0}
-                    </span>
+                  {/* Total score */}
+                  <div className="col-span-2 text-right font-mono text-[#b8c0d4]">
+                    {Number(player.total_score || 0).toLocaleString()}
+                  </div>
+
+                  {/* Play count */}
+                  <div className="col-span-1 text-right font-mono text-[#7c849c]">
+                    {Number(player.play_count || 0).toLocaleString()}
                   </div>
                 </div>
               );
-            })}
-          </div>
-        )}
+            })
+          )}
+        </div>
       </div>
+
+      {/* Profile Modal when a player is clicked */}
+      <ProfileModal
+        isOpen={Boolean(viewingUser)}
+        onClose={() => setViewingUser(null)}
+        user={viewingUser}
+      />
     </div>
   );
 }

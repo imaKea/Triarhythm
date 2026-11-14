@@ -1,15 +1,33 @@
-import React, { useState } from 'react';
-import { playHover, playSelect } from '../ui/sound/uiAudio.js';
+import React, { useState, useEffect } from 'react';
+import { playHover, playSelect, playClick } from '../ui/sound/uiAudio.js';
+import { Avatar, Tooltip } from '../ui/index.js';
 
 export default function RhythmNavbar({
   currentScreen,
   onNavigate,
   currentUser,
   onOpenAuth,
-  onLogout,
+  onOpenProfile,
   onOpenSettings,
 }) {
-  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    playClick();
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  };
 
   const navItems = [
     { id: 'SONG_SELECT', label: 'play', icon: '▶' },
@@ -19,103 +37,125 @@ export default function RhythmNavbar({
   ];
 
   return (
-    <header className="fixed top-0 left-0 right-0 h-[52px] bg-[#1a1a2e]/95 backdrop-blur-xl border-b border-white/[0.06] px-6 flex items-center justify-between z-50 select-none">
-      {/* Left: Logo */}
-      <div
-        onClick={() => onNavigate('SONG_SELECT')}
-        className="flex items-center gap-2 cursor-pointer group"
-      >
-        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#ff66ab] to-[#cc5289] flex items-center justify-center shadow-[0_0_12px_rgba(255,102,171,0.5)] group-hover:shadow-[0_0_18px_rgba(255,102,171,0.7)] transition-shadow">
-          <span className="text-white font-black text-xs">▲</span>
-        </div>
-        <span className="font-bold text-base text-white tracking-wide group-hover:text-[#ff66ab] transition-colors">
-          triarhythm
-        </span>
-      </div>
-
-      {/* Center: Navigation */}
-      <nav className="flex items-center gap-0.5">
-        {navItems.map((item) => {
-          const isActive = currentScreen === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => {
-                playSelect();
-                onNavigate(item.id);
-              }}
-              onMouseEnter={() => !isActive && playHover()}
-              className={`px-5 py-1.5 text-[13px] font-bold tracking-wide transition-all cursor-pointer relative ${
-                isActive
-                  ? 'text-white'
-                  : 'text-[#8890a4] hover:text-white'
-              }`}
-            >
-              {item.label}
-              {isActive && (
-                <div className="absolute bottom-[-13px] left-1/2 -translate-x-1/2 w-8 h-[3px] rounded-full bg-[#ff66ab] shadow-[0_0_8px_rgba(255,102,171,0.6)]" />
-              )}
-            </button>
-          );
-        })}
-      </nav>
-
-      {/* Right: Actions + User */}
-      <div className="flex items-center gap-2">
-        <button
-          onClick={onOpenSettings}
-          className="w-8 h-8 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-[#8890a4] hover:text-white flex items-center justify-center text-sm transition-all cursor-pointer"
-          title="Settings"
+    <>
+      {/* TOP LAZER NAVBAR */}
+      <header className="fixed top-0 left-0 right-0 h-[52px] bg-[#111122]/95 backdrop-blur-xl border-b border-white/[0.08] px-6 flex items-center justify-between z-50 select-none shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+        {/* Left: Lazer-style Logo */}
+        <div
+          onClick={() => {
+            playSelect();
+            onNavigate('SONG_SELECT');
+          }}
+          className="flex items-center gap-3 cursor-pointer group"
         >
-          ⚙
-        </button>
-
-        {currentUser ? (
-          <div className="relative flex items-center gap-2">
-            <button
-              onClick={() => setShowUserDropdown(!showUserDropdown)}
-              className="flex items-center gap-2 px-2 py-1 rounded-full hover:bg-white/[0.06] transition-colors cursor-pointer"
-            >
-              <img
-                src={currentUser.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=user'}
-                alt="Avatar"
-                className="w-7 h-7 rounded-full border-2 border-[#ff66ab]/50"
-              />
-              <span className="text-xs font-bold text-white/80 hidden md:block">
-                {currentUser.name || currentUser.username}
-              </span>
-            </button>
-
-            {showUserDropdown && (
-              <div className="absolute right-0 top-10 w-48 bg-[#1e1e38] border border-white/10 rounded-xl shadow-2xl py-1.5 z-50 animate-slideDown">
-                <div className="px-3.5 py-2 border-b border-white/[0.06]">
-                  <div className="font-bold text-white text-xs">{currentUser.username}</div>
-                  <div className="text-[10px] text-[#8890a4] truncate">{currentUser.email}</div>
-                  <div className="text-[10px] text-[#ff66ab] font-bold mt-0.5">
-                    {Number(currentUser.rating || 0).toFixed(0)}pp
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowUserDropdown(false);
-                    if (onLogout) onLogout();
-                  }}
-                  className="w-full text-left px-3.5 py-2 text-xs text-red-400 hover:bg-white/[0.04] transition-colors cursor-pointer font-semibold"
-                >
-                  Sign out
-                </button>
-              </div>
-            )}
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff66ab] to-[#cc5289] flex items-center justify-center shadow-[0_0_14px_rgba(255,102,171,0.5)] group-hover:shadow-[0_0_22px_rgba(255,102,171,0.8)] group-hover:scale-105 transition-all">
+            <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white drop-shadow">
+              <polygon points="12,3 22,21 2,21" />
+            </svg>
           </div>
-        ) : (
+          <span className="font-torus font-black text-lg text-white tracking-wider group-hover:text-[#ff66ab] transition-colors">
+            triarhythm
+          </span>
+        </div>
+
+        {/* Center: Navigation Pills */}
+        <nav className="flex items-center gap-1 bg-[#1a1a2e]/70 p-1 rounded-full border border-white/[0.04]">
+          {navItems.map((item) => {
+            const isActive = currentScreen === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  playSelect();
+                  onNavigate(item.id);
+                }}
+                onMouseEnter={() => !isActive && playHover()}
+                className={`px-5 py-1.5 rounded-full text-xs font-bold tracking-wide transition-all cursor-pointer flex items-center gap-1.5 ${
+                  isActive
+                    ? 'bg-gradient-to-r from-[#ff66ab] to-[#cc5289] text-white shadow-[0_2px_12px_rgba(255,102,171,0.4)]'
+                    : 'text-[#8890a4] hover:text-white hover:bg-white/[0.04]'
+                }`}
+              >
+                <span>{item.icon}</span>
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+
           <button
-            onClick={onOpenAuth}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#ff66ab] hover:bg-[#ff7ab8] text-white font-bold text-xs transition-all shadow-[0_0_12px_rgba(255,102,171,0.3)] hover:shadow-[0_0_18px_rgba(255,102,171,0.5)] cursor-pointer"
+            onClick={() => {
+              playClick();
+              if (onOpenSettings) onOpenSettings();
+            }}
+            onMouseEnter={() => playHover()}
+            className="px-4 py-1.5 rounded-full text-xs font-bold tracking-wide text-[#8890a4] hover:text-white hover:bg-white/[0.04] transition-all cursor-pointer flex items-center gap-1.5"
           >
-            Sign in
+            <span>⚙</span>
+            <span>settings</span>
           </button>
-        )}
-      </div>
-    </header>
+        </nav>
+
+        {/* Right: User card & controls */}
+        <div className="flex items-center gap-3">
+          {currentUser ? (
+            <div
+              onClick={() => {
+                playClick();
+                if (onOpenProfile) onOpenProfile();
+              }}
+              className="flex items-center gap-2.5 px-3 py-1 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-[#ff66ab]/40 transition-all cursor-pointer group"
+              title="Xem hồ sơ người chơi"
+            >
+              <Avatar
+                src={currentUser.avatar}
+                name={currentUser.name || currentUser.username}
+                size="sm"
+                status="online"
+              />
+              <div className="flex flex-col text-left leading-none">
+                <span className="text-xs font-bold text-white group-hover:text-[#ff66ab] transition-colors truncate max-w-[100px]">
+                  {currentUser.name || currentUser.username}
+                </span>
+                <span className="text-[10px] text-[#ff66ab] font-mono font-bold mt-0.5">
+                  {currentUser.total_pp ? `${Number(currentUser.total_pp).toLocaleString()}pp` : `${currentUser.rating || 0}★`}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                playClick();
+                if (onOpenAuth) onOpenAuth();
+              }}
+              className="px-4 py-1.5 rounded-full text-xs font-bold bg-[#ff66ab]/20 hover:bg-[#ff66ab]/30 text-[#ff66ab] border border-[#ff66ab]/30 hover:border-[#ff66ab]/60 transition-all cursor-pointer shadow-[0_0_10px_rgba(255,102,171,0.2)]"
+            >
+              Đăng nhập / Đăng ký
+            </button>
+          )}
+
+          {/* Fullscreen Button */}
+          <Tooltip content={isFullscreen ? 'Thu nhỏ (F11)' : 'Toàn màn hình (F11)'}>
+            <button
+              onClick={toggleFullscreen}
+              className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.1] border border-white/[0.08] text-white flex items-center justify-center text-xs transition-colors cursor-pointer"
+            >
+              {isFullscreen ? '⤢' : '⛶'}
+            </button>
+          </Tooltip>
+        </div>
+      </header>
+
+      {/* BOTTOM STATUS BAR */}
+      <footer className="fixed bottom-0 left-0 right-0 h-6 bg-[#090914]/90 backdrop-blur-md border-t border-white/[0.04] px-4 flex items-center justify-between text-[10px] text-[#7c849c] z-40 select-none">
+        <div className="flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#66bb6a] shadow-[0_0_6px_#66bb6a]" />
+          <span>Online • Triarhythm v1.2 lazer</span>
+        </div>
+        <div className="flex items-center gap-3 font-mono">
+          <span>TriRing9 Inverted Triangle Layout</span>
+          <span>IndexedDB + Web Audio</span>
+        </div>
+      </footer>
+    </>
   );
 }

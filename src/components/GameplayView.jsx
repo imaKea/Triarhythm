@@ -1,9 +1,10 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { GameEngine, gameEvents, audioEngine } from '../core/engine/index.js';
 import { SAMPLE_BEATMAP } from '../core/beatmap/sampleChart.js';
 import { parseOsu } from '../core/parser/index.js';
 import { buildScoreRecord, persistScoreResult } from '../core/storage/scoreService.js';
 import { calculateStars, calculatePP } from '../core/pp/ppCalculator.js';
+import { Button, StarRating, RankBadge, playHover, playClick, playBack } from '../ui/index.js';
 
 export default function GameplayView({
   initialChart = null,
@@ -26,24 +27,43 @@ export default function GameplayView({
   const [isPaused, setIsPaused] = useState(false);
   const [canSkip, setCanSkip] = useState(false);
   const [gameResult, setGameResult] = useState(null);
+
+  // Live HUD States
+  const [liveScore, setLiveScore] = useState(0);
+  const [liveAccuracy, setLiveAccuracy] = useState(100.0);
+  const [liveCombo, setLiveCombo] = useState(0);
+  const [songProgress, setSongProgress] = useState(0);
+
+  // Key Overlay State: lane 0..8 + ring
+  const [keyPressCounts, setKeyPressCounts] = useState({
+    0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, ring: 0
+  });
+  const [activePressedLanes, setActivePressedLanes] = useState(new Set());
+
+  // Pause Menu Keyboard Index: 0: Continue, 1: Retry, 2: Back
+  const [pauseMenuIndex, setPauseMenuIndex] = useState(0);
+
+  // Metadata
   const [activeChartName, setActiveChartName] = useState('Beyond The Æxis');
   const [activeArtist, setActiveArtist] = useState('');
   const [activeDiffName, setActiveDiffName] = useState('');
-  const [audioSourceName, setAudioSourceName] = useState('audio.ogg (Gói map)');
+  const [activeStars, setActiveStars] = useState(5.0);
+  const [coverUrl, setCoverUrl] = useState(null);
+
   const [noteSpeed, setNoteSpeed] = useState(settings?.noteSpeed ?? 10.0);
   const [userOffset, setUserOffset] = useState(settings?.userOffset ?? 0);
   const [musicVol, setMusicVol] = useState(settings?.musicVol ?? 85);
   const [hitVol, setHitVol] = useState(settings?.hitVol ?? 95);
 
-  // Video nền & Background Dim
+  // Video Background & Dim
   const [videoSrc, setVideoSrc] = useState(null);
-  const [showVideo, setShowVideo] = useState(true);
+  const [showVideo, setShowVideo] = useState(settings?.showVideo !== false);
   const [backgroundDim, setBackgroundDim] = useState(settings?.backgroundDim ?? 0.75);
 
   // Autoplay
   const [isAutoplay, setIsAutoplay] = useState(settings?.isAutoplay ?? false);
 
-  // Khởi tạo GameEngine
+  // Initialize GameEngine
   useEffect(() => {
     if (!canvasRef.current) return;
 
@@ -61,8 +81,21 @@ export default function GameplayView({
       }
     };
 
-    const offPause = gameEvents.on('pause', () => setIsPaused(true));
+    const offPause = gameEvents.on('pause', () => {
+      setIsPaused(true);
+      setPauseMenuIndex(0);
+    });
+
     const offSkip = gameEvents.on('canSkipBreak', ({ canSkip }) => setCanSkip(Boolean(canSkip)));
+
+    const offJudgement = gameEvents.on('judgement', (data) => {
+      if (data?.combo !== undefined) setLiveCombo(data.combo);
+      if (data?.achievement !== undefined) {
+        setLiveAccuracy(data.achievement);
+        setLiveScore(Math.round(data.achievement * 10000));
+      }
+    });
+
     const offEnd = gameEvents.on('songEnd', async ({ summary }) => {
       setIsPlaying(false);
 
@@ -98,54 +131,47 @@ export default function GameplayView({
         setGameResult((prev) => (prev ? { ...prev, sync: mysql } : prev));
       } catch (err) {
         console.warn('Lỗi lưu điểm số:', err);
-        setGameResult(summary);
       }
     });
 
+    // Load Chart
     const setupChart = async () => {
-      if (initialChart) {
-        const beatmap = initialChart.beatmap || initialChart;
-        const audioBlob = initialChart.audioBlob || initialChart.audioSource || initialChart.serverAssets?.audioUrl || null;
-        const hitsounds = initialChart.hitsounds || null;
-        const videoBlob = initialChart.videoBlob || initialChart.videoSource || initialChart.serverAssets?.videoUrl || beatmap.assets?.video || null;
+      let chartToLoad = initialChart;
+      if (!chartToLoad) {
+        chartToLoad = SAMPLE_BEATMAP;
+      }
 
-        await engine.loadChart(beatmap, audioBlob, hitsounds);
-        const title = beatmap.metadata?.title || initialChart.title || 'Unknown';
-        const diff = beatmap.metadata?.difficultyName || initialChart.difficultyName || 'Normal';
-        const artist = beatmap.metadata?.artist || initialChart.artist || '';
-        setActiveChartName(title);
-        setActiveDiffName(diff);
-        setActiveArtist(artist);
-        setAudioSourceName(audioBlob ? (typeof audioBlob === 'string' ? audioBlob : 'File nhạc từ gói map') : 'Synth Procedural');
+      let parsedBeatmap = chartToLoad.beatmap || chartToLoad;
+      if (chartToLoad.rawOsu) {
+        const res = parseOsu(chartToLoad.rawOsu, { preset: 'twoFingers' });
+        parsedBeatmap = res.beatmap;
+      }
 
-        if (videoBlob) {
-          const vUrl = videoBlob instanceof Blob ? URL.createObjectURL(videoBlob) : videoBlob;
-          setVideoSrc(vUrl);
-        } else {
-          setVideoSrc(null);
-        }
+      const meta = chartToLoad.metadata || parsedBeatmap.metadata || {};
+      const title = chartToLoad.title || meta.title || 'Beyond The Æxis';
+      const artist = chartToLoad.artist || meta.artist || '';
+      const diff = chartToLoad.difficultyName || meta.difficultyName || 'Normal';
+      const stars = parseFloat(chartToLoad.stars || meta.stars || chartToLoad.difficultyLevel || 5.0);
+
+      setActiveChartName(title);
+      setActiveArtist(artist);
+      setActiveDiffName(diff);
+      setActiveStars(stars);
+      setCoverUrl(chartToLoad.backgroundSource || chartToLoad.serverAssets?.coverUrl || chartToLoad.coverUrl || null);
+
+      let audioBlob = chartToLoad.audioBlob || chartToLoad.audioSource || chartToLoad.serverAssets?.audioUrl || null;
+      let hitsounds = chartToLoad.hitsounds || null;
+      let vidBlob = chartToLoad.videoBlob || chartToLoad.videoSource || chartToLoad.serverAssets?.videoUrl || parsedBeatmap.assets?.video || null;
+
+      if (vidBlob) {
+        const vidUrl = typeof vidBlob === 'string' ? vidBlob : URL.createObjectURL(vidBlob);
+        setVideoSrc(vidUrl);
       } else {
-        try {
-          const res = await fetch('/tests/fixtures/beyond-the-aexis/2025310 SDMNE - Beyond The Aexis/SDMNE - Beyond The Aexis (ERA Akiri) [Soulless Wanderers].osu');
-          if (res.ok) {
-            const text = await res.text();
-            const parsed = parseOsu(text, { preset: 'twoFingers', autoSlide: false });
-            await engine.loadChart(parsed.beatmap, '/audio.ogg');
-            setActiveChartName('Beyond The Æxis');
-            setActiveDiffName('Soulless Wanderers');
-            setActiveArtist('SDMNE');
-            setAudioSourceName('audio.ogg (Mẫu)');
-            setVideoSrc(null);
-            return;
-          }
-        } catch (e) {}
-        await engine.loadChart(SAMPLE_BEATMAP, null);
-        setActiveChartName('Neon Odyssey');
-        setActiveDiffName('Normal');
-        setActiveArtist('Triarhythm');
-        setAudioSourceName('Synth Procedural');
         setVideoSrc(null);
       }
+
+      await engine.loadChart(parsedBeatmap, audioBlob, hitsounds);
+      engine.renderer.backgroundDim = backgroundDim;
     };
 
     setupChart();
@@ -153,16 +179,18 @@ export default function GameplayView({
     return () => {
       offPause();
       offSkip();
+      offJudgement();
       offEnd();
       engine.stop();
     };
   }, [initialChart]);
 
-  // Cập nhật settings
+  // Sync settings updates to Engine
   useEffect(() => {
     if (engineRef.current) {
       engineRef.current.renderer.noteSpeed = noteSpeed;
       engineRef.current.renderer.backgroundDim = backgroundDim;
+      engineRef.current.renderer.showURBar = settings?.showURBar !== false;
       engineRef.current.hasBackgroundVideo = Boolean(videoSrc && showVideo);
       engineRef.current.setAutoplay(isAutoplay);
       if (settings?.customKeybinds) {
@@ -172,60 +200,120 @@ export default function GameplayView({
       audioEngine.setUserOffset(userOffset);
       audioEngine.setVolumes(musicVol / 100, hitVol / 100);
     }
-  }, [noteSpeed, userOffset, musicVol, hitVol, backgroundDim, videoSrc, showVideo, isAutoplay, settings?.customKeybinds]);
+  }, [noteSpeed, userOffset, musicVol, hitVol, backgroundDim, videoSrc, showVideo, isAutoplay, settings]);
 
-  // Đồng bộ Video
+  // Track live song progress & Key Overlay listeners
   useEffect(() => {
     let animId;
-    const syncVideo = () => {
-      if (videoRef.current && showVideo && isPlaying && !isPaused && engineRef.current) {
-        const audioTime = engineRef.current.audioEngine.getSongTimeMs();
-        const videoOffset = engineRef.current.beatmap?.assets?.videoOffset || 0;
-        const targetVideoTime = (audioTime - videoOffset) / 1000;
-
-        if (targetVideoTime >= 0) {
-          const vid = videoRef.current;
-          const drift = Math.abs(vid.currentTime - targetVideoTime);
-          if (drift > 0.08) {
-            vid.currentTime = targetVideoTime;
-          }
-          if (vid.paused) {
-            vid.play().catch(() => {});
-          }
+    const updateProgress = () => {
+      if (isPlaying && !isPaused && engineRef.current) {
+        const currentMs = engineRef.current.audioEngine.getSongTimeMs();
+        const totalMs = engineRef.current.beatmap?.totalDuration || (engineRef.current.beatmap?.notes?.slice(-1)[0]?.time || 1);
+        if (totalMs > 0) {
+          setSongProgress(Math.min(1, Math.max(0, currentMs / totalMs)));
         }
-      } else if (videoRef.current && isPaused && !videoRef.current.paused) {
-        videoRef.current.pause();
       }
-      animId = requestAnimationFrame(syncVideo);
+      animId = requestAnimationFrame(updateProgress);
+    };
+    animId = requestAnimationFrame(updateProgress);
+    return () => cancelAnimationFrame(animId);
+  }, [isPlaying, isPaused]);
+
+  // Key overlay event tracking
+  useEffect(() => {
+    const keybinds = settings?.customKeybinds || {
+      0: ['Digit4', 'Digit5'],
+      1: ['Digit6', 'Digit7'],
+      2: ['Digit8', 'Digit9'],
+      3: ['KeyR'],
+      4: ['KeyF'],
+      5: ['KeyV'],
+      6: ['KeyI'],
+      7: ['KeyJ'],
+      8: ['KeyN'],
+      ring: ['Space', 'KeyB', 'Enter']
     };
 
-    animId = requestAnimationFrame(syncVideo);
-    return () => cancelAnimationFrame(animId);
-  }, [isPlaying, isPaused, showVideo]);
+    const handleKeyDown = (e) => {
+      if (!isPlaying || isPaused) return;
+      for (const [lane, keys] of Object.entries(keybinds)) {
+        if (keys.includes(e.code)) {
+          setActivePressedLanes((prev) => new Set([...prev, lane]));
+          setKeyPressCounts((prev) => ({
+            ...prev,
+            [lane]: (prev[lane] || 0) + 1
+          }));
+        }
+      }
+    };
+
+    const handleKeyUp = (e) => {
+      for (const [lane, keys] of Object.entries(keybinds)) {
+        if (keys.includes(e.code)) {
+          setActivePressedLanes((prev) => {
+            const next = new Set(prev);
+            next.delete(lane);
+            return next;
+          });
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [isPlaying, isPaused, settings?.customKeybinds]);
+
+  // Pause menu keyboard navigation (↑, ↓, Enter, Esc)
+  useEffect(() => {
+    if (!isPaused) return;
+
+    const handlePauseKey = (e) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        playHover();
+        setPauseMenuIndex((prev) => (prev + 1) % 4);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        playHover();
+        setPauseMenuIndex((prev) => (prev - 1 + 4) % 4);
+      } else if (e.key === 'Enter' || e.key === 'Space') {
+        e.preventDefault();
+        playClick();
+        if (pauseMenuIndex === 0) handlePauseToggle();
+        else if (pauseMenuIndex === 1) handleRetry();
+        else if (pauseMenuIndex === 2) {
+          if (onOpenSettings) onOpenSettings();
+        } else if (pauseMenuIndex === 3) handleBack();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        handlePauseToggle();
+      }
+    };
+
+    window.addEventListener('keydown', handlePauseKey);
+    return () => window.removeEventListener('keydown', handlePauseKey);
+  }, [isPaused, pauseMenuIndex]);
 
   const handleStartGame = async () => {
     if (!engineRef.current) return;
     setGameResult(null);
     setIsPaused(false);
     setIsPlaying(true);
+    setLiveScore(0);
+    setLiveAccuracy(100.0);
+    setLiveCombo(0);
+    setSongProgress(0);
+
     if (videoRef.current && showVideo) {
       videoRef.current.currentTime = 0;
       videoRef.current.play().catch(() => {});
     }
     await engineRef.current.start(0);
   };
-
-  // Phím Space / Enter để bắt đầu chơi
-  useEffect(() => {
-    const handleGlobalKey = (e) => {
-      if (!isPlaying && !gameResult && (e.code === 'Space' || e.code === 'Enter')) {
-        e.preventDefault();
-        handleStartGame();
-      }
-    };
-    window.addEventListener('keydown', handleGlobalKey);
-    return () => window.removeEventListener('keydown', handleGlobalKey);
-  }, [isPlaying, gameResult]);
 
   const handlePauseToggle = () => {
     if (!engineRef.current) return;
@@ -248,79 +336,140 @@ export default function GameplayView({
 
   const handleBack = () => {
     if (engineRef.current) engineRef.current.stop();
+    if (videoRef.current) videoRef.current.pause();
     if (onBackToSelect) onBackToSelect();
   };
 
-  // Rank color helper
-  const getRankColor = (rank) => {
-    if (!rank) return 'text-white';
-    const r = rank.toUpperCase();
-    if (r.includes('SS') || r === 'SSS+' || r === 'SSS') return 'text-[#ffdd57]';
-    if (r.includes('S')) return 'text-[#ff66ab]';
-    if (r === 'A' || r.includes('A')) return 'text-[#66bb6a]';
-    if (r === 'B') return 'text-[#4fc3f7]';
-    if (r === 'C') return 'text-[#ff9800]';
-    return 'text-white';
-  };
+  // Format 7-8 digit score (e.g. 00,845,210)
+  const formattedScore = String(liveScore).padStart(8, '0').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+  // Lanes definition for Key Overlay
+  const keyOverlayLanes = [
+    { key: '0', label: '4·5' },
+    { key: '1', label: '6·7' },
+    { key: '2', label: '8·9' },
+    { key: '3', label: 'R' },
+    { key: '4', label: 'F' },
+    { key: '5', label: 'V' },
+    { key: '6', label: 'I' },
+    { key: '7', label: 'J' },
+    { key: '8', label: 'N' },
+    { key: 'ring', label: 'SPC' }
+  ];
 
   return (
-    <div className="fixed inset-0 z-40 bg-[#0a0a16] flex flex-col select-none">
-      {/* Top HUD Bar - Minimal: Back + Map Info + Settings */}
-      <div className="h-11 bg-[#0d0d1a]/90 backdrop-blur-md border-b border-white/[0.04] px-4 flex items-center justify-between z-20 shrink-0">
-        {/* Left: Back Button */}
-        <div className="flex items-center gap-3">
-          {onBackToSelect && (
-            <button
-              onClick={handleBack}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-[#b8c0d4] hover:text-white text-xs font-semibold transition-all cursor-pointer"
-            >
-              <span className="text-sm">←</span>
-              <span>Back</span>
-            </button>
-          )}
+    <div className="fixed inset-0 z-40 bg-[#090912] flex flex-col select-none overflow-hidden osu-screen-transition">
+      {/* 1. TOP PROGRESS BAR (Thin 3px line across entire top) */}
+      <div className="absolute top-0 left-0 right-0 h-[3px] bg-white/[0.08] z-30 pointer-events-none">
+        <div
+          className="h-full bg-gradient-to-r from-[#cc5289] to-[#ff66ab] shadow-[0_0_8px_#ff66ab] transition-all duration-75"
+          style={{ width: `${songProgress * 100}%` }}
+        />
+      </div>
 
-          {/* Map Info */}
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="min-w-0">
+      {/* 2. TOP HUD: Left Song Info + Right Score & Accuracy */}
+      <div className="h-14 px-5 flex items-center justify-between z-20 shrink-0 bg-gradient-to-b from-[#090912]/95 to-transparent">
+        {/* Left: Back + Settings + Map Info */}
+        <div className="flex items-center gap-2.5 min-w-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleBack}
+            icon="←"
+            className="text-[#b8c0d4] hover:text-white shrink-0"
+          >
+            Back
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              if (isPlaying && !isPaused) handlePauseToggle();
+              if (onOpenSettings) onOpenSettings();
+            }}
+            icon="⚙"
+            className="text-[#b8c0d4] hover:text-white shrink-0"
+          >
+            Settings
+          </Button>
+
+          <div className="h-5 w-px bg-white/10 mx-1 shrink-0" />
+
+          {/* Map Info with Thumbnail */}
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 rounded-lg overflow-hidden bg-white/5 border border-white/10 shrink-0 shadow-sm flex items-center justify-center">
+              {coverUrl ? (
+                <img src={coverUrl} alt="Cover" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-[#ff66ab] text-sm font-bold">♪</span>
+              )}
+            </div>
+
+            <div className="flex flex-col min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-white font-bold text-sm truncate max-w-[300px]">
+                <span className="text-white font-torus font-black text-sm truncate max-w-[280px]">
                   {activeChartName}
                 </span>
-                {activeDiffName && (
-                  <span className="px-2 py-0.5 rounded-full bg-[#ff66ab]/20 text-[#ff66ab] text-[10px] font-bold shrink-0">
-                    {activeDiffName}
-                  </span>
-                )}
+                <span className="px-2 py-0.5 rounded-full bg-[#ff66ab]/20 text-[#ff66ab] text-[10px] font-bold shrink-0">
+                  {activeDiffName}
+                </span>
+                <StarRating stars={activeStars} size="sm" showIcon={true} />
                 {isAutoplay && (
-                  <span className="px-2 py-0.5 rounded-full bg-[#ffdd57]/20 text-[#ffdd57] text-[10px] font-bold animate-pulse shrink-0">
-                    AUTO
+                  <span className="px-2 py-0.5 rounded-full bg-[#ffdd57]/20 text-[#ffdd57] text-[10px] font-black animate-pulse shrink-0">
+                    AUTO PLAY
                   </span>
                 )}
               </div>
               {activeArtist && (
-                <span className="text-[10px] text-[#6b7280]">{activeArtist}</span>
+                <span className="text-[11px] text-[#7c849c] truncate max-w-[280px]">{activeArtist}</span>
               )}
             </div>
           </div>
         </div>
 
-        {/* Right: Settings */}
-        <div className="flex items-center gap-2">
-          {onOpenSettings && (
-            <button
-              onClick={onOpenSettings}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-[#b8c0d4] hover:text-white text-xs font-semibold transition-all cursor-pointer"
-            >
-              <span>⚙</span>
-              <span>Settings</span>
-            </button>
-          )}
+        {/* Right: 7-8 Digit Score + Accuracy with Circular Ring */}
+        <div className="flex items-center gap-4 shrink-0">
+          <div className="flex flex-col items-end">
+            <span className="font-mono font-black text-2xl text-white tracking-widest drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+              {formattedScore}
+            </span>
+            <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-[#b8c0d4]">
+              <span>{liveAccuracy.toFixed(2)}%</span>
+            </div>
+          </div>
+
+          {/* Circular Accuracy Progress Ring */}
+          <div className="relative w-10 h-10 shrink-0">
+            <svg className="w-full h-full -rotate-90">
+              <circle
+                cx="20"
+                cy="20"
+                r="16"
+                className="stroke-white/[0.1] fill-none"
+                strokeWidth="3"
+              />
+              <circle
+                cx="20"
+                cy="20"
+                r="16"
+                className="stroke-[#ff66ab] fill-none transition-all duration-100"
+                strokeWidth="3"
+                strokeDasharray="100.5"
+                strokeDashoffset={100.5 - (100.5 * liveAccuracy) / 100}
+                strokeLinecap="round"
+              />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-[#ff66ab]">
+              ★
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Main Canvas Area - Full remaining space */}
+      {/* 3. MAIN CANVAS GAMEPLAY AREA */}
       <div className="flex-1 relative flex items-center justify-center overflow-hidden">
-        {/* Video Background */}
+        {/* Background Video if available */}
         {videoSrc && showVideo && (
           <video
             ref={videoRef}
@@ -333,6 +482,7 @@ export default function GameplayView({
           />
         )}
 
+        {/* Canvas */}
         <canvas
           ref={canvasRef}
           width={720}
@@ -340,88 +490,145 @@ export default function GameplayView({
           className="block cursor-default relative z-10 max-h-full"
         />
 
-        {/* Skip Button */}
+        {/* 4. BOTTOM-LEFT HUD: Large Combo Counter */}
+        {liveCombo > 0 && (
+          <div className="absolute bottom-10 left-8 z-20 pointer-events-none flex flex-col items-start animate-fadeIn">
+            <div className="font-torus font-black text-5xl text-white tracking-wider drop-shadow-[0_4px_16px_rgba(255,102,171,0.5)]">
+              {liveCombo}x
+            </div>
+            <div className="text-[11px] font-black tracking-widest text-[#ff66ab] uppercase -mt-1 ml-0.5">
+              COMBO
+            </div>
+          </div>
+        )}
+
+        {/* 5. RIGHT KEY OVERLAY (osu! style key press counter) */}
+        {settings?.showKeyOverlay !== false && isPlaying && (
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 z-20 pointer-events-none flex flex-col gap-1.5 p-2 rounded-2xl bg-[#111122]/70 backdrop-blur-md border border-white/[0.06]">
+            {keyOverlayLanes.map((lane) => {
+              const isPressed = activePressedLanes.has(lane.key);
+              const count = keyPressCounts[lane.key] || 0;
+              return (
+                <div
+                  key={lane.key}
+                  className={`w-12 h-6.5 rounded-lg flex items-center justify-between px-2 text-[10px] font-mono font-bold transition-all ${
+                    isPressed
+                      ? 'bg-gradient-to-r from-[#ff66ab] to-[#cc5289] text-white shadow-[0_0_12px_#ff66ab] scale-105'
+                      : 'bg-white/[0.04] text-[#7c849c]'
+                  }`}
+                >
+                  <span>{lane.label}</span>
+                  <span className={isPressed ? 'text-white' : 'text-[#b8c0d4]'}>{count}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* 6. SKIP BUTTON (osu! style) */}
         {canSkip && isPlaying && !isPaused && (
           <button
             onClick={() => {
               if (engineRef.current) engineRef.current.skipBreak();
             }}
-            className="absolute bottom-8 right-8 z-20 flex items-center gap-2 px-5 py-2 rounded-full bg-[#1a1a2e]/90 hover:bg-[#ff66ab]/20 text-white/70 hover:text-white border border-white/10 hover:border-[#ff66ab]/50 text-xs font-bold transition-all cursor-pointer"
+            className="absolute bottom-8 right-8 z-20 flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#111122]/90 hover:bg-[#ff66ab] text-white border border-[#ff66ab]/40 text-xs font-bold transition-all cursor-pointer shadow-[0_4px_20px_rgba(255,102,171,0.3)] hover:scale-105"
           >
-            <span>Skip</span>
-            <span className="text-base">⏩</span>
+            <span>Skip (Space)</span>
+            <span>⏩</span>
           </button>
         )}
 
-        {/* Pre-game Start Overlay */}
+        {/* 7. PRE-GAME OVERLAY */}
         {!isPlaying && !gameResult && (
-          <div className="absolute inset-0 z-30 bg-[#0a0a16]/85 backdrop-blur-sm flex flex-col items-center justify-center text-center animate-fadeIn">
-            <div className="text-5xl font-black text-white mb-2 tracking-[0.15em]">
+          <div className="absolute inset-0 z-30 bg-[#0d0d1a]/85 backdrop-blur-sm flex flex-col items-center justify-center text-center animate-fadeIn">
+            <div className="text-4xl font-black text-white mb-2 tracking-[0.2em] font-torus">
               TRIARHYTHM
             </div>
-            <p className="text-xs text-[#6b7280] tracking-wider mb-8 uppercase">
-              Triangular VSRG • 2-Finger Ergonomics
+            <p className="text-xs text-[#7c849c] tracking-wider mb-8 uppercase">
+              VSRG Triangle Arcade • osu!(lazer) Engine
             </p>
 
-            <button
+            <Button
+              variant="primary"
+              size="lg"
               onClick={handleStartGame}
-              className="px-12 py-3.5 rounded-full osu-btn text-sm tracking-widest font-black cursor-pointer relative z-40"
+              className="px-14 py-4 text-base tracking-widest shadow-[0_0_30px_rgba(255,102,171,0.7)]"
             >
               PLAY
-            </button>
+            </Button>
 
-            <div className="mt-6 text-[11px] text-[#6b7280]">
-              Press <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-white/70 font-bold border border-white/10 text-[10px]">SPACE</kbd> or click to start
+            <div className="mt-6 text-xs text-[#7c849c]">
+              Press <kbd className="px-2 py-0.5 rounded bg-white/10 text-white font-mono">SPACE</kbd> or <kbd className="px-2 py-0.5 rounded bg-white/10 text-white font-mono">ENTER</kbd> to start
             </div>
           </div>
         )}
 
-        {/* Pause Overlay */}
+        {/* 8. PAUSE MENU (osu! lazer style with keyboard navigation) */}
         {isPaused && (
-          <div className="absolute inset-0 z-30 bg-[#0a0a16]/85 backdrop-blur-md flex flex-col items-center justify-center text-center animate-fadeIn">
-            <div className="text-4xl font-black text-white mb-6 tracking-widest">
+          <div className="absolute inset-0 z-30 bg-[#0d0d1a]/90 backdrop-blur-md flex flex-col items-center justify-center text-center animate-fadeIn select-none">
+            <div className="text-4xl font-black text-white mb-1 tracking-widest font-torus drop-shadow-[0_0_20px_rgba(255,102,171,0.5)]">
               PAUSED
             </div>
-            <div className="flex gap-3">
-              <button
-                onClick={handlePauseToggle}
-                className="px-8 py-2.5 rounded-full osu-btn text-xs font-bold cursor-pointer"
-              >
-                Continue
-              </button>
-              <button
-                onClick={handleRetry}
-                className="px-8 py-2.5 rounded-full osu-btn-ghost text-xs font-bold cursor-pointer"
-              >
-                Retry
-              </button>
-              {onOpenSettings && (
-                <button
-                  onClick={onOpenSettings}
-                  className="px-6 py-2.5 rounded-full osu-btn-ghost text-xs font-bold cursor-pointer"
-                >
-                  Settings
-                </button>
-              )}
+            <div className="text-xs text-[#7c849c] mb-6 font-mono">
+              {activeChartName} [{activeDiffName}]
+            </div>
+
+            <div className="flex flex-col gap-2.5 w-72">
+              {[
+                { label: '▶ Tiếp tục (Continue)', action: handlePauseToggle },
+                { label: '↺ Thử lại (Retry)', action: handleRetry },
+                {
+                  label: '⚙ Cài đặt (Settings)',
+                  action: () => {
+                    if (onOpenSettings) onOpenSettings();
+                  }
+                },
+                { label: '✕ Quay lại bài hát (Back)', action: handleBack }
+              ].map((item, idx) => {
+                const isSelected = pauseMenuIndex === idx;
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      playClick();
+                      item.action();
+                    }}
+                    onMouseEnter={() => {
+                      playHover();
+                      setPauseMenuIndex(idx);
+                    }}
+                    className={`w-full py-3 px-4 rounded-full text-xs font-bold tracking-wider uppercase transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                      isSelected
+                        ? 'bg-gradient-to-r from-[#ff66ab] to-[#cc5289] text-white shadow-[0_4px_20px_rgba(255,102,171,0.5)] scale-105'
+                        : 'bg-white/[0.06] text-[#b8c0d4] hover:bg-white/[0.12] hover:text-white'
+                    }`}
+                  >
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-6 text-[11px] text-[#7c849c] font-mono">
+              [↑ / ↓] Di chuyển • [Enter] Chọn • [Esc] Tiếp tục
             </div>
           </div>
         )}
 
-        {/* Result Screen */}
+        {/* 9. RESULT SCREEN */}
         {gameResult && (
-          <div className="absolute inset-0 z-30 bg-[#0a0a16]/90 backdrop-blur-xl flex items-center justify-center animate-fadeIn">
+          <div className="absolute inset-0 z-30 bg-[#0d0d1a]/95 backdrop-blur-xl flex items-center justify-center animate-fadeIn">
             <div className="flex flex-col items-center max-w-lg w-full px-6">
-              {/* Track info */}
-              <div className="text-xs text-[#ff66ab] font-bold tracking-[0.2em] mb-1 uppercase">
+              <div className="text-xs text-[#ff66ab] font-bold tracking-[0.2em] mb-1 uppercase font-mono">
                 RESULTS
               </div>
-              <div className="text-sm text-[#b8c0d4] mb-4 truncate max-w-full text-center">
-                {activeChartName} <span className="text-[#6b7280]">[{activeDiffName}]</span>
+              <div className="text-sm font-bold text-white mb-4 truncate max-w-full text-center">
+                {activeChartName} <span className="text-[#ff66ab]">[{activeDiffName}]</span>
               </div>
 
               {/* Grade */}
-              <div className={`text-8xl font-black mb-2 tracking-wider drop-shadow-[0_0_30px_rgba(255,102,171,0.4)] ${getRankColor(gameResult.rank)}`}>
-                {gameResult.rank}
+              <div className="mb-3">
+                <RankBadge rank={gameResult.rank} size="xl" />
               </div>
 
               {/* Accuracy */}
@@ -430,24 +637,22 @@ export default function GameplayView({
               </div>
 
               {/* Stats Row */}
-              <div className="flex items-center gap-2 mb-5 text-xs">
-                <span className="px-3 py-1.5 rounded-full bg-white/[0.06] border border-white/[0.06] text-white font-bold font-mono">
+              <div className="flex items-center gap-2 mb-5 text-xs font-mono">
+                <span className="px-3 py-1.5 rounded-full bg-white/[0.06] border border-white/[0.06] text-white font-bold">
                   {(gameResult.score ?? Math.round(gameResult.achievement * 10000)).toLocaleString('en-US')}
                 </span>
                 {gameResult.stars !== undefined && (
-                  <span className="px-3 py-1.5 rounded-full bg-[#ff66ab]/10 border border-[#ff66ab]/30 text-[#ff66ab] font-bold font-mono">
-                    ★ {Number(gameResult.stars).toFixed(2)}
-                  </span>
+                  <StarRating stars={gameResult.stars} size="sm" />
                 )}
                 {gameResult.pp !== undefined && (
-                  <span className="px-3 py-1.5 rounded-full bg-[#6c5ce7]/10 border border-[#6c5ce7]/30 text-[#a29bfe] font-bold font-mono">
+                  <span className="px-3 py-1.5 rounded-full bg-[#6c5ce7]/15 border border-[#6c5ce7]/30 text-[#a29bfe] font-bold">
                     {Number(gameResult.pp).toFixed(0)}pp
                   </span>
                 )}
               </div>
 
               {/* Judgments Grid */}
-              <div className="w-80 bg-[#1a1a2e]/80 rounded-2xl border border-white/[0.06] p-4 mb-5">
+              <div className="w-80 bg-[#1a1a2e]/90 rounded-2xl border border-white/[0.06] p-4 mb-5 shadow-xl">
                 <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs font-mono">
                   <div className="flex justify-between"><span className="text-[#ffdd57]">CRITICAL</span> <span className="font-bold text-white">{gameResult.counts.criticalPerfect}</span></div>
                   <div className="flex justify-between"><span className="text-[#ff9800]">PERFECT</span> <span className="font-bold text-white">{gameResult.counts.perfect}</span></div>
@@ -455,43 +660,25 @@ export default function GameplayView({
                   <div className="flex justify-between"><span className="text-[#4fc3f7]">GOOD</span> <span className="font-bold text-white">{gameResult.counts.good}</span></div>
                   <div className="flex justify-between"><span className="text-[#ef5350]">MISS</span> <span className="font-bold text-[#ef5350]">{gameResult.counts.miss}</span></div>
                   <div className="flex justify-between"><span className="text-white/60">MAX COMBO</span> <span className="font-bold text-white">{gameResult.maxCombo}</span></div>
-                  <div className="flex justify-between col-span-2 pt-2 border-t border-white/[0.06] text-[#6b7280]">
-                    <span>UR</span> <span className="text-white/80 font-bold">{gameResult.ur}</span>
-                  </div>
                 </div>
-              </div>
-
-              {/* Badges */}
-              <div className="flex gap-2 mb-5">
-                {gameResult.flags.isAP && (
-                  <span className="px-3 py-1 rounded-full bg-[#ffdd57]/10 text-[#ffdd57] border border-[#ffdd57]/40 text-xs font-bold">
-                    ALL PERFECT
-                  </span>
-                )}
-                {gameResult.flags.isFC && !gameResult.flags.isAP && (
-                  <span className="px-3 py-1 rounded-full bg-[#66bb6a]/10 text-[#66bb6a] border border-[#66bb6a]/40 text-xs font-bold">
-                    FULL COMBO
-                  </span>
-                )}
               </div>
 
               {/* Actions */}
               <div className="flex gap-3">
-                <button
-                  onClick={handleRetry}
-                  className="px-8 py-2.5 rounded-full osu-btn text-xs font-bold cursor-pointer"
-                >
+                <Button variant="primary" size="md" onClick={handleRetry} icon="↺">
                   Retry
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="md"
                   onClick={() => {
                     setGameResult(null);
                     if (onBackToSelect) onBackToSelect();
                   }}
-                  className="px-8 py-2.5 rounded-full osu-btn-ghost text-xs font-bold cursor-pointer"
+                  icon="←"
                 >
                   Back to Songs
-                </button>
+                </Button>
               </div>
             </div>
           </div>
