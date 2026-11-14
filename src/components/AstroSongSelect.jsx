@@ -203,22 +203,27 @@ export default function AstroSongSelect({
       });
 
     // 2. Fetch Local scores
-    dbManager.getScoresForBeatmap(current.id)
-      .then((scores) => {
-        if (!isCancelled) {
-          const matching = (scores || []).filter(
-            (s) => !selectedDiff?.difficultyName || s.difficultyName === selectedDiff.difficultyName
-          );
-          matching.sort((a, b) => (b.score || 0) - (a.score || 0));
-          setLocalScores(matching);
-        }
-      })
-      .catch(() => {
-        if (!isCancelled) setLocalScores([]);
-      })
-      .finally(() => {
-        if (!isCancelled) setIsLoadingScores(false);
-      });
+    const fetchLocal = dbManager.getScoresByBeatmap || dbManager.getScoresForBeatmap;
+    if (fetchLocal) {
+      fetchLocal.call(dbManager, current.id)
+        .then((scores) => {
+          if (!isCancelled) {
+            const matching = (scores || []).filter(
+              (s) => !selectedDiff?.difficultyName || s.difficultyName === selectedDiff.difficultyName
+            );
+            matching.sort((a, b) => (b.score || 0) - (a.score || 0));
+            setLocalScores(matching);
+          }
+        })
+        .catch(() => {
+          if (!isCancelled) setLocalScores([]);
+        })
+        .finally(() => {
+          if (!isCancelled) setIsLoadingScores(false);
+        });
+    } else {
+      if (!isCancelled) setIsLoadingScores(false);
+    }
 
     return () => { isCancelled = true; };
   }, [current?.id, selectedDiff?.difficultyName]);

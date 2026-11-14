@@ -230,6 +230,11 @@ class DatabaseManager {
     });
   }
 
+  // Bí danh tương thích
+  async getScoresForBeatmap(beatmapId) {
+    return this.getScoresByBeatmap(beatmapId);
+  }
+
   // =========================================================================
   // 4. Quản lý Cài đặt (Settings)
   // =========================================================================
