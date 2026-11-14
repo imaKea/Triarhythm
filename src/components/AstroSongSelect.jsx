@@ -39,6 +39,7 @@ export default function AstroSongSelect({
   const [leaderboardScores, setLeaderboardScores] = useState([]);
   const [localScores, setLocalScores] = useState([]);
   const [isLoadingScores, setIsLoadingScores] = useState(false);
+  const [mobileTab, setMobileTab] = useState('list'); // 'list' | 'info' trên màn hình mobile
 
   // History stack for Shift+F2 (Previous Random)
   const [historyStack, setHistoryStack] = useState([]);
@@ -485,22 +486,22 @@ export default function AstroSongSelect({
   const coverUrl = current?.backgroundSource || current?.serverAssets?.coverUrl || null;
 
   return (
-    <div className="w-full h-[calc(100vh-52px-24px)] mt-[52px] mb-6 flex flex-col select-none overflow-hidden osu-screen-transition">
+    <div className="w-full h-[calc(100vh-50px)] sm:h-[calc(100vh-52px-24px)] mt-[50px] sm:mt-[52px] mb-0 sm:mb-6 flex flex-col select-none overflow-hidden osu-screen-transition">
       {/* Hidden audio element for preview */}
       {current?.audioSource && (
         <audio ref={audioRef} src={current.audioSource} />
       )}
 
       {/* TOP BAR: Search + Filters + Sort */}
-      <div className="h-13 px-6 bg-[#180d1e]/90 border-b border-[#ff85a2]/15 flex items-center justify-between gap-4 shrink-0 z-20">
+      <div className="min-h-12 py-2 px-3 sm:px-6 bg-[#180d1e]/90 border-b border-[#ff85a2]/15 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 sm:gap-4 shrink-0 z-20">
         {/* Search with syntax hints */}
-        <div className="relative flex-1 max-w-md">
+        <div className="relative flex-1 min-w-[180px] max-w-md">
           <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#ffaec9] text-xs">🐰</span>
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Tìm kiếm bài hát, ca sĩ... (stars>5, bpm<200) 🎀"
+            placeholder="Tìm kiếm bài hát, ca sĩ... 🎀"
             className="w-full bg-[#25132b] border border-[#ff85a2]/25 focus:border-[#ff85a2] rounded-full pl-9 pr-4 py-1.5 text-xs text-white placeholder-[#b89cb9] outline-none transition-all focus:shadow-[0_0_12px_rgba(255,133,162,0.3)]"
           />
           {searchQuery && (
@@ -514,17 +515,17 @@ export default function AstroSongSelect({
         </div>
 
         {/* Sort & Action controls */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-xs text-[#d8bfd8]">
-            <span>Sắp xếp:</span>
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          <div className="flex items-center gap-1.5 text-xs text-[#d8bfd8]">
+            <span className="hidden xs:inline">Sắp xếp:</span>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="bg-[#25132b] border border-[#ff85a2]/25 text-white text-xs rounded-xl px-2.5 py-1 outline-none cursor-pointer hover:border-[#ff85a2]/50 transition-colors"
+              className="bg-[#25132b] border border-[#ff85a2]/25 text-white text-xs rounded-xl px-2 sm:px-2.5 py-1 outline-none cursor-pointer hover:border-[#ff85a2]/50 transition-colors"
             >
-              <option value="title">Tên bài (A-Z)</option>
+              <option value="title">Tên (A-Z)</option>
               <option value="artist">Ca sĩ (A-Z)</option>
-              <option value="stars">Độ khó (Stars)</option>
+              <option value="stars">Độ khó (★)</option>
               <option value="bpm">BPM</option>
               <option value="length">Độ dài</option>
             </select>
@@ -532,16 +533,17 @@ export default function AstroSongSelect({
 
           <button
             onClick={handleOpenTrash}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.05] hover:bg-white/[0.12] text-[#d8bfd8] hover:text-white text-xs font-bold transition-all border border-[#ff85a2]/20 cursor-pointer hover:scale-105"
+            className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full bg-white/[0.05] hover:bg-white/[0.12] text-[#d8bfd8] hover:text-white text-xs font-bold transition-all border border-[#ff85a2]/20 cursor-pointer hover:scale-105"
             title="Thùng rác beatmap (khôi phục bài đã xóa)"
           >
             <span>🗑️</span>
-            <span>Thùng rác 🐰</span>
+            <span className="hidden sm:inline">Thùng rác 🐰</span>
           </button>
 
-          <label className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] hover:from-[#ffaec9] hover:to-[#ff6b93] text-white text-xs font-bold cursor-pointer transition-all shadow-[0_0_14px_rgba(255,133,162,0.4)] hover:scale-105">
+          <label className="flex items-center gap-1 px-3 sm:px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] hover:from-[#ffaec9] hover:to-[#ff6b93] text-white text-xs font-bold cursor-pointer transition-all shadow-[0_0_14px_rgba(255,133,162,0.4)] hover:scale-105">
             <span>{isImporting ? '⏳' : '🎀'}</span>
-            <span>{isImporting ? 'Đang thêm...' : 'Thêm bài (+)'}</span>
+            <span className="hidden sm:inline">{isImporting ? 'Đang thêm...' : 'Thêm bài (+)'}</span>
+            <span className="sm:hidden">{isImporting ? '...' : '+'}</span>
             <input
               type="file"
               multiple
@@ -552,6 +554,32 @@ export default function AstroSongSelect({
             />
           </label>
         </div>
+      </div>
+
+      {/* MOBILE TAB SWITCHER: Chuyển đổi giữa Danh sách và Chi tiết bài trên Mobile */}
+      <div className="flex md:hidden items-center justify-center gap-2 py-1.5 px-3 bg-[#1e1124] border-b border-[#ff85a2]/20 shrink-0">
+        <button
+          onClick={() => { playHover(); setMobileTab('list'); }}
+          className={`flex-1 py-1.5 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            mobileTab === 'list'
+              ? 'bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] text-white shadow-[0_0_10px_rgba(255,133,162,0.4)]'
+              : 'bg-white/[0.04] text-[#d8bfd8] hover:text-white'
+          }`}
+        >
+          <span>🐰</span>
+          <span>Danh sách ({filteredBeatmaps.length})</span>
+        </button>
+        <button
+          onClick={() => { playHover(); setMobileTab('info'); }}
+          className={`flex-1 py-1.5 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            mobileTab === 'info'
+              ? 'bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] text-white shadow-[0_0_10px_rgba(255,133,162,0.4)]'
+              : 'bg-white/[0.04] text-[#d8bfd8] hover:text-white'
+          }`}
+        >
+          <span>🎀</span>
+          <span>Chi tiết & BXH</span>
+        </button>
       </div>
 
       {/* MAIN BODY: LEFT WEDGE + RIGHT CAROUSEL */}
@@ -565,7 +593,7 @@ export default function AstroSongSelect({
         )}
 
         {/* LEFT PANE: Song Wedge Info + Leaderboard */}
-        <div className="w-[480px] h-full flex flex-col p-6 overflow-y-auto custom-scrollbar border-r border-[#ff85a2]/15 bg-[#160c1a]/85 backdrop-blur-md z-10">
+        <div className={`w-full md:w-[400px] lg:w-[480px] h-full flex flex-col p-3 sm:p-6 overflow-y-auto custom-scrollbar border-r border-[#ff85a2]/15 bg-[#160c1a]/85 backdrop-blur-md z-10 shrink-0 ${mobileTab === 'info' ? 'flex' : 'hidden md:flex'}`}>
           {/* Song Info Wedge */}
           <div className="p-5 rounded-2xl bg-[#241229]/90 border border-[#ff85a2]/25 shadow-[0_8px_32px_rgba(22,12,26,0.6)] flex flex-col gap-3 relative overflow-hidden">
             {/* Cute mini ribbon tag */}
@@ -707,7 +735,7 @@ export default function AstroSongSelect({
         {/* RIGHT PANE: Vertical Carousel of Beatmap Cards */}
         <div
           ref={carouselRef}
-          className="flex-1 h-full overflow-y-auto custom-scrollbar p-6 space-y-3 z-10"
+          className={`flex-1 h-full overflow-y-auto custom-scrollbar p-3 sm:p-6 space-y-3 z-10 ${mobileTab === 'list' ? 'block' : 'hidden md:block'}`}
         >
           {filteredBeatmaps.map((bm, index) => {
             const isSelected = current?.id === bm.id;
@@ -806,29 +834,33 @@ export default function AstroSongSelect({
       </div>
 
       {/* BOTTOM ACTION BAR */}
-      <div className="h-16 px-6 bg-[#1a0e21]/95 border-t border-[#ff85a2]/20 flex items-center justify-between z-30 shrink-0">
+      <div className="h-14 sm:h-16 px-3 sm:px-6 bg-[#1a0e21]/95 border-t border-[#ff85a2]/20 flex items-center justify-between z-30 shrink-0 gap-2">
         {/* Left: Back */}
-        <Button variant="ghost" size="sm" onClick={() => window.history.back()} icon="←">
-          Back (Esc) 🐰
+        <Button variant="ghost" size="sm" onClick={() => window.history.back()} icon="←" className="px-2.5 sm:px-4 text-xs">
+          <span className="hidden sm:inline">Back (Esc) 🐰</span>
         </Button>
 
         {/* Center: Controls */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3">
           <Button
             variant={isAutoplay ? 'primary' : 'ghost'}
             size="sm"
             onClick={onToggleAutoplay}
             icon="⚡"
+            className="px-2 sm:px-3 text-xs"
+            title="Chế độ Autoplay"
           >
-            Mods: {isAutoplay ? 'Autoplay ON' : 'None'}
+            <span className="hidden sm:inline">Mods: {isAutoplay ? 'Autoplay ON' : 'None'}</span>
+            <span className="sm:hidden">{isAutoplay ? 'Auto' : 'Mods'}</span>
           </Button>
 
-          <Button variant="ghost" size="sm" onClick={handleRandomSelect} icon="🎲">
-            Random (F2) 🎀
+          <Button variant="ghost" size="sm" onClick={handleRandomSelect} icon="🎲" className="px-2 sm:px-3 text-xs" title="Chọn ngẫu nhiên">
+            <span className="hidden sm:inline">Random (F2) 🎀</span>
+            <span className="sm:hidden">Random</span>
           </Button>
 
-          <Button variant="ghost" size="sm" onClick={onOpenSettings} icon="⚙">
-            Options
+          <Button variant="ghost" size="sm" onClick={onOpenSettings} icon="⚙" className="px-2 sm:px-3 text-xs" title="Cài đặt">
+            <span className="hidden sm:inline">Options</span>
           </Button>
         </div>
 
@@ -837,10 +869,10 @@ export default function AstroSongSelect({
           variant="primary"
           size="lg"
           onClick={handlePlaySelected}
-          className="px-10 text-base shadow-[0_0_28px_rgba(255,133,162,0.7)] hover:shadow-[0_0_38px_rgba(255,133,162,0.95)] hover:scale-105 active:scale-95"
+          className="px-4 sm:px-10 py-2 sm:py-3 text-sm sm:text-base font-black shadow-[0_0_28px_rgba(255,133,162,0.7)] hover:shadow-[0_0_38px_rgba(255,133,162,0.95)] hover:scale-105 active:scale-95 shrink-0"
           icon="🐰"
         >
-          CHƠI NGAY 🎀
+          <span>CHƠI NGAY 🎀</span>
         </Button>
       </div>
 

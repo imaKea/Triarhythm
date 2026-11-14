@@ -5,7 +5,7 @@ import { InputManager } from '../src/core/engine/inputManager.js';
 import { GameplayRenderer } from '../src/core/engine/gameplayRenderer.js';
 import { GameEngine } from '../src/core/engine/gameEngine.js';
 import { getJudgement } from '../src/config/judgement.config.js';
-import { formatKeyCode, getLaneDisplayLabel } from '../src/config/layout.config.js';
+import { formatKeyCode, getLaneDisplayLabel, TRI_RING_LAYOUT, layoutToPixels } from '../src/config/layout.config.js';
 
 describe('GĐ3 Unit Tests - Core Engine & Scoring', () => {
   // =========================================================================
@@ -726,5 +726,143 @@ describe('GĐ3 Unit Tests - Core Engine & Scoring', () => {
     // Người chơi bấm phím F (lane 4)
     engine.handleLaneDown(4, 1005, 1005);
     expect(engine.notes[1].state).toBe('JUDGED');
+  });
+
+  it('24. Tương tác ngón tay (Touch/Pointer): chạm vào ô phím Lane kích hoạt phán định nốt trên Lane', async () => {
+    const dummyCanvas = { width: 720, height: 620, getContext: () => ({}) };
+    const engine = new GameEngine(dummyCanvas);
+
+    const beatmap = {
+      timingPoints: [{ bpm: 120, beatLength: 500 }],
+      notes: [
+        { type: 'tap', lane: 4, time: 1000 }
+      ]
+    };
+
+    await engine.loadChart(beatmap);
+    engine.isRunning = true;
+    engine.audioEngine.startMusic();
+    engine.audioEngine.isPlaying = true;
+    engine.audioEngine.startTime = 0;
+    engine.audioEngine.startPerfTime = performance.now();
+
+    // Lấy tọa độ pixel của Lane 4 (nút F)
+    const lane4Pix = layoutToPixels(TRI_RING_LAYOUT.tapLanes[4].x, TRI_RING_LAYOUT.tapLanes[4].y, 720, 620);
+
+    // Chạm ngón tay vào Lane 4 lúc 1000ms
+    engine.handlePointerDown({
+      clientX: lane4Pix.x,
+      clientY: lane4Pix.y,
+      pointerId: 1,
+      audioTime: 1000,
+      timeStamp: 1000
+    });
+
+    expect(engine.inputManager.isKeyDown[4]).toBe(true);
+    expect(engine.notes[0].state).toBe('JUDGED');
+    expect(engine.scoreManager.combo).toBe(1);
+
+    // Nhấc ngón tay lên
+    engine.handlePointerUp({
+      pointerId: 1,
+      audioTime: 1050,
+      timeStamp: 1050
+    });
+
+    expect(engine.inputManager.isKeyDown[4]).toBe(false);
+  });
+
+  it('25. Đa chạm ngón tay (Multi-touch): 2 ngón tay chạm 2 ô phím khác nhau cùng lúc', async () => {
+    const dummyCanvas = { width: 720, height: 620, getContext: () => ({}) };
+    const engine = new GameEngine(dummyCanvas);
+
+    const beatmap = {
+      timingPoints: [{ bpm: 120, beatLength: 500 }],
+      notes: [
+        { type: 'tap', lane: 0, time: 2000 },
+        { type: 'tap', lane: 8, time: 2000 }
+      ]
+    };
+
+    await engine.loadChart(beatmap);
+    engine.isRunning = true;
+
+    const lane0Pix = layoutToPixels(TRI_RING_LAYOUT.tapLanes[0].x, TRI_RING_LAYOUT.tapLanes[0].y, 720, 620);
+    const lane8Pix = layoutToPixels(TRI_RING_LAYOUT.tapLanes[8].x, TRI_RING_LAYOUT.tapLanes[8].y, 720, 620);
+
+    // Ngón tay 1 chạm Lane 0
+    engine.handlePointerDown({
+      clientX: lane0Pix.x,
+      clientY: lane0Pix.y,
+      pointerId: 10,
+      audioTime: 2000,
+      timeStamp: 2000
+    });
+
+    // Ngón tay 2 chạm Lane 8
+    engine.handlePointerDown({
+      clientX: lane8Pix.x,
+      clientY: lane8Pix.y,
+      pointerId: 11,
+      audioTime: 2000,
+      timeStamp: 2000
+    });
+
+    expect(engine.inputManager.isKeyDown[0]).toBe(true);
+    expect(engine.inputManager.isKeyDown[8]).toBe(true);
+    expect(engine.notes[0].state).toBe('JUDGED');
+    expect(engine.notes[1].state).toBe('JUDGED');
+    expect(engine.scoreManager.combo).toBe(2);
+
+    // Ngón tay 1 nhấc lên, ngón tay 2 vẫn chạm
+    engine.handlePointerUp({ pointerId: 10, audioTime: 2050, timeStamp: 2050 });
+    expect(engine.inputManager.isKeyDown[0]).toBe(false);
+    expect(engine.inputManager.isKeyDown[8]).toBe(true);
+
+    // Ngón tay 2 nhấc lên
+    engine.handlePointerUp({ pointerId: 11, audioTime: 2080, timeStamp: 2080 });
+    expect(engine.inputManager.isKeyDown[8]).toBe(false);
+  });
+
+  it('26. Yêu cầu Mobile: Chạm vào bất kì nút judgement nào (hoặc tâm/khung) đều kích hoạt phán định Ring Note', async () => {
+    const dummyCanvas = { width: 720, height: 620, getContext: () => ({}) };
+    const engine = new GameEngine(dummyCanvas);
+
+    const beatmap = {
+      timingPoints: [{ bpm: 120, beatLength: 500 }],
+      notes: [
+        { type: 'ring', time: 1000 },
+        { type: 'ring', time: 2000 }
+      ]
+    };
+
+    await engine.loadChart(beatmap);
+    engine.isRunning = true;
+
+    // 1. Chạm vào nút Judgement Lane 1 (nút trên đỉnh) lúc 1000ms -> phán định nốt Ring 1
+    const lane1Pix = layoutToPixels(TRI_RING_LAYOUT.tapLanes[1].x, TRI_RING_LAYOUT.tapLanes[1].y, 720, 620);
+    engine.handlePointerDown({
+      clientX: lane1Pix.x,
+      clientY: lane1Pix.y,
+      pointerId: 1,
+      audioTime: 1000,
+      timeStamp: 1000
+    });
+    expect(engine.notes[0].state).toBe('JUDGED');
+    expect(engine.scoreManager.combo).toBe(1);
+    engine.handlePointerUp({ pointerId: 1, audioTime: 1050, timeStamp: 1050 });
+
+    // 2. Chạm vào tâm hoặc ngoài ô phím lúc 2000ms -> phán định nốt Ring 2
+    const originPix = layoutToPixels(TRI_RING_LAYOUT.origin.x, TRI_RING_LAYOUT.origin.y, 720, 620);
+    engine.handlePointerDown({
+      clientX: originPix.x,
+      clientY: originPix.y,
+      pointerId: 2,
+      audioTime: 2000,
+      timeStamp: 2000
+    });
+    expect(engine.notes[1].state).toBe('JUDGED');
+    expect(engine.scoreManager.combo).toBe(2);
+    engine.handlePointerUp({ pointerId: 2, audioTime: 2050, timeStamp: 2050 });
   });
 });

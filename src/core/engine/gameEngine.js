@@ -55,6 +55,9 @@ export class GameEngine {
     this.holdingNotes = new Map(); // lane -> note
     this.hasBackgroundVideo = false;
 
+    // Quản lý đa chạm ngón tay (Multi-touch) trên Mobile & Pointer
+    this.activeTouchPointers = new Map(); // pointerId -> { lane, px, py, startTime }
+
     // Thiết lập input callbacks
     this.inputManager.onLaneDown = this.handleLaneDown.bind(this);
     this.inputManager.onLaneUp = this.handleLaneUp.bind(this);
@@ -323,35 +326,24 @@ export class GameEngine {
     await this.audioEngine.init();
     this.inputManager.attach();
 
-    // Lắng nghe di chuyển và nhấn chuột/pointer trên Canvas để theo dõi Slide Note
+    // Lắng nghe tương tác ngón tay (Touch / Pointer) trên Canvas cho Mobile & Desktop
     if (this.canvas) {
-      this.boundPointerMove = (e) => {
-        const rect = this.canvas.getBoundingClientRect();
-        this.inputManager.pointerPos = {
-          x: (e.clientX - rect.left) * (this.canvas.width / rect.width),
-          y: (e.clientY - rect.top) * (this.canvas.height / rect.height)
-        };
-      };
-      this.boundPointerDown = (e) => {
-        this.inputManager.isPointerDown = true;
-        this.boundPointerMove(e);
-        this.checkSlideGrab(this.inputManager.pointerPos);
-      };
-      this.boundPointerUp = () => {
-        this.inputManager.isPointerDown = false;
-        // Thả chuột -> nhả grab của các slide
-        for (const note of this.notes) {
-          if (note.type === 'slide') {
-            note.isGrabbed = false;
-          }
-        }
-      };
+      this.boundPointerDown = this.handlePointerDown.bind(this);
+      this.boundPointerMove = this.handlePointerMove.bind(this);
+      this.boundPointerUp = this.handlePointerUp.bind(this);
+      this.boundPointerCancel = this.handlePointerUp.bind(this);
+      this.boundContextMenu = (e) => e.preventDefault();
+
       if (this.canvas.addEventListener) {
-        this.canvas.addEventListener('pointermove', this.boundPointerMove);
-        this.canvas.addEventListener('pointerdown', this.boundPointerDown);
+        this.canvas.addEventListener('pointerdown', this.boundPointerDown, { passive: false });
+        this.canvas.addEventListener('pointermove', this.boundPointerMove, { passive: false });
+        this.canvas.addEventListener('pointerup', this.boundPointerUp, { passive: false });
+        this.canvas.addEventListener('pointercancel', this.boundPointerCancel, { passive: false });
+        this.canvas.addEventListener('contextmenu', this.boundContextMenu);
       }
       if (typeof window !== 'undefined') {
         window.addEventListener('pointerup', this.boundPointerUp);
+        window.addEventListener('pointercancel', this.boundPointerCancel);
       }
     }
 
@@ -1039,6 +1031,171 @@ export class GameEngine {
     });
   }
 
+  /**
+   * Xử lý tương tác ngón tay (Touch / Pointer) trên mobile & màn hình cảm ứng:
+   * 1. Hỗ trợ đa chạm (Multi-touch): nhiều ngón tay bấm / giữ nốt đồng thời.
+   * 2. Bấm trúng ô Tap: phán định nốt trên Lane tương ứng.
+   * 3. Yêu cầu: "note ring chỉ cần bấm vào judgement bất kì cũng có thể kích hoạt"
+   */
+  handlePointerDown(e) {
+    if (!this.canvas || !this.isRunning || this.isPaused) return;
+    if (e.cancelable && e.preventDefault) {
+      e.preventDefault();
+    }
+
+    try {
+      if (this.canvas.setPointerCapture && e.pointerId !== undefined) {
+        this.canvas.setPointerCapture(e.pointerId);
+      }
+    } catch (_) {}
+
+    const rect = this.canvas.getBoundingClientRect
+      ? this.canvas.getBoundingClientRect()
+      : { left: 0, top: 0, width: this.canvas.width || 720, height: this.canvas.height || 620 };
+    const width = this.canvas.width || 720;
+    const height = this.canvas.height || 620;
+    const scaleX = rect.width > 0 ? (width / rect.width) : 1;
+    const scaleY = rect.height > 0 ? (height / rect.height) : 1;
+
+    const px = (e.clientX - rect.left) * scaleX;
+    const py = (e.clientY - rect.top) * scaleY;
+    this.inputManager.pointerPos = { x: px, y: py };
+    this.inputManager.isPointerDown = true;
+
+    const perfTime = e.timeStamp || performance.now();
+    const audioTime = e.audioTime !== undefined
+      ? e.audioTime
+      : (this.audioEngine ? this.audioEngine.perfToAudioTime(perfTime) : performance.now());
+
+    // 1. Chạm để skip intro nếu đang ở đoạn nghỉ đầu bài
+    if (this.canSkipBreak(audioTime)) {
+      this.skipBreak(audioTime);
+      return;
+    }
+
+    // 2. Tìm ô Lane gần nhất trong 9 ô Tap
+    let closestLane = -1;
+    let minDist = Infinity;
+    for (let i = 0; i < TRI_RING_LAYOUT.tapLanes.length; i++) {
+      const laneDef = TRI_RING_LAYOUT.tapLanes[i];
+      const lanePix = layoutToPixels(laneDef.x, laneDef.y, width, height);
+      const dist = Math.hypot(px - lanePix.x, py - lanePix.y);
+      if (dist < minDist) {
+        minDist = dist;
+        closestLane = i;
+      }
+    }
+
+    const { scale } = getLayoutMetrics(width, height);
+    const laneRadiusPx = TRI_RING_LAYOUT.tapDimensions.radius * scale;
+    // Bán kính chạm ngón tay công thái học cho mobile (tối thiểu 52px)
+    const hitRadius = Math.max(laneRadiusPx * 1.6, 52);
+
+    const isTapOnLane = closestLane !== -1 && minDist <= hitRadius;
+    const assignedLane = isTapOnLane ? closestLane : null;
+
+    const pId = e.pointerId !== undefined ? e.pointerId : 1;
+    this.activeTouchPointers.set(pId, {
+      lane: assignedLane,
+      px,
+      py,
+      startTime: audioTime
+    });
+
+    // 3. Phán định nốt trên Lane nếu chạm vào nút tương ứng
+    if (assignedLane !== null) {
+      this.inputManager.isKeyDown[assignedLane] = true;
+      this.handleLaneDown(assignedLane, audioTime, perfTime);
+    }
+
+    // 4. Yêu cầu: "note ring chỉ cần bấm vào judgement bất kì cũng có thể kích hoạt"
+    const maxWindow = JUDGEMENT_CONFIG.windows.good || 150;
+    const hasRingInWindow = this.notes.some(n =>
+      (n.type === 'ring' || n.type === 'slide') &&
+      n.state !== 'JUDGED' &&
+      n.state !== 'MISSED' &&
+      !n.headJudged &&
+      Math.abs(audioTime - n.time) <= maxWindow
+    );
+
+    // Bấm vào bất kì nút judgement nào (0..8) hoặc chạm vào khung/tâm đều kích hoạt phán định nốt Ring
+    if (hasRingInWindow || assignedLane === null) {
+      this.inputManager.isSpaceDown = true;
+      this.handleSpaceDown(audioTime, perfTime);
+    } else {
+      this.inputManager.isSpaceDown = true;
+    }
+
+    // 5. Hiệu ứng sóng nước tương tác ngón tay
+    this.particleSystem.spawnRipple(
+      px,
+      py,
+      isTapOnLane ? '#ff85a2' : '#ffffff',
+      isTapOnLane ? 55 : 40,
+      0.25,
+      2.0
+    );
+
+    gameEvents.emit('touchFeedback', { lane: assignedLane, px, py });
+  }
+
+  handlePointerMove(e) {
+    if (!this.canvas || !this.isRunning) return;
+    const rect = this.canvas.getBoundingClientRect
+      ? this.canvas.getBoundingClientRect()
+      : { left: 0, top: 0, width: this.canvas.width || 720, height: this.canvas.height || 620 };
+    const width = this.canvas.width || 720;
+    const height = this.canvas.height || 620;
+    const scaleX = rect.width > 0 ? (width / rect.width) : 1;
+    const scaleY = rect.height > 0 ? (height / rect.height) : 1;
+
+    const px = (e.clientX - rect.left) * scaleX;
+    const py = (e.clientY - rect.top) * scaleY;
+    this.inputManager.pointerPos = { x: px, y: py };
+
+    const pId = e.pointerId !== undefined ? e.pointerId : 1;
+    const ptr = this.activeTouchPointers.get(pId);
+    if (ptr) {
+      ptr.px = px;
+      ptr.py = py;
+    }
+  }
+
+  handlePointerUp(e) {
+    if (!this.canvas) return;
+    try {
+      if (this.canvas.releasePointerCapture && e.pointerId !== undefined) {
+        this.canvas.releasePointerCapture(e.pointerId);
+      }
+    } catch (_) {}
+
+    const pId = e.pointerId !== undefined ? e.pointerId : 1;
+    const ptr = this.activeTouchPointers.get(pId);
+    const perfTime = e.timeStamp || performance.now();
+    const audioTime = e.audioTime !== undefined
+      ? e.audioTime
+      : (this.audioEngine ? this.audioEngine.perfToAudioTime(perfTime) : performance.now());
+
+    if (ptr && ptr.lane !== null) {
+      const lane = ptr.lane;
+      this.activeTouchPointers.delete(pId);
+
+      // Kiểm tra xem còn ngón tay nào khác cũng đang giữ trên lane này không
+      const stillHasFingerOnLane = Array.from(this.activeTouchPointers.values()).some(p => p.lane === lane);
+      if (!stillHasFingerOnLane) {
+        this.inputManager.isKeyDown[lane] = false;
+        this.handleLaneUp(lane, audioTime, perfTime);
+      }
+    } else {
+      this.activeTouchPointers.delete(pId);
+    }
+
+    if (this.activeTouchPointers.size === 0) {
+      this.inputManager.isPointerDown = false;
+      this.inputManager.isSpaceDown = false;
+    }
+  }
+
   togglePause() {
     if (!this.isRunning) return;
 
@@ -1199,15 +1356,20 @@ export class GameEngine {
       }
       this.animFrameId = null;
     }
-    if (this.canvas && this.boundPointerMove) {
+    if (this.canvas && this.boundPointerDown) {
       if (this.canvas.removeEventListener) {
-        this.canvas.removeEventListener('pointermove', this.boundPointerMove);
         this.canvas.removeEventListener('pointerdown', this.boundPointerDown);
+        this.canvas.removeEventListener('pointermove', this.boundPointerMove);
+        this.canvas.removeEventListener('pointerup', this.boundPointerUp);
+        this.canvas.removeEventListener('pointercancel', this.boundPointerCancel);
+        this.canvas.removeEventListener('contextmenu', this.boundContextMenu);
       }
       if (typeof window !== 'undefined') {
         window.removeEventListener('pointerup', this.boundPointerUp);
+        window.removeEventListener('pointercancel', this.boundPointerCancel);
       }
     }
+    this.activeTouchPointers.clear();
     this.audioEngine.stopMusic();
     this.inputManager.detach();
     this.holdingNotes.clear();
