@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --app-font: "Nunito", system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --bg-primary: #1a1a2e;
+  --bg-secondary: #2a2a3e;
+  --bg-tertiary: #16213e;
+  --bg-pure: #0f0f0f;
+  --bg-gradient-start: #1a1a2e;
+  --bg-gradient-end: #0a0a15;
+  --bg-panel: #2a2a3e;
+  --bg-panel-hover: #3a3a4e;
+  --bg-modal: #1e293b;
+  --bg-form: #1f2937;
+  --text-primary: #ffffff;
+  --text-secondary: #e2e8f0;
+  --text-muted: #94a3b8;
+  --text-dim: #666666;
+  --accent-primary: #6366f1;
+  --accent-primary-hover: #818cf8;
+  --accent-primary-dark: #4f46e5;
+  --border-primary: #444444;
+  --border-secondary: #333333;
+  --border-subtle: rgba(255, 255, 255, 0.1);
+  --border-accent: rgba(99, 102, 241, 0.3);
+  --status-success: #10b981;
+  --status-error: #ef4444;
+  --status-warning: #f59e0b;
+  --status-info: #3b82f6;
+  --shadow-light: rgba(0, 0, 0, 0.2);
+  --shadow-medium: rgba(0, 0, 0, 0.5);
+  --overlay-light: rgba(0, 0, 0, 0.5);
+  --overlay-dark: rgba(0, 0, 0, 0.8);
+}
+
+@layer base {
+  body {
+    background-color: var(--bg-pure);
+    color: var(--text-primary);
+    min-height: 100vh;
+    font-family: var(--app-font);
+    background-image: radial-gradient(circle at 50% 0%, #1e1e38 0%, #0a0a14 100%);
+  }
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-primary);
+}
+
+/* RhythmTyper Beatmap Card styling */
+.rt-card {
+  display: flex;
+  background-color: var(--bg-primary);
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  height: 120px;
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 2px 4px var(--shadow-light);
+  transition: all 0.2s ease-in-out;
+}
+.rt-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.25);
+  transform: translateY(-2px);
+}
+.rt-card-selected {
+  border-color: var(--accent-primary-hover) !important;
+  box-shadow: 0 0 0 2px var(--border-accent), 0 4px 16px rgba(99, 102, 241, 0.4) !important;
+}
+
+/* RhythmTyper Buttons */
+.rt-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-primary-dark) 100%);
+  color: #ffffff;
+  border-radius: 8px;
+  font-weight: 700;
+  transition: all 0.2s;
+}
+.rt-btn-primary:hover {
+  background: linear-gradient(135deg, var(--accent-primary-hover) 0%, var(--accent-primary) 100%);
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+}
+
+.rt-btn-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+.rt-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}

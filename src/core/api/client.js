@@ -1,0 +1,139 @@
+/**
+ * Triarhythm API Client
+ * Giao tiếp trực tiếp với Laravel Backend & MySQL Database (/api/*)
+ */
+
+const API_BASE = '/api';
+
+class ApiClient {
+  constructor() {
+    this.token = typeof localStorage !== 'undefined' ? localStorage.getItem('triarhythm_api_token') : null;
+  }
+
+  setToken(token) {
+    this.token = token;
+    if (typeof localStorage !== 'undefined') {
+      if (token) localStorage.setItem('triarhythm_api_token', token);
+      else localStorage.removeItem('triarhythm_api_token');
+    }
+  }
+
+  getToken() {
+    if (!this.token && typeof localStorage !== 'undefined') {
+      this.token = localStorage.getItem('triarhythm_api_token');
+    }
+    return this.token;
+  }
+
+  async request(endpoint, options = {}) {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      ...options.headers,
+    };
+
+    const token = this.getToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}${endpoint}`, {
+        ...options,
+        headers,
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      return data;
+    } catch (err) {
+      console.warn(`[API] Lỗi gọi ${endpoint}:`, err.message);
+      throw err;
+    }
+  }
+
+  // --- AUTH ---
+  async register({ username, email, password, name }) {
+    const res = await this.request('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ username, email, password, name }),
+    });
+    if (res?.token) this.setToken(res.token);
+    return res;
+  }
+
+  async login({ login, password }) {
+    const res = await this.request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ login, password }),
+    });
+    if (res?.token) this.setToken(res.token);
+    return res;
+  }
+
+  async me() {
+    return await this.request('/auth/me');
+  }
+
+  async logout() {
+    try {
+      await this.request('/auth/logout', { method: 'POST' });
+    } catch (_) {}
+    this.setToken(null);
+  }
+
+  // --- MAPS ---
+  async getMaps({ q = '', source = '' } = {}) {
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    if (source) params.set('source', source);
+    return await this.request(`/maps?${params.toString()}`);
+  }
+
+  async getMap(songId) {
+    return await this.request(`/maps/${encodeURIComponent(songId)}`);
+  }
+
+  async saveMap(mapData) {
+    return await this.request('/maps', {
+      method: 'POST',
+      body: JSON.stringify(mapData),
+    });
+  }
+
+  async deleteMap(songId) {
+    return await this.request(`/maps/${encodeURIComponent(songId)}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // --- SCORES ---
+  async submitScore(scoreData) {
+    return await this.request('/scores', {
+      method: 'POST',
+      body: JSON.stringify(scoreData),
+    });
+  }
+
+  async getUserScores(userId) {
+    return await this.request(`/scores/user/${userId}`);
+  }
+
+  // --- LEADERBOARDS ---
+  async getGlobalLeaderboard(type = 'rating', limit = 50) {
+    return await this.request(`/leaderboard/global?type=${type}&limit=${limit}`);
+  }
+
+  async getMapLeaderboard(songId, difficulty = '') {
+    const params = new URLSearchParams();
+    if (difficulty) params.set('difficulty', difficulty);
+    return await this.request(`/leaderboard/map/${encodeURIComponent(songId)}?${params.toString()}`);
+  }
+}
+
+export const apiClient = new ApiClient();
+export default apiClient;
