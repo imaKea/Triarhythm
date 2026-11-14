@@ -4,7 +4,7 @@
  */
 
 const DB_NAME = 'TriarhythmDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 class DatabaseManager {
   constructor() {
@@ -23,11 +23,18 @@ class DatabaseManager {
         const db = e.target.result;
 
         // Bảng 1: Beatmaps (kho lưu trữ các bài hát đã nạp / tự tạo)
+        let beatmapStore;
         if (!db.objectStoreNames.contains('beatmaps')) {
-          const beatmapStore = db.createObjectStore('beatmaps', { keyPath: 'id' });
+          beatmapStore = db.createObjectStore('beatmaps', { keyPath: 'id' });
           beatmapStore.createIndex('title', 'title', { unique: false });
           beatmapStore.createIndex('artist', 'artist', { unique: false });
           beatmapStore.createIndex('updatedAt', 'updatedAt', { unique: false });
+          beatmapStore.createIndex('deletedAt', 'deletedAt', { unique: false });
+        } else {
+          beatmapStore = e.target.transaction.objectStore('beatmaps');
+          if (!beatmapStore.indexNames.contains('deletedAt')) {
+            beatmapStore.createIndex('deletedAt', 'deletedAt', { unique: false });
+          }
         }
 
         // Bảng 2: Users (tài khoản, mật khẩu, hồ sơ người chơi)
@@ -67,13 +74,35 @@ class DatabaseManager {
   // 1. Quản lý Beatmaps
   // =========================================================================
 
-  async getAllBeatmaps() {
+  async getAllBeatmaps(options = {}) {
+    const { includeDeleted = false } = options;
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
       const tx = db.transaction('beatmaps', 'readonly');
       const store = tx.objectStore('beatmaps');
       const req = store.getAll();
-      req.onsuccess = () => resolve(req.result || []);
+      req.onsuccess = () => {
+        const list = req.result || [];
+        if (includeDeleted) {
+          resolve(list);
+        } else {
+          resolve(list.filter((b) => !b.deletedAt));
+        }
+      };
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async getDeletedBeatmaps() {
+    const db = await this.getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('beatmaps', 'readonly');
+      const store = tx.objectStore('beatmaps');
+      const req = store.getAll();
+      req.onsuccess = () => {
+        const list = req.result || [];
+        resolve(list.filter((b) => Boolean(b.deletedAt)));
+      };
       req.onerror = () => reject(req.error);
     });
   }
@@ -108,7 +137,60 @@ class DatabaseManager {
     });
   }
 
-  async deleteBeatmap(id) {
+  /**
+   * Soft Delete Beatmap: Đánh dấu cờ deletedAt thay vì xóa vĩnh viễn,
+   * cho phép người dùng Hoàn tác (Undo / Ctrl+Z) hoặc khôi phục từ Thùng rác.
+   */
+  async softDeleteBeatmap(id) {
+    const db = await this.getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('beatmaps', 'readwrite');
+      const store = tx.objectStore('beatmaps');
+      const getReq = store.get(id);
+      getReq.onsuccess = () => {
+        const item = getReq.result;
+        if (!item) {
+          resolve(false);
+          return;
+        }
+        item.deletedAt = Date.now();
+        const putReq = store.put(item);
+        putReq.onsuccess = () => resolve(item);
+        putReq.onerror = () => reject(putReq.error);
+      };
+      getReq.onerror = () => reject(getReq.error);
+    });
+  }
+
+  /**
+   * Hoàn tác xóa / Khôi phục Beatmap từ Thùng rác
+   */
+  async restoreBeatmap(id) {
+    const db = await this.getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('beatmaps', 'readwrite');
+      const store = tx.objectStore('beatmaps');
+      const getReq = store.get(id);
+      getReq.onsuccess = () => {
+        const item = getReq.result;
+        if (!item) {
+          resolve(false);
+          return;
+        }
+        delete item.deletedAt;
+        item.updatedAt = Date.now();
+        const putReq = store.put(item);
+        putReq.onsuccess = () => resolve(item);
+        putReq.onerror = () => reject(putReq.error);
+      };
+      getReq.onerror = () => reject(getReq.error);
+    });
+  }
+
+  /**
+   * Xóa vĩnh viễn Beatmap khỏi IndexedDB (không thể hoàn tác)
+   */
+  async permanentlyDeleteBeatmap(id) {
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
       const tx = db.transaction('beatmaps', 'readwrite');
@@ -117,6 +199,30 @@ class DatabaseManager {
       req.onsuccess = () => resolve(true);
       req.onerror = () => reject(req.error);
     });
+  }
+
+  /**
+   * Dọn sạch toàn bộ bài hát trong thùng rác
+   */
+  async clearTrash() {
+    const trashed = await this.getDeletedBeatmaps();
+    const db = await this.getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('beatmaps', 'readwrite');
+      const store = tx.objectStore('beatmaps');
+      for (const m of trashed) {
+        store.delete(m.id);
+      }
+      tx.oncomplete = () => resolve(trashed.length);
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  /**
+   * Mặc định deleteBeatmap chuyển thành soft-delete an toàn
+   */
+  async deleteBeatmap(id) {
+    return await this.softDeleteBeatmap(id);
   }
 
   // =========================================================================

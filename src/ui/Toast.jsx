@@ -25,12 +25,15 @@ export const toast = {
   info(msg, opts) {
     return this.show(msg, { ...opts, type: 'info' });
   },
-  undo(msg, onUndo, duration = 8000) {
+  undo(msg, onUndo, duration = 7000, label = 'HOÀN TÁC (Ctrl+Z)') {
     return this.show(msg, {
       type: 'info',
       duration,
-      action: { label: 'Hoàn tác (Undo)', onClick: onUndo },
+      action: { label, onClick: onUndo },
     });
+  },
+  dismiss(id) {
+    listeners.forEach((fn) => fn({ type: 'dismiss', id }));
   }
 };
 
@@ -38,7 +41,11 @@ export function ToastContainer() {
   const [toasts, setToasts] = useState([]);
 
   useEffect(() => {
-    const addToast = (t) => {
+    const handleEvent = (t) => {
+      if (t.type === 'dismiss') {
+        setToasts((prev) => (t.id ? prev.filter((item) => item.id !== t.id) : []));
+        return;
+      }
       setToasts((prev) => [...prev, t]);
       if (t.duration > 0) {
         setTimeout(() => {
@@ -47,8 +54,8 @@ export function ToastContainer() {
       }
     };
 
-    listeners.add(addToast);
-    return () => listeners.delete(addToast);
+    listeners.add(handleEvent);
+    return () => listeners.delete(handleEvent);
   }, []);
 
   const removeToast = (id) => {

@@ -201,14 +201,109 @@ class MapController extends Controller
             ], 403);
         }
 
-        // Xoá asset đã upload để tránh file mồ côi trong storage.
-        Storage::disk('public')->deleteDirectory("beatmaps/{$song_id}");
-
+        // Soft delete: Giữ lại storage assets để người dùng có thể hoàn tác (Undo / Restore)
         $map->delete();
 
         return response()->json([
             'success' => true,
-            'message' => 'Đã xóa beatmap khỏi MySQL Database!',
+            'message' => 'Đã chuyển beatmap vào thùng rác tạm (Soft Delete)!',
+        ]);
+    }
+
+    /**
+     * POST /api/maps/{song_id}/restore
+     * Hoàn tác xóa / Khôi phục beatmap từ thùng rác
+     */
+    public function restore(Request $request, string $song_id): JsonResponse
+    {
+        $map = Map::onlyTrashed()->where('song_id', $song_id)->first();
+
+        if (!$map) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy beatmap trong thùng rác'], 404);
+        }
+
+        $user = $request->user();
+        if (!$user) {
+            $token = $request->bearerToken();
+            if ($token) {
+                $user = \App\Models\User::where('api_token', hash('sha256', $token))->first();
+            }
+        }
+
+        $canRestore = $user && ($user->isAdmin() || ($map->user_id && $map->user_id === $user->id));
+        if (!$canRestore) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn không có quyền khôi phục beatmap này.',
+            ], 403);
+        }
+
+        $map->restore();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Đã khôi phục thành công bài hát '{$map->title}'!",
+            'map' => $map,
+        ]);
+    }
+
+    /**
+     * DELETE /api/maps/{song_id}/force
+     * Xóa vĩnh viễn beatmap và dọn sạch file assets trong disk
+     */
+    public function forceDestroy(Request $request, string $song_id): JsonResponse
+    {
+        $map = Map::withTrashed()->where('song_id', $song_id)->first();
+
+        if (!$map) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy beatmap'], 404);
+        }
+
+        $user = $request->user();
+        if (!$user) {
+            $token = $request->bearerToken();
+            if ($token) {
+                $user = \App\Models\User::where('api_token', hash('sha256', $token))->first();
+            }
+        }
+
+        $canForce = $user && ($user->isAdmin() || ($map->user_id && $map->user_id === $user->id));
+        if (!$canForce) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn không có quyền xóa vĩnh viễn beatmap này.',
+            ], 403);
+        }
+
+        // Xóa asset files trên disk
+        Storage::disk('public')->deleteDirectory("beatmaps/{$song_id}");
+
+        $map->forceDelete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Đã xóa vĩnh viễn beatmap và dọn dẹp bộ nhớ lưu trữ!',
+        ]);
+    }
+
+    /**
+     * GET /api/maps/trash/list
+     * Lấy danh sách các bài hát trong thùng rác
+     */
+    public function trashed(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $query = Map::onlyTrashed();
+
+        if (!$user->isAdmin()) {
+            $query->where('user_id', $user->id);
+        }
+
+        $maps = $query->orderByDesc('deleted_at')->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $maps,
         ]);
     }
 }

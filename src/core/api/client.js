@@ -139,6 +139,22 @@ class ApiClient {
     });
   }
 
+  async restoreMap(songId) {
+    return await this.request(`/maps/${encodeURIComponent(songId)}/restore`, {
+      method: 'POST',
+    });
+  }
+
+  async forceDeleteMap(songId) {
+    return await this.request(`/maps/${encodeURIComponent(songId)}/force`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getTrashMaps() {
+    return await this.request('/maps/trash/list');
+  }
+
   // --- SCORES ---
   async submitScore(scoreData) {
     return await this.request('/scores', {

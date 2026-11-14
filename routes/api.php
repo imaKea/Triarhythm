@@ -23,14 +23,18 @@ Route::prefix('auth')->group(function () {
 // Maps Routes
 Route::prefix('maps')->group(function () {
     Route::get('/', [MapController::class, 'index']);
-    Route::get('/{song_id}', [MapController::class, 'show']);
 
-    // Upload & Xoá map yêu cầu xác thực người dùng
+    // Quản lý và thao tác beatmaps yêu cầu xác thực người dùng
     Route::middleware('auth.api')->group(function () {
+        Route::get('/trash/list', [MapController::class, 'trashed']);
         Route::post('/', [MapController::class, 'store']);
         Route::post('/{song_id}/assets', [MapController::class, 'uploadAssets']);
+        Route::post('/{song_id}/restore', [MapController::class, 'restore']);
         Route::delete('/{song_id}', [MapController::class, 'destroy']);
+        Route::delete('/{song_id}/force', [MapController::class, 'forceDestroy']);
     });
+
+    Route::get('/{song_id}', [MapController::class, 'show']);
 });
 
 // Scores Routes

@@ -10,6 +10,7 @@ import {
   RankBadge,
   ContextMenu,
   ConfirmDialog,
+  Modal,
   toast,
   playHover,
   playClick,
@@ -46,6 +47,13 @@ export default function AstroSongSelect({
   // Context menu & Confirm dialog state
   const [contextMenu, setContextMenu] = useState({ isOpen: false, x: 0, y: 0, beatmap: null });
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, beatmap: null, deleteFromServer: false });
+
+  // Ngăn xếp hoàn tác xóa bài hát (Undo Ctrl+Z)
+  const deletedStackRef = useRef([]);
+
+  // Quản lý Thùng rác (Trash Bin)
+  const [isTrashOpen, setIsTrashOpen] = useState(false);
+  const [trashMaps, setTrashMaps] = useState([]);
 
   const audioRef = useRef(null);
   const carouselRef = useRef(null);
@@ -234,6 +242,13 @@ export default function AstroSongSelect({
       // Don't intercept if user is typing in search input
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
+      // Phím tắt Ctrl+Z / Cmd+Z: Hoàn tác xóa bài hát vừa xóa
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
+        e.preventDefault();
+        handleUndoDelete();
+        return;
+      }
+
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         playHover();
@@ -343,33 +358,122 @@ export default function AstroSongSelect({
     });
   };
 
+  // Hoàn tác xóa bài hát vừa xóa (Undo / Ctrl+Z)
+  const handleUndoDelete = async () => {
+    if (deletedStackRef.current.length === 0) {
+      toast.info('Không có bài hát nào gần đây để hoàn tác.');
+      return;
+    }
+
+    const last = deletedStackRef.current.pop();
+    if (!last || !last.beatmap) return;
+
+    try {
+      await dbManager.restoreBeatmap(last.beatmap.id);
+      if (last.deleteFromServer) {
+        try {
+          await apiClient.restoreMap(last.beatmap.id);
+        } catch (_) {}
+      }
+      if (last.toastId) {
+        toast.dismiss(last.toastId);
+      }
+      if (onReloadBeatmaps) await onReloadBeatmaps();
+      onSelectBeatmap(last.beatmap);
+      playSelect();
+      toast.success(`Đã hoàn tác (Ctrl+Z): Đã khôi phục "${last.beatmap.title || 'Untitled'}"!`);
+    } catch (err) {
+      toast.error('Không thể hoàn tác: ' + err.message);
+    }
+  };
+
   const confirmDeleteBeatmap = async () => {
     const bm = deleteConfirm.beatmap;
     if (!bm || !bm.id) return;
+    const deleteFromServer = Boolean(deleteConfirm.deleteFromServer);
     setDeleteConfirm({ isOpen: false, beatmap: null, deleteFromServer: false });
 
-    const deletedCopy = { ...bm };
     try {
-      await dbManager.deleteBeatmap(bm.id);
-      if (deleteConfirm.deleteFromServer) {
-        try { await apiClient.deleteMap(bm.id); } catch (e) {
+      // 1. Soft delete an toàn trong IndexedDB (giữ nguyên Blobs)
+      await dbManager.softDeleteBeatmap(bm.id);
+
+      // 2. Soft delete trên MySQL nếu có tùy chọn
+      if (deleteFromServer) {
+        try {
+          await apiClient.deleteMap(bm.id);
+        } catch (e) {
           toast.error('Lỗi xoá trên server: ' + (e.message || 'Không thể kết nối'));
         }
       }
-      if (onReloadBeatmaps) await onReloadBeatmaps();
 
-      // Undo Toast (8s)
-      toast.undo(`Đã xoá bài hát "${bm.title || 'Untitled'}"`, async () => {
-        try {
-          await dbManager.saveBeatmap(deletedCopy);
-          if (onReloadBeatmaps) await onReloadBeatmaps();
-          toast.success('Đã hoàn tác và khôi phục bài hát!');
-        } catch (restoreErr) {
-          toast.error('Không thể hoàn tác: ' + restoreErr.message);
-        }
-      });
+      if (onReloadBeatmaps) await onReloadBeatmaps();
+      playBack();
+
+      // 3. Đưa vào ngăn xếp Hoàn tác
+      const stackEntry = { beatmap: bm, deleteFromServer, toastId: null };
+      deletedStackRef.current.push(stackEntry);
+
+      // 4. Kích hoạt Toast với nút Hoàn tác và gợi ý phím tắt Ctrl+Z (7 giây)
+      const toastId = toast.undo(
+        `Đã xoá bài hát "${bm.title || 'Untitled'}"`,
+        () => handleUndoDelete(),
+        7000,
+        'HOÀN TÁC (Ctrl+Z)'
+      );
+      stackEntry.toastId = toastId;
     } catch (err) {
       toast.error('Lỗi khi xoá bài hát: ' + err.message);
+    }
+  };
+
+  // Quản lý Thùng rác
+  const handleOpenTrash = async () => {
+    try {
+      const trashed = await dbManager.getDeletedBeatmaps();
+      setTrashMaps(trashed);
+      setIsTrashOpen(true);
+    } catch (err) {
+      toast.error('Lỗi tải thùng rác: ' + err.message);
+    }
+  };
+
+  const handleRestoreFromTrash = async (m) => {
+    try {
+      await dbManager.restoreBeatmap(m.id);
+      try {
+        await apiClient.restoreMap(m.id);
+      } catch (_) {}
+      if (onReloadBeatmaps) await onReloadBeatmaps();
+      const updated = await dbManager.getDeletedBeatmaps();
+      setTrashMaps(updated);
+      toast.success(`Đã khôi phục "${m.title}"!`);
+    } catch (err) {
+      toast.error('Lỗi khôi phục: ' + err.message);
+    }
+  };
+
+  const handlePermanentDelete = async (m) => {
+    try {
+      await dbManager.permanentlyDeleteBeatmap(m.id);
+      try {
+        await apiClient.forceDeleteMap(m.id);
+      } catch (_) {}
+      const updated = await dbManager.getDeletedBeatmaps();
+      setTrashMaps(updated);
+      toast.success(`Đã xóa vĩnh viễn "${m.title}"!`);
+    } catch (err) {
+      toast.error('Lỗi xóa vĩnh viễn: ' + err.message);
+    }
+  };
+
+  const handleClearAllTrash = async () => {
+    try {
+      const count = await dbManager.clearTrash();
+      setTrashMaps([]);
+      setIsTrashOpen(false);
+      toast.success(`Đã dọn sạch ${count} bài hát trong thùng rác!`);
+    } catch (err) {
+      toast.error('Lỗi dọn thùng rác: ' + err.message);
     }
   };
 
@@ -426,6 +530,15 @@ export default function AstroSongSelect({
               <option value="length">Length</option>
             </select>
           </div>
+
+          <button
+            onClick={handleOpenTrash}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-[#8890a4] hover:text-white text-xs font-bold transition-all border border-white/[0.08] cursor-pointer"
+            title="Thùng rác beatmap (khôi phục bài đã xóa)"
+          >
+            <span>🗑️</span>
+            <span>Thùng rác</span>
+          </button>
 
           <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#ff66ab] hover:bg-[#ff7ab8] text-white text-xs font-bold cursor-pointer transition-all shadow-[0_0_12px_rgba(255,102,171,0.3)]">
             <span>{isImporting ? '⏳' : '+'}</span>
@@ -787,10 +900,90 @@ export default function AstroSongSelect({
         onClose={() => setDeleteConfirm({ isOpen: false, beatmap: null, deleteFromServer: false })}
         onConfirm={confirmDeleteBeatmap}
         title="Xác nhận xoá Beatmap?"
-        message={`Bạn có chắc muốn xoá "${deleteConfirm.beatmap?.title || 'bài hát'}"? Thao tác có thể được hoàn tác trong vòng 8 giây sau khi xoá.`}
+        message={`Bạn có chắc muốn xoá "${deleteConfirm.beatmap?.title || 'bài hát'}"? Bài hát sẽ được chuyển vào Thùng rác tạm và có thể Hoàn tác ngay lập tức (Ctrl+Z hoặc nút Hoàn tác).`}
         confirmText={deleteConfirm.deleteFromServer ? 'Xoá cả Server & Máy' : 'Xoá khỏi máy'}
         confirmVariant="danger"
       />
+
+      {/* TRASH BIN MODAL (Thùng rác Beatmap) */}
+      <Modal
+        isOpen={isTrashOpen}
+        onClose={() => setIsTrashOpen(false)}
+        title="Thùng rác Beatmap (Đã xóa tạm thời)"
+        size="lg"
+      >
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-[#8890a4]">
+              Các bài hát bị xóa được lưu trữ an toàn tại đây để khôi phục bất cứ lúc nào.
+            </p>
+            {trashMaps.length > 0 && (
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={handleClearAllTrash}
+                icon="🗑"
+              >
+                Dọn sạch thùng rác
+              </Button>
+            )}
+          </div>
+
+          <div className="max-h-96 overflow-y-auto divide-y divide-white/[0.06] custom-scrollbar border border-white/[0.08] rounded-xl bg-[#141424]">
+            {trashMaps.length > 0 ? (
+              trashMaps.map((m) => (
+                <div key={m.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-white/[0.02] transition-colors">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-[#ff66ab] shrink-0 overflow-hidden">
+                      {m.backgroundSource || m.serverAssets?.coverUrl ? (
+                        <img
+                          src={m.backgroundSource || m.serverAssets?.coverUrl}
+                          alt="Cover"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span>♪</span>
+                      )}
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-bold text-white text-xs truncate max-w-xs">{m.title}</span>
+                      <span className="text-[10px] text-[#7c849c] truncate max-w-xs">{m.artist}</span>
+                      {m.deletedAt && (
+                        <span className="text-[9px] font-mono text-[#ff80bf]">
+                          Đã xóa: {new Date(m.deletedAt).toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={() => handleRestoreFromTrash(m)}
+                      icon="⤺"
+                    >
+                      Khôi phục
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => handlePermanentDelete(m)}
+                      icon="✕"
+                    >
+                      Xóa vĩnh viễn
+                    </Button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="p-8 text-center text-[#7c849c] text-xs">
+                Thùng rác trống. Không có bài hát nào bị xóa.
+              </div>
+            )}
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
