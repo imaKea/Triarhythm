@@ -5,6 +5,7 @@ import { parseOsu } from '../core/parser/index.js';
 import { buildScoreRecord, persistScoreResult } from '../core/storage/scoreService.js';
 import { calculateStars, calculatePP } from '../core/pp/ppCalculator.js';
 import { Button, StarRating, RankBadge, playHover, playClick, playBack } from '../ui/index.js';
+import AstroResultScreen from './AstroResultScreen.jsx';
 
 export default function GameplayView({
   initialChart = null,
@@ -364,6 +365,21 @@ export default function GameplayView({
   const handleRetry = async () => {
     if (!engineRef.current) return;
     engineRef.current.stop();
+    const initialAutoplay = settings?.isAutoplay ?? false;
+    engineRef.current.setAutoplay(initialAutoplay);
+    setIsAutoplay(initialAutoplay);
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.pause();
+    }
+    await handleStartGame();
+  };
+
+  const handleReplay = async () => {
+    if (!engineRef.current) return;
+    engineRef.current.stop();
+    engineRef.current.setAutoplay(true);
+    setIsAutoplay(true);
     if (videoRef.current) {
       videoRef.current.currentTime = 0;
       videoRef.current.pause();
@@ -629,73 +645,21 @@ export default function GameplayView({
           </div>
         )}
 
-        {/* 9. RESULT SCREEN */}
+        {/* 9. RESULT SCREEN CHUẨN OSU!(LAZER) */}
         {gameResult && (
-          <div className="absolute inset-0 z-30 bg-[#0d0d1a]/95 backdrop-blur-xl flex items-center justify-center animate-fadeIn">
-            <div className="flex flex-col items-center max-w-lg w-full px-6">
-              <div className="text-xs text-[#ff66ab] font-bold tracking-[0.2em] mb-1 uppercase font-mono">
-                RESULTS
-              </div>
-              <div className="text-sm font-bold text-white mb-4 truncate max-w-full text-center">
-                {activeChartName} <span className="text-[#ff66ab]">[{activeDiffName}]</span>
-              </div>
-
-              {/* Grade */}
-              <div className="mb-3">
-                <RankBadge rank={gameResult.rank} size="xl" />
-              </div>
-
-              {/* Accuracy */}
-              <div className="font-mono text-3xl font-black text-white mb-4">
-                {gameResult.achievement.toFixed(2)}%
-              </div>
-
-              {/* Stats Row */}
-              <div className="flex items-center gap-2 mb-5 text-xs font-mono">
-                <span className="px-3 py-1.5 rounded-full bg-white/[0.06] border border-white/[0.06] text-white font-bold">
-                  {(gameResult.score ?? Math.round(gameResult.achievement * 10000)).toLocaleString('en-US')}
-                </span>
-                {gameResult.stars !== undefined && (
-                  <StarRating stars={gameResult.stars} size="sm" />
-                )}
-                {gameResult.pp !== undefined && (
-                  <span className="px-3 py-1.5 rounded-full bg-[#6c5ce7]/15 border border-[#6c5ce7]/30 text-[#a29bfe] font-bold">
-                    {Number(gameResult.pp).toFixed(0)}pp
-                  </span>
-                )}
-              </div>
-
-              {/* Judgments Grid */}
-              <div className="w-80 bg-[#1a1a2e]/90 rounded-2xl border border-white/[0.06] p-4 mb-5 shadow-xl">
-                <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs font-mono">
-                  <div className="flex justify-between"><span className="text-[#ffdd57]">CRITICAL</span> <span className="font-bold text-white">{gameResult.counts.criticalPerfect}</span></div>
-                  <div className="flex justify-between"><span className="text-[#ff9800]">PERFECT</span> <span className="font-bold text-white">{gameResult.counts.perfect}</span></div>
-                  <div className="flex justify-between"><span className="text-[#66bb6a]">GREAT</span> <span className="font-bold text-white">{gameResult.counts.great}</span></div>
-                  <div className="flex justify-between"><span className="text-[#4fc3f7]">GOOD</span> <span className="font-bold text-white">{gameResult.counts.good}</span></div>
-                  <div className="flex justify-between"><span className="text-[#ef5350]">MISS</span> <span className="font-bold text-[#ef5350]">{gameResult.counts.miss}</span></div>
-                  <div className="flex justify-between"><span className="text-white/60">MAX COMBO</span> <span className="font-bold text-white">{gameResult.maxCombo}</span></div>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3">
-                <Button variant="primary" size="md" onClick={handleRetry} icon="↺">
-                  Retry
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="md"
-                  onClick={() => {
-                    setGameResult(null);
-                    if (onBackToSelect) onBackToSelect();
-                  }}
-                  icon="←"
-                >
-                  Back to Songs
-                </Button>
-              </div>
-            </div>
-          </div>
+          <AstroResultScreen
+            result={gameResult}
+            beatmap={engineRef.current?.beatmap || initialChart?.beatmap || initialChart}
+            initialChart={initialChart}
+            currentUser={currentUser}
+            isAutoplay={isAutoplay}
+            onRetry={handleRetry}
+            onReplay={handleReplay}
+            onBack={() => {
+              setGameResult(null);
+              if (onBackToSelect) onBackToSelect();
+            }}
+          />
         )}
       </div>
     </div>

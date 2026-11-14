@@ -216,6 +216,7 @@ export class ScoreManager {
       maxCombo: this.maxCombo,
       ur: Number(this.ur.toFixed(1)),
       counts: { ...this.counts },
+      hitOffsets: [...this.deltaList],
       flags: {
         isAP: this.isAllPerfect && this.counts.miss === 0,
         isFC: this.isFullCombo && this.counts.miss === 0

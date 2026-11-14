@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   calculateStars,
   calculatePP,
+  calculatePPBreakdown,
   calculateTotalPP,
   getNoteTarget
 } from '../src/core/pp/ppCalculator.js';
@@ -90,6 +91,15 @@ describe('calculatePP', () => {
   it('PP được làm tròn 2 chữ số', () => {
     const pp = calculatePP({ stars: 9.87, achievement: 97.65, missCount: 2, noteCount: 640 });
     expect(pp).toBe(Number(pp.toFixed(2)));
+  });
+
+  it('calculatePPBreakdown phân rã thành aim, speed, acc với tổng xấp xỉ totalPP', () => {
+    const res = calculatePPBreakdown({ stars: 8.5, achievement: 99.5, missCount: 0, noteCount: 800 });
+    expect(res.totalPP).toBeGreaterThan(0);
+    expect(res.aimPP).toBeGreaterThan(0);
+    expect(res.speedPP).toBeGreaterThan(0);
+    expect(res.accPP).toBeGreaterThan(0);
+    expect(Math.abs(res.aimPP + res.speedPP + res.accPP - res.totalPP)).toBeLessThanOrEqual(0.05);
   });
 });
 

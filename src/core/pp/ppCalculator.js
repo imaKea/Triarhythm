@@ -136,6 +136,26 @@ export function calculatePP({ stars = 0, achievement = 0, missCount = 0, noteCou
 }
 
 /**
+ * Phân rã PP thành 3 thành phần Aim PP, Speed PP, Acc PP chuẩn osu!
+ * @returns {{ totalPP: number, aimPP: number, speedPP: number, accPP: number }}
+ */
+export function calculatePPBreakdown({ stars = 0, achievement = 0, missCount = 0, noteCount = 0 } = {}) {
+  const totalPP = calculatePP({ stars, achievement, missCount, noteCount });
+  if (totalPP <= 0) {
+    return { totalPP: 0, aimPP: 0, speedPP: 0, accPP: 0 };
+  }
+  const accMod = Math.min(1.2, Math.max(0.6, achievement / 100));
+  const aimRatio = 0.44;
+  const speedRatio = 0.36;
+  const accRatio = 0.20 * accMod;
+  const sum = aimRatio + speedRatio + accRatio;
+  const aimPP = Number(((totalPP * aimRatio) / sum).toFixed(2));
+  const speedPP = Number(((totalPP * speedRatio) / sum).toFixed(2));
+  const accPP = Number(Math.max(0, totalPP - aimPP - speedPP).toFixed(2));
+  return { totalPP, aimPP, speedPP, accPP };
+}
+
+/**
  * Tổng PP từ danh sách điểm (mỗi phần tử có field `pp`).
  * Lấy tối đa totalTopCount bài, nhân trọng số totalWeightDecay^i.
  */

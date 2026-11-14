@@ -160,3 +160,33 @@ export function playTick() {
   osc.start(now);
   osc.stop(now + 0.025);
 }
+
+/**
+ * Phát âm thanh chúc mừng hoàn thành bài hát / Result Screen fanfare
+ */
+export function playResultFanfare(isPass = true) {
+  if (!isUISoundEnabled()) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  const now = ctx.currentTime;
+  const notes = isPass ? [523.25, 659.25, 783.99, 1046.50] : [440, 415.3, 392, 349.23];
+
+  notes.forEach((freq, idx) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const startTime = now + idx * 0.08;
+
+    osc.type = isPass ? 'triangle' : 'sine';
+    osc.frequency.setValueAtTime(freq, startTime);
+
+    gain.gain.setValueAtTime(0.08, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.45);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(startTime);
+    osc.stop(startTime + 0.5);
+  });
+}
