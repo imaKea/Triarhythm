@@ -865,4 +865,65 @@ describe('GĐ3 Unit Tests - Core Engine & Scoring', () => {
     expect(engine.scoreManager.combo).toBe(2);
     engine.handlePointerUp({ pointerId: 2, audioTime: 2050, timeStamp: 2050 });
   });
+
+  it('27. Cho phép mobile tự do quẹt (swipe/slide) ngón tay qua các judgement để kích hoạt liên tiếp các lane', async () => {
+    const dummyCanvas = { width: 720, height: 620, getContext: () => ({}) };
+    const engine = new GameEngine(dummyCanvas);
+
+    const beatmap = {
+      timingPoints: [{ bpm: 120, beatLength: 500 }],
+      notes: [
+        { type: 'tap', lane: 0, time: 1000 },
+        { type: 'tap', lane: 1, time: 1050 },
+        { type: 'tap', lane: 2, time: 1100 }
+      ]
+    };
+
+    await engine.loadChart(beatmap);
+    engine.isRunning = true;
+
+    const lane0Pix = layoutToPixels(TRI_RING_LAYOUT.tapLanes[0].x, TRI_RING_LAYOUT.tapLanes[0].y, 720, 620);
+    const lane1Pix = layoutToPixels(TRI_RING_LAYOUT.tapLanes[1].x, TRI_RING_LAYOUT.tapLanes[1].y, 720, 620);
+    const lane2Pix = layoutToPixels(TRI_RING_LAYOUT.tapLanes[2].x, TRI_RING_LAYOUT.tapLanes[2].y, 720, 620);
+
+    // 1. Chạm ngón tay vào Lane 0 lúc 1000ms
+    engine.handlePointerDown({
+      clientX: lane0Pix.x,
+      clientY: lane0Pix.y,
+      pointerId: 99,
+      audioTime: 1000,
+      timeStamp: 1000
+    });
+    expect(engine.notes[0].state).toBe('JUDGED');
+    expect(engine.inputManager.isKeyDown[0]).toBe(true);
+
+    // 2. Quẹt ngón tay từ Lane 0 sang Lane 1 lúc 1050ms
+    engine.handlePointerMove({
+      clientX: lane1Pix.x,
+      clientY: lane1Pix.y,
+      pointerId: 99,
+      audioTime: 1050,
+      timeStamp: 1050
+    });
+    expect(engine.inputManager.isKeyDown[0]).toBe(false); // Đã nhả Lane 0
+    expect(engine.inputManager.isKeyDown[1]).toBe(true);  // Đã kích hoạt Lane 1
+    expect(engine.notes[1].state).toBe('JUDGED');
+
+    // 3. Quẹt ngón tay tiếp sang Lane 2 lúc 1100ms
+    engine.handlePointerMove({
+      clientX: lane2Pix.x,
+      clientY: lane2Pix.y,
+      pointerId: 99,
+      audioTime: 1100,
+      timeStamp: 1100
+    });
+    expect(engine.inputManager.isKeyDown[1]).toBe(false); // Đã nhả Lane 1
+    expect(engine.inputManager.isKeyDown[2]).toBe(true);  // Đã kích hoạt Lane 2
+    expect(engine.notes[2].state).toBe('JUDGED');
+    expect(engine.scoreManager.combo).toBe(3);
+
+    // 4. Nhấc ngón tay lên
+    engine.handlePointerUp({ pointerId: 99, audioTime: 1150, timeStamp: 1150 });
+    expect(engine.inputManager.isKeyDown[2]).toBe(false);
+  });
 });

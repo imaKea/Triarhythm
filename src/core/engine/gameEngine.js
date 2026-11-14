@@ -1032,6 +1032,30 @@ export class GameEngine {
   }
 
   /**
+   * Xác định Lane gần nhất theo tọa độ pixel canvas (có tính bán kính công thái học cho cảm ứng mobile)
+   */
+  getLaneAtPos(px, py, width, height) {
+    let closestLane = -1;
+    let minDist = Infinity;
+    for (let i = 0; i < TRI_RING_LAYOUT.tapLanes.length; i++) {
+      const laneDef = TRI_RING_LAYOUT.tapLanes[i];
+      const lanePix = layoutToPixels(laneDef.x, laneDef.y, width, height);
+      const dist = Math.hypot(px - lanePix.x, py - lanePix.y);
+      if (dist < minDist) {
+        minDist = dist;
+        closestLane = i;
+      }
+    }
+
+    const { scale } = getLayoutMetrics(width, height);
+    const laneRadiusPx = TRI_RING_LAYOUT.tapDimensions.radius * scale;
+    // Bán kính chạm ngón tay công thái học cho mobile (tối thiểu 52px)
+    const hitRadius = Math.max(laneRadiusPx * 1.6, 52);
+
+    return (closestLane !== -1 && minDist <= hitRadius) ? closestLane : null;
+  }
+
+  /**
    * Xử lý tương tác ngón tay (Touch / Pointer) trên mobile & màn hình cảm ứng:
    * 1. Hỗ trợ đa chạm (Multi-touch): nhiều ngón tay bấm / giữ nốt đồng thời.
    * 2. Bấm trúng ô Tap: phán định nốt trên Lane tương ứng.
@@ -1073,26 +1097,9 @@ export class GameEngine {
       return;
     }
 
-    // 2. Tìm ô Lane gần nhất trong 9 ô Tap
-    let closestLane = -1;
-    let minDist = Infinity;
-    for (let i = 0; i < TRI_RING_LAYOUT.tapLanes.length; i++) {
-      const laneDef = TRI_RING_LAYOUT.tapLanes[i];
-      const lanePix = layoutToPixels(laneDef.x, laneDef.y, width, height);
-      const dist = Math.hypot(px - lanePix.x, py - lanePix.y);
-      if (dist < minDist) {
-        minDist = dist;
-        closestLane = i;
-      }
-    }
-
-    const { scale } = getLayoutMetrics(width, height);
-    const laneRadiusPx = TRI_RING_LAYOUT.tapDimensions.radius * scale;
-    // Bán kính chạm ngón tay công thái học cho mobile (tối thiểu 52px)
-    const hitRadius = Math.max(laneRadiusPx * 1.6, 52);
-
-    const isTapOnLane = closestLane !== -1 && minDist <= hitRadius;
-    const assignedLane = isTapOnLane ? closestLane : null;
+    // 2. Tìm ô Lane theo vị trí chạm
+    const assignedLane = this.getLaneAtPos(px, py, width, height);
+    const isTapOnLane = assignedLane !== null;
 
     const pId = e.pointerId !== undefined ? e.pointerId : 1;
     this.activeTouchPointers.set(pId, {
@@ -1140,7 +1147,7 @@ export class GameEngine {
   }
 
   handlePointerMove(e) {
-    if (!this.canvas || !this.isRunning) return;
+    if (!this.canvas || !this.isRunning || this.isPaused) return;
     const rect = this.canvas.getBoundingClientRect
       ? this.canvas.getBoundingClientRect()
       : { left: 0, top: 0, width: this.canvas.width || 720, height: this.canvas.height || 620 };
@@ -1155,9 +1162,55 @@ export class GameEngine {
 
     const pId = e.pointerId !== undefined ? e.pointerId : 1;
     const ptr = this.activeTouchPointers.get(pId);
-    if (ptr) {
-      ptr.px = px;
-      ptr.py = py;
+    if (!ptr) return;
+
+    ptr.px = px;
+    ptr.py = py;
+
+    const perfTime = e.timeStamp || performance.now();
+    const audioTime = e.audioTime !== undefined
+      ? e.audioTime
+      : (this.audioEngine ? this.audioEngine.perfToAudioTime(perfTime) : performance.now());
+
+    // Yêu cầu: cho phép mobile tự do "quẹt" được trên các judgement
+    const newLane = this.getLaneAtPos(px, py, width, height);
+    const prevLane = ptr.lane;
+
+    if (newLane !== prevLane) {
+      // 1. Nếu ngón tay trượt ra khỏi lane trước đó -> nhả lane cũ nếu không còn ngón tay nào khác giữ
+      if (prevLane !== null) {
+        ptr.lane = null;
+        const stillHeld = Array.from(this.activeTouchPointers.values()).some(p => p.lane === prevLane);
+        if (!stillHeld) {
+          this.inputManager.isKeyDown[prevLane] = false;
+          this.handleLaneUp(prevLane, audioTime, perfTime);
+        }
+      }
+
+      // 2. Nếu ngón tay quẹt trúng lane mới -> kích hoạt phán định lane mới
+      if (newLane !== null) {
+        ptr.lane = newLane;
+        this.inputManager.isKeyDown[newLane] = true;
+        this.handleLaneDown(newLane, audioTime, perfTime);
+
+        // Kiểm tra xem có Ring note trong cửa sổ phán định khi quẹt qua judgement không
+        const maxWindow = JUDGEMENT_CONFIG.windows.good || 150;
+        const hasRingInWindow = this.notes.some(n =>
+          (n.type === 'ring' || n.type === 'slide') &&
+          n.state !== 'JUDGED' &&
+          n.state !== 'MISSED' &&
+          !n.headJudged &&
+          Math.abs(audioTime - n.time) <= maxWindow
+        );
+        if (hasRingInWindow) {
+          this.inputManager.isSpaceDown = true;
+          this.handleSpaceDown(audioTime, perfTime);
+        }
+
+        // Hiệu ứng sóng nước tương tác khi quẹt trúng nút
+        this.particleSystem.spawnRipple(px, py, '#ff85a2', 55, 0.25, 2.0);
+        gameEvents.emit('touchFeedback', { lane: newLane, px, py });
+      }
     }
   }
 
