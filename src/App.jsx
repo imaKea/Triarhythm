@@ -7,6 +7,8 @@ import MapEditor from './components/MapEditor.jsx';
 import AstroSettingsModal from './components/AstroSettingsModal.jsx';
 import AstroAuthModal from './components/AstroAuthModal.jsx';
 import RingPreview from './components/RingPreview.jsx';
+import UIKitScreen from './components/UIKitScreen.jsx';
+import { ToastContainer } from './ui/index.js';
 import { dbManager } from './core/storage/db.js';
 import { initializeDefaultData } from './core/storage/seedData.js';
 import { importFiles } from './core/parser/index.js';
@@ -205,22 +207,22 @@ export default function App() {
 
       {/* Overlay Drag & Drop toàn màn hình */}
       {isDraggingOver && (
-        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 border-4 border-dashed border-cyan-400 pointer-events-none animate-fadeIn">
+        <div className="fixed inset-0 z-50 bg-[#0d0d1a]/95 backdrop-blur-md flex flex-col items-center justify-center p-6 border-4 border-dashed border-[#ff66ab] pointer-events-none animate-fadeIn">
           <div className="text-6xl mb-4 animate-bounce">📥</div>
-          <h2 className="text-2xl font-cyber font-bold text-white mb-2 tracking-wider">
+          <h2 className="text-2xl font-torus font-black text-white mb-2 tracking-wider">
             THẢ FILE .OSZ / .ZIP ĐỂ NẠP BÀI VÀO DATABASE
           </h2>
-          <p className="text-sm font-mono text-slate-300 max-w-md text-center leading-relaxed">
-            Hỗ trợ file nén <strong className="text-cyan-300">.osz</strong>, <strong className="text-cyan-300">.zip</strong> (Maimai maidata.txt) hoặc file <strong className="text-cyan-300">.osu + .mp3</strong>!
+          <p className="text-sm font-sans text-[#b8c0d4] max-w-md text-center leading-relaxed">
+            Hỗ trợ file nén <strong className="text-[#ff66ab]">.osz</strong>, <strong className="text-[#ff66ab]">.zip</strong> (Maimai maidata.txt) hoặc file <strong className="text-[#ff66ab]">.osu + .mp3</strong>!
           </p>
         </div>
       )}
 
       {/* Loading Screen */}
       {isLoadingData && (
-        <div className="fixed inset-0 z-40 bg-[#05070b] flex flex-col items-center justify-center gap-4">
-          <div className="w-12 h-12 rounded-full border-4 border-cyan-500/20 border-t-cyan-400 animate-spin" />
-          <p className="font-cyber font-bold tracking-widest text-sm text-slate-300">
+        <div className="fixed inset-0 z-40 bg-[#0d0d1a] flex flex-col items-center justify-center gap-4">
+          <div className="w-12 h-12 rounded-full border-4 border-[#ff66ab]/20 border-t-[#ff66ab] animate-spin" />
+          <p className="font-torus font-black tracking-widest text-sm text-[#b8c0d4]">
             TRIARHYTHM ĐANG KHỞI ĐỘNG DATABASE...
           </p>
         </div>
@@ -289,6 +291,11 @@ export default function App() {
             <RingPreview />
           </div>
         )}
+
+        {/* MÀN HÌNH 6: UI KIT (DEBUG OSU! LAZER DESIGN SYSTEM) */}
+        {currentScreen === 'UI_KIT' && (
+          <UIKitScreen onBack={() => setCurrentScreen('SONG_SELECT')} />
+        )}
       </main>
 
       {/* MODAL CÀI ĐẶT */}
@@ -313,6 +320,9 @@ export default function App() {
           setCurrentUser(user);
         }}
       />
+
+      {/* GLOBAL TOAST NOTIFICATIONS */}
+      <ToastContainer />
     </div>
   );
 }

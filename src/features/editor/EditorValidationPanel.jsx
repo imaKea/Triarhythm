@@ -21,7 +21,7 @@ export default function EditorValidationPanel({ validation, source, onClose }) {
         <div className="flex items-center gap-2">
           <span className="text-lg">{valid ? '✅' : '⛔'}</span>
           <div className="flex flex-col">
-            <span className={`font-cyber font-bold text-sm ${valid ? 'text-emerald-300' : 'text-red-300'}`}>
+            <span className={`font-sans font-bold text-sm ${valid ? 'text-emerald-300' : 'text-red-300'}`}>
               {valid ? 'Beatmap hợp lệ' : `Không thể ${sourceLabel.toLowerCase()}`}
             </span>
             <span className="text-[10px] font-mono text-slate-400">

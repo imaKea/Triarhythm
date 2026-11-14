@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { playHover, playSelect } from '../ui/sound/uiAudio.js';
 
 export default function RhythmNavbar({
   currentScreen,
@@ -14,6 +15,7 @@ export default function RhythmNavbar({
     { id: 'SONG_SELECT', label: 'play', icon: '▶' },
     { id: 'LEADERBOARD', label: 'rankings', icon: '★' },
     { id: 'EDITOR', label: 'edit', icon: '✎' },
+    { id: 'UI_KIT', label: 'ui kit', icon: '🎨' },
   ];
 
   return (
@@ -38,7 +40,11 @@ export default function RhythmNavbar({
           return (
             <button
               key={item.id}
-              onClick={() => onNavigate(item.id)}
+              onClick={() => {
+                playSelect();
+                onNavigate(item.id);
+              }}
+              onMouseEnter={() => !isActive && playHover()}
               className={`px-5 py-1.5 text-[13px] font-bold tracking-wide transition-all cursor-pointer relative ${
                 isActive
                   ? 'text-white'
