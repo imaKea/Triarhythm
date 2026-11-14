@@ -296,8 +296,15 @@ export async function importFiles(fileList, options = {}) {
   });
 
   const existing = await db.getBeatmap(songEntry.id);
-  if (existing) {
+  if (existing && !options.overwrite) {
     return { status: 'duplicate', songEntry: existing, kind: parsed.kind, difficultyCount: parsed.charts.length };
+  }
+
+  if (existing && options.overwrite) {
+    songEntry.serverAssets = {
+      ...existing.serverAssets,
+      ...songEntry.serverAssets
+    };
   }
 
   await db.saveBeatmap(songEntry);

@@ -36,7 +36,7 @@ describe('Maimai / Simai Chart Parser (maimaiParser.js)', () => {
     expect(master.difficultyLevel).toBe('12+');
   });
 
-  it('2. Convert slide sang Ring, touch tâm sang Ring, và nốt outer touch sang Button 8 lane chuẩn', () => {
+  it('2. Convert slide sang Ring, touch tâm sang Ring, và nốt outer touch (B, A, D, E) sang Ring', () => {
     const result = parseMaimai(sampleMaidata);
     const adv = result.difficulties.find((d) => d.difficultyName === 'Advanced');
     const notes = adv.beatmap.notes;
@@ -55,10 +55,11 @@ describe('Maimai / Simai Chart Parser (maimaiParser.js)', () => {
     expect(centerRingNote).toBeDefined();
     expect(centerRingNote.lane).toBeUndefined();
 
-    // B2 là Outer Touch hướng 2 -> tạo nốt trên Button 2 (Lane 6)
-    const b2Note = notes.find((n) => n.time === 500 + 6 * 500 && n.lane === MAIMAI_TO_LANE[2]);
+    // B2 là Outer Touch (vành trong quanh tâm) -> convert sang nốt Ring (Spacebar), không tạo nốt trên Lane 6
+    const b2Note = notes.find((n) => n.time === 500 + 6 * 500 && n.type === 'ring');
     expect(b2Note).toBeDefined();
-    expect(b2Note.type).toBe('tap');
+    expect(b2Note.lane).toBeUndefined();
+    expect(Boolean(b2Note.isHold)).toBe(false);
   });
 
   it('3. Ánh xạ chuẩn xác 8 phím vật lý maimai sang 9 ô phím Triarhythm', () => {
@@ -134,13 +135,13 @@ describe('Maimai / Simai Chart Parser (maimaiParser.js)', () => {
     expect(ringNotes.length).toBeGreaterThan(50);
   });
 
-  it('7. Convert Touch cầu vồng (Touch Hold: C1h, Ch...) thành Ring Hold, Slide thường thành Ring Tap', () => {
+  it('7. Convert Touch cầu vồng (Touch Hold: C1h, Ch...) thành Ring Hold, Slide thường thành Ring Tap, Outer Touch thành Ring', () => {
     const maidataWithTouchHold = `
 &title=Touch Hold Test
 &artist=Artist
 &first=0
 &lv_4=12
-&inote_4=(120){4}1-4[4:1],C1,Ch[4:1],B2
+&inote_4=(120){4}1-4[4:1],C1,Ch[4:1],B2,E3h[4:1]
 `;
     const res = parseMaimai(maidataWithTouchHold);
     const notes = res.difficulties[0].beatmap.notes;
@@ -161,10 +162,17 @@ describe('Maimai / Simai Chart Parser (maimaiParser.js)', () => {
     expect(touchHoldRing.isHold).toBe(true);
     expect(touchHoldRing.endTime).toBeGreaterThan(touchHoldRing.time);
 
-    // Outer Touch B2: tạo nốt Tap trên Button 2 (Lane 6)
-    const b2Note = notes.find((n) => n.time === 1500);
-    expect(b2Note.type).toBe('tap');
-    expect(b2Note.lane).toBe(MAIMAI_TO_LANE[2]);
+    // Outer Touch B2: convert sang Ring Tap (Spacebar), không tạo nốt trên Lane 6
+    const b2Note = notes.find((n) => n.time === 1500 && n.type === 'ring');
+    expect(b2Note).toBeDefined();
+    expect(b2Note.lane).toBeUndefined();
+    expect(Boolean(b2Note.isHold)).toBe(false);
+
+    // Outer Touch Hold E3h[4:1]: convert sang Ring Hold
+    const e3hNote = notes.find((n) => n.time === 2000 && n.type === 'ring');
+    expect(e3hNote).toBeDefined();
+    expect(e3hNote.isHold).toBe(true);
+    expect(e3hNote.endTime).toBe(2500);
   });
 
   it('8. Giữ hoàn toàn 100% snap của maimai, tất cả nốt được giữ nguyên không chuyển đổi thành drag note', () => {
@@ -232,5 +240,93 @@ describe('Maimai / Simai Chart Parser (maimaiParser.js)', () => {
     expect(pkg.assets.video).toBeDefined();
     expect(pkg.charts[0].videoBlob).toBeDefined();
     expect(pkg.charts[0].backgroundBlob).toBeDefined();
+  });
+
+  it('11. Xử lý chính xác nốt zero-length hold h[1:0] (như map 系ぎて) thành nốt Tap, không tạo hold dài gây đè nốt trong đoạn spin', () => {
+    // Trong Simai, h[1:0] có multiplier = 0 -> thời lượng = 0.
+    // Parser phải nhận diện duration = 0 và coi như nốt Tap, không sinh ra nốt hold 1 measure (2.7s)
+    expect(parseSimaiDuration('1:0', 88.8)).toBe(0);
+    expect(parseSimaiDuration('0.6757##4.2255', 88.8)).toBe(4225.5);
+
+    const spinMaidata = `
+&title=Spin Test
+&artist=Artist
+&first=0
+&lv_4=15
+&inote_4=(88.8){4}4h[1:0],6,5,4,8h[1:0],2,1,8,E
+`;
+    const res = parseMaimai(spinMaidata);
+    const notes = res.difficulties[0].beatmap.notes;
+
+    // 4h[1:0] và 8h[1:0] phải là nốt Tap, KHÔNG phải nốt Hold
+    const note4 = notes.find((n) => n.lane === MAIMAI_TO_LANE[4] && n.time === 0);
+    expect(note4).toBeDefined();
+    expect(note4.type).toBe('tap');
+    expect(note4.endTime).toBeUndefined();
+
+    const note8 = notes.find((n) => n.lane === MAIMAI_TO_LANE[8] && Math.abs(n.time - 4 * (60000 / 88.8)) <= 2);
+    expect(note8).toBeDefined();
+    expect(note8.type).toBe('tap');
+    expect(note8.endTime).toBeUndefined();
+  });
+
+  it('12. Đảm bảo triệt để không có nốt nào trên cùng 1 lane bị chồng chéo lên nốt Hold', () => {
+    // Nếu có nốt Hold dài mà nốt tiếp theo xuất hiện trước khi Hold kết thúc -> phải cắt ngắn Hold
+    const overlapMaidata = `
+&title=Overlap Test
+&artist=Artist
+&first=0
+&lv_4=12
+&inote_4=(120){1}1h[1:2],{4}1,1,1,1,E
+`;
+    const res = parseMaimai(overlapMaidata);
+    const notes = res.difficulties[0].beatmap.notes;
+    const lane2Notes = notes.filter((n) => n.lane === MAIMAI_TO_LANE[1]);
+
+    const hold = lane2Notes.find((n) => n.type === 'hold');
+    const nextTap = lane2Notes.find((n) => n.time > 0);
+
+    expect(hold).toBeDefined();
+    expect(nextTap).toBeDefined();
+    // endTime của nốt hold trước đó phải <= thời gian bắt đầu của nốt kế tiếp
+    expect(hold.endTime).toBeLessThanOrEqual(nextTap.time);
+  });
+
+  it('13. Chuyển đổi toàn bộ Touch notes (A, B, C, D, E) thành nốt Ring (phím Space) và khử trùng lặp khi nhiều touch cùng thời điểm (B1/B8)', () => {
+    const multiTouchMaidata = `
+&title=Multi Touch Test
+&artist=Artist
+&first=0
+&lv_4=14
+&inote_4=(120){4}B1/B8,,B2/B7,{16}C1h[4:1]/B3/B6,,E2,E3,E
+`;
+    const res = parseMaimai(multiTouchMaidata);
+    const notes = res.difficulties[0].beatmap.notes;
+
+    // Tuyệt đối không sinh ra bất kỳ nốt nào trên các lane 0..8
+    const laneNotes = notes.filter((n) => n.lane !== undefined);
+    expect(laneNotes.length).toBe(0);
+
+    // Thời điểm 0: B1/B8 chỉ sinh ra đúng 1 nốt Ring duy nhất (khử trùng lặp)
+    const ringAt0 = notes.filter((n) => n.time === 0 && n.type === 'ring');
+    expect(ringAt0.length).toBe(1);
+    expect(Boolean(ringAt0[0].isHold)).toBe(false);
+
+    // Thời điểm 1000: B2/B7 chỉ sinh ra đúng 1 nốt Ring duy nhất
+    const ringAt1000 = notes.filter((n) => n.time === 1000 && n.type === 'ring');
+    expect(ringAt1000.length).toBe(1);
+    expect(Boolean(ringAt1000[0].isHold)).toBe(false);
+
+    // Thời điểm 1500: C1h[4:1]/B3/B6 -> C1h là hold, được clamp bởi nốt Ring kế tiếp (E2 tại 1750) thành 1750 - 30 = 1720
+    const ringAt1500 = notes.filter((n) => n.time === 1500 && n.type === 'ring');
+    expect(ringAt1500.length).toBe(1);
+    expect(ringAt1500[0].isHold).toBe(true);
+    expect(ringAt1500[0].endTime).toBe(1720);
+
+    // E2, E3 cũng là Touch notes -> convert thành Ring notes
+    const ringE2 = notes.find((n) => n.time === 1750 && n.type === 'ring');
+    expect(ringE2).toBeDefined();
+    const ringE3 = notes.find((n) => n.time === 1875 && n.type === 'ring');
+    expect(ringE3).toBeDefined();
   });
 });

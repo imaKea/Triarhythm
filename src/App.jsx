@@ -151,13 +151,7 @@ export default function App() {
     if (!fileList || fileList.length === 0) return null;
 
     try {
-      const result = await importFiles(fileList, { preset: 'twoFingers', autoSlide: false });
-
-      if (result.status === 'duplicate') {
-        const title = result.songEntry?.title || 'Bản đồ';
-        alert(`Bản đồ "${title}" đã tồn tại trong Database!`);
-        return result;
-      }
+      const result = await importFiles(fileList, { preset: 'twoFingers', autoSlide: false, overwrite: true });
 
       await loadDatabase();
       setSelectedBeatmap(result.songEntry);
@@ -233,7 +227,7 @@ export default function App() {
       )}
 
       {/* Main Screen Router */}
-      <main className="w-full flex-1 flex flex-col items-center justify-center p-4 sm:p-6">
+      <main className="w-full flex-1 flex flex-col items-center justify-start">
         {/* MÀN HÌNH 1: SONG SELECT (RhythmTyper Beatmap Browser) */}
         {currentScreen === 'SONG_SELECT' && (
           <AstroSongSelect

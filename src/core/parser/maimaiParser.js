@@ -1,7 +1,7 @@
 /**
  * Triarhythm Maimai / Simai Chart Parser (maimaiParser.js)
  * Phân tích cú pháp định dạng maidata.txt của maimai DX / Simai / AstroDX
- * Chuyển đổi toàn bộ slide notes và touch notes (hình vuông ở giữa) thành nốt Ring
+ * Chuyển đổi toàn bộ slide notes và touch notes (Touch tâm C và Touch vành trong/ngoài A, B, D, E) thành nốt Ring (phím Space)
  * Phù hợp hoàn toàn cho phong cách chơi 2 ngón (maxChord <= 2)
  */
 
@@ -34,19 +34,25 @@ export const MAIMAI_DIFF_NAMES = {
 export function parseSimaiDuration(durationStr, currentBpm) {
   if (!durationStr) return 500;
   let cleanStr = durationStr.trim();
-  // Trường hợp có độ trễ [delay#divisor:count]
+  // Trường hợp có độ trễ [delay#divisor:count] hoặc [delay##seconds]
   if (cleanStr.includes('#')) {
-    cleanStr = cleanStr.split('#')[1];
+    const parts = cleanStr.split('#').filter(Boolean);
+    cleanStr = parts[parts.length - 1] || '';
   }
 
   if (cleanStr.includes(':')) {
     const [divStr, countStr] = cleanStr.split(':');
     const div = parseFloat(divStr) || 4;
-    const count = parseFloat(countStr) || 1;
+    const parsedCount = parseFloat(countStr);
+    const count = !isNaN(parsedCount) ? parsedCount : 1;
+    if (count <= 0) return 0;
     return (60000 / currentBpm) * (4 / div) * count;
   } else {
     const sec = parseFloat(cleanStr);
-    return !isNaN(sec) && sec > 0 ? sec * 1000 : 500;
+    if (!isNaN(sec)) {
+      return sec > 0 ? sec * 1000 : 0;
+    }
+    return 500;
   }
 }
 
@@ -244,6 +250,46 @@ function parseSimaiInote(inoteText, offsetMs, options) {
 
   rawNotes.sort((a, b) => a.time - b.time);
 
+  // Sanitization: Đảm bảo không có nốt nào trên cùng 1 lane chồng lên nhau hoặc đè nốt Hold
+  const laneLastHold = new Map();
+  for (const note of rawNotes) {
+    if (note.lane !== undefined) {
+      const prevHold = laneLastHold.get(note.lane);
+      if (prevHold && prevHold.endTime > note.time) {
+        // Cắt ngắn nốt hold trước đó để nhường chỗ cho nốt mới trên cùng lane
+        prevHold.endTime = Math.max(prevHold.time, note.time - 25);
+        if (prevHold.endTime - prevHold.time < 50) {
+          prevHold.type = prevHold.isBreak ? 'break' : 'tap';
+          delete prevHold.endTime;
+        }
+      }
+      if (note.type === 'hold' && note.endTime) {
+        laneLastHold.set(note.lane, note);
+      } else {
+        laneLastHold.delete(note.lane);
+      }
+    }
+  }
+
+  // Sanitization: Đảm bảo nốt Ring Hold không đè nốt Ring kế tiếp
+  let prevRingHold = null;
+  for (const note of rawNotes) {
+    if (note.type === 'ring') {
+      if (prevRingHold && prevRingHold.endTime > note.time) {
+        prevRingHold.endTime = Math.max(prevRingHold.time, note.time - 30);
+        if (prevRingHold.endTime - prevRingHold.time < 100) {
+          prevRingHold.isHold = false;
+          delete prevRingHold.endTime;
+        }
+      }
+      if (note.isHold && note.endTime) {
+        prevRingHold = note;
+      } else {
+        prevRingHold = null;
+      }
+    }
+  }
+
   // Giữ nguyên 100% tất cả các nốt và snap của maimai, không tự động đổi nốt sang drag
   return {
     notes: rawNotes,
@@ -314,71 +360,43 @@ function parseSimaiNoteGroup(groupStr, time, bpm, currentDivisor, notesOut) {
       continue;
     }
 
-    // 2. Center Touch Note: C, C1, C2
-    // Touch cầu vồng (Touch Hold: Ch, C1h... có chứa chữ 'h') -> convert thành Ring Hold (SE_GAME_SCR_TOUCH_CENTER)
-    // Touch tâm thông thường (C, C1, C2 không hold) -> convert thành Ring Tap
-    if (/^C[12]?/i.test(raw)) {
+    // 2. Touch Notes: Center Touch (C, C1, C2...) và Outer Touch Zones (A1-A8, B1-B8, D1-D8, E1-E8)
+    // Toàn bộ các nốt Touch cảm biến của Maimai (màu xanh dương ở xung quanh giữa màn hình và tâm)
+    // được chuyển đổi thành nốt Ring (phím Space / Ring Note), không tạo nốt trên các lane viền tam giác.
+    const touchMatch = raw.match(/^(?:[ABCD][1-8]?|E[1-8])/i);
+    if (touchMatch) {
+      const isTouchHold = /h/i.test(raw);
+      let durationMs = 0;
+      if (isTouchHold) {
+        const durMatch = raw.match(/\[(.*?)\]/);
+        durationMs = durMatch ? parseSimaiDuration(durMatch[1], bpm) : (60000 / bpm);
+      }
+
       if (!hasRingAtThisTime) {
-        const isTouchHold = /h/i.test(raw);
-        if (isTouchHold) {
-          const durMatch = raw.match(/\[(.*?)\]/);
-          const durationMs = durMatch ? parseSimaiDuration(durMatch[1], bpm) : (60000 / bpm);
-          if (durationMs >= 100) {
-            notesOut.push({
-              type: 'ring',
-              isHold: true,
-              time: Math.round(time),
-              endTime: Math.round(time + durationMs)
-            });
-            hasRingAtThisTime = true;
-          }
+        if (isTouchHold && durationMs >= 100) {
+          notesOut.push({
+            type: 'ring',
+            isHold: true,
+            time: Math.round(time),
+            endTime: Math.round(time + durationMs)
+          });
         } else {
           notesOut.push({
             type: 'ring',
             time: Math.round(time)
           });
-          hasRingAtThisTime = true;
         }
-      }
-      continue;
-    }
-
-    // 3. Outer Touch Notes: A1-A8, B1-B8, D1-D8, E1-E8
-    // Cảm biến cảm ứng vành ngoài được định vị theo 8 hướng phím vật lý tương ứng 1..8
-    const touchOuterMatch = raw.match(/^[ABDE]([1-8])/i);
-    if (touchOuterMatch) {
-      const buttonNum = parseInt(touchOuterMatch[1], 10);
-      const lane = MAIMAI_TO_LANE[buttonNum];
-      if (lane !== undefined) {
-        const rest = raw.slice(2);
-        const isHold = /h/i.test(rest);
-        const isBreak = /b/i.test(rest) || /x/i.test(rest);
-        let noteObj;
-        if (isHold) {
-          const durMatch = rest.match(/\[(.*?)\]/);
-          const durationMs = durMatch ? parseSimaiDuration(durMatch[1], bpm) : 500;
-          noteObj = {
-            type: 'hold',
-            time: Math.round(time),
-            endTime: Math.round(time + durationMs),
-            lane
-          };
-        } else if (isBreak) {
-          noteObj = {
-            type: 'break',
-            time: Math.round(time),
-            lane
-          };
-        } else {
-          noteObj = {
-            type: 'tap',
-            time: Math.round(time),
-            lane
-          };
-        }
-        const existing = laneNotesMap.get(lane);
-        if (!existing || (noteObj.type === 'break' && existing.type === 'tap') || noteObj.type === 'hold') {
-          laneNotesMap.set(lane, noteObj);
+        hasRingAtThisTime = true;
+      } else if (isTouchHold && durationMs >= 100) {
+        // Nếu đã có nốt Ring tại thời điểm này nhưng nốt Touch này là Hold, nâng cấp lên Ring Hold
+        const existingRing = notesOut.find((n) => n.type === 'ring' && n.time === Math.round(time));
+        if (existingRing) {
+          if (!existingRing.isHold) {
+            existingRing.isHold = true;
+            existingRing.endTime = Math.round(time + durationMs);
+          } else {
+            existingRing.endTime = Math.max(existingRing.endTime || 0, Math.round(time + durationMs));
+          }
         }
       }
       continue;
@@ -399,12 +417,20 @@ function parseSimaiNoteGroup(groupStr, time, bpm, currentDivisor, notesOut) {
       if (isHold) {
         const durMatch = rest.match(/\[(.*?)\]/);
         const durationMs = durMatch ? parseSimaiDuration(durMatch[1], bpm) : 500;
-        noteObj = {
-          type: 'hold',
-          time: Math.round(time),
-          endTime: Math.round(time + durationMs),
-          lane
-        };
+        if (durationMs > 0) {
+          noteObj = {
+            type: 'hold',
+            time: Math.round(time),
+            endTime: Math.round(time + durationMs),
+            lane
+          };
+        } else {
+          noteObj = {
+            type: isBreak ? 'break' : 'tap',
+            time: Math.round(time),
+            lane
+          };
+        }
       } else if (isBreak) {
         noteObj = {
           type: 'break',

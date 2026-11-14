@@ -261,6 +261,9 @@ export async function importPackage(fileOrBuffer, options = {}) {
     }));
 
     return {
+      title: maimaiParsed.metadata?.title || 'Untitled Maimai Track',
+      artist: maimaiParsed.metadata?.artist || 'Unknown Artist',
+      creator: maimaiParsed.metadata?.creator || 'Maimai Mapper',
       charts,
       beatmaps: maimaiParsed.difficulties.map((d) => ({
         filePath: maidataEntry.name,

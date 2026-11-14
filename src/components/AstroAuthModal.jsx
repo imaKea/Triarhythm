@@ -26,8 +26,6 @@ export default function AstroAuthModal({ isOpen, onClose, onLoginSuccess }) {
           password,
           name: displayName.trim() || username.trim(),
         });
-
-        alert(`Registration successful! Welcome ${res.user?.name || res.user?.username}!`);
         if (onLoginSuccess) onLoginSuccess(res.user);
         onClose();
       } else {
@@ -35,7 +33,6 @@ export default function AstroAuthModal({ isOpen, onClose, onLoginSuccess }) {
           login: username.trim(),
           password,
         });
-
         if (onLoginSuccess) onLoginSuccess(res.user);
         onClose();
       }
@@ -46,115 +43,94 @@ export default function AstroAuthModal({ isOpen, onClose, onLoginSuccess }) {
     }
   };
 
+  const inputClass = "w-full px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-white placeholder-[#6b7280] focus:border-[#ff66ab]/50 focus:outline-none transition-colors text-sm";
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn select-none font-sans">
-      <div className="w-full max-w-md bg-[#1e293b] rounded-2xl border border-white/10 p-7 shadow-2xl">
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn select-none">
+      <div className="w-full max-w-sm bg-[#111122] rounded-2xl border border-white/[0.06] p-6 shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
-              <span className="text-white font-black text-sm">▲</span>
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff66ab] to-[#cc5289] flex items-center justify-center shadow-[0_0_12px_rgba(255,102,171,0.4)]">
+              <span className="text-white font-black text-xs">▲</span>
             </div>
             <div>
-              <h3 className="font-bold text-lg text-white">
-                {isRegister ? 'Create an Account' : 'Sign in to Triarhythm'}
+              <h3 className="font-bold text-base text-white">
+                {isRegister ? 'Create Account' : 'Sign In'}
               </h3>
-              <p className="text-xs text-slate-400">
-                Sync highscores &amp; leaderboards to MySQL
-              </p>
+              <p className="text-[10px] text-[#6b7280]">Sync scores & leaderboards</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center text-sm transition-colors cursor-pointer"
+            className="w-7 h-7 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-[#6b7280] hover:text-white flex items-center justify-center text-xs transition-colors cursor-pointer"
           >
             ✕
           </button>
         </div>
 
         {errorMsg && (
-          <div className="mb-4 p-3 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-200 text-xs">
-            ⚠️ {errorMsg}
+          <div className="mb-4 p-2.5 rounded-xl bg-[#ef5350]/10 border border-[#ef5350]/30 text-[#ef5350] text-xs">
+            {errorMsg}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-sm">
-          <div>
-            <label className="block text-xs font-bold text-slate-300 mb-1.5 uppercase tracking-wide">
-              Username or Email
-            </label>
-            <input
-              type="text"
-              required
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="e.g. rhythm_pro"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-[#0f172a] border border-white/10 text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none transition-colors"
-            />
-          </div>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <input
+            type="text"
+            required
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Username or email"
+            className={inputClass}
+          />
 
           {isRegister && (
             <>
-              <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1.5 uppercase tracking-wide">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="player@example.com"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#0f172a] border border-white/10 text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none transition-colors"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1.5 uppercase tracking-wide">
-                  Display Name
-                </label>
-                <input
-                  type="text"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Triarhythm Master"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#0f172a] border border-white/10 text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none transition-colors"
-                />
-              </div>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email address"
+                className={inputClass}
+              />
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Display name"
+                className={inputClass}
+              />
             </>
           )}
 
-          <div>
-            <label className="block text-xs font-bold text-slate-300 mb-1.5 uppercase tracking-wide">
-              Password
-            </label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-[#0f172a] border border-white/10 text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none transition-colors"
-            />
-          </div>
+          <input
+            type="password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password"
+            className={inputClass}
+          />
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 mt-2 rounded-xl rt-btn-primary font-bold text-sm tracking-wide shadow-lg cursor-pointer disabled:opacity-50"
+            className="w-full py-2.5 mt-1 rounded-full osu-btn text-sm font-bold tracking-wide cursor-pointer disabled:opacity-50"
           >
-            {loading ? 'Connecting to MySQL...' : (isRegister ? 'Sign Up' : 'Sign In')}
+            {loading ? 'Connecting...' : (isRegister ? 'Sign Up' : 'Sign In')}
           </button>
         </form>
 
-        <div className="mt-5 text-center text-xs text-slate-400">
+        <div className="mt-4 text-center text-xs text-[#6b7280]">
           {isRegister ? (
             <span>
               Already have an account?{' '}
               <button
                 type="button"
                 onClick={() => { setIsRegister(false); setErrorMsg(''); }}
-                className="text-indigo-400 hover:underline font-bold cursor-pointer"
+                className="text-[#ff66ab] hover:underline font-bold cursor-pointer"
               >
                 Sign In
               </button>
@@ -165,9 +141,9 @@ export default function AstroAuthModal({ isOpen, onClose, onLoginSuccess }) {
               <button
                 type="button"
                 onClick={() => { setIsRegister(true); setErrorMsg(''); }}
-                className="text-indigo-400 hover:underline font-bold cursor-pointer"
+                className="text-[#ff66ab] hover:underline font-bold cursor-pointer"
               >
-                Sign Up for Free
+                Sign Up
               </button>
             </span>
           )}
