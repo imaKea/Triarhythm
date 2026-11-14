@@ -18,56 +18,58 @@ export default function PlayerLoader({ chart, onReady, durationMs = 1200 }) {
   }, [onReady, durationMs]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0d0d1a] flex items-center justify-center select-none overflow-hidden animate-fadeIn">
+    <div className="fixed inset-0 z-50 bg-[#fff5f8] flex items-center justify-center select-none overflow-hidden animate-fadeIn">
       {/* Blurred cover background */}
       {coverUrl && (
         <div
-          className="absolute inset-0 bg-cover bg-center filter blur-2xl opacity-25 scale-110"
+          className="absolute inset-0 bg-cover bg-center filter blur-2xl opacity-20 scale-110"
           style={{ backgroundImage: `url(${coverUrl})` }}
         />
       )}
-      <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d1a] via-[#0d0d1a]/80 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#ffd9e5]/60 via-[#fff5f8]/80 to-[#ffdce7]/50" />
 
       {/* Center Card */}
-      <div className="relative z-10 flex flex-col items-center max-w-lg w-full px-8 text-center animate-slideDown">
+      <div className="relative z-10 flex flex-col items-center max-w-lg w-full px-8 py-8 rounded-3xl bg-white/85 backdrop-blur-md border border-[#f3dbe4] shadow-[0_16px_40px_rgba(255,133,162,0.2)] text-center animate-slideDown">
         {/* Cover thumbnail */}
-        <div className="w-36 h-36 rounded-2xl overflow-hidden border-2 border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.8)] mb-6 bg-[#1a1a2e] relative group">
+        <div className="w-36 h-36 rounded-3xl overflow-hidden border-2 border-[#f3dbe4] shadow-md mb-5 bg-[#fff0f4] relative group">
           {coverUrl ? (
             <img src={coverUrl} alt={title} className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-4xl text-[#ff66ab]">
-              ▲
+            <div className="w-full h-full flex items-center justify-center text-4xl">
+              🐰
             </div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#5b2a47]/30 to-transparent" />
         </div>
 
         {/* Title & Artist */}
-        <h1 className="text-2xl font-black text-white tracking-wide mb-1 truncate max-w-full font-torus">
-          {title}
+        <h1 className="text-2xl font-black text-[#5b2a47] tracking-wide mb-1 truncate max-w-full font-torus flex items-center gap-2">
+          <span>{title}</span>
+          <span className="text-lg">🎀</span>
         </h1>
-        <p className="text-sm font-semibold text-[#b8c0d4] mb-3 truncate max-w-full">
+        <p className="text-sm font-semibold text-[#a8556f] mb-3 truncate max-w-full">
           {artist}
         </p>
 
         {/* Diff badge & Creator */}
         <div className="flex items-center gap-2 mb-8">
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#ff66ab]/20 text-[#ff66ab] border border-[#ff66ab]/30">
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#ff85a2]/20 text-[#e94270] border border-[#ff85a2]/40">
             {diffName}
           </span>
           <StarRating stars={stars} size="sm" />
-          <span className="text-xs text-[#7c849c]">
-            mapped by <strong className="text-[#b8c0d4]">{creator}</strong>
+          <span className="text-xs text-[#a8556f]">
+            mapped by <strong className="text-[#5b2a47]">{creator}</strong>
           </span>
         </div>
 
         {/* Loading Spinner / Progress Indicator */}
         <div className="w-48 flex flex-col items-center gap-2">
-          <div className="w-full h-1.5 rounded-full bg-white/[0.08] overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-[#cc5289] to-[#ff66ab] animate-[pulse_1s_ease-in-out_infinite] w-full" />
+          <div className="w-full h-2 rounded-full bg-[#ffd9e5] overflow-hidden shadow-inner">
+            <div className="h-full bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] animate-[pulse_1s_ease-in-out_infinite] w-full" />
           </div>
-          <span className="text-[11px] font-mono font-medium text-[#7c849c] tracking-widest uppercase">
-            Loading beatmap...
+          <span className="text-[11px] font-mono font-bold text-[#a8556f] tracking-widest uppercase flex items-center gap-1.5">
+            <span>Đang chuẩn bị màn chơi...</span>
+            <span>🐰</span>
           </span>
         </div>
       </div>

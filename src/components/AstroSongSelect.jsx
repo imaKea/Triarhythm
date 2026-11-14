@@ -493,21 +493,21 @@ export default function AstroSongSelect({
       )}
 
       {/* TOP BAR: Search + Filters + Sort */}
-      <div className="min-h-12 py-2 px-3 sm:px-6 bg-[#180d1e]/90 border-b border-[#ff85a2]/15 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 sm:gap-4 shrink-0 z-20">
+      <div className="min-h-12 py-2 px-3 sm:px-6 bg-[#fffafc]/85 backdrop-blur-md border-b border-[#f3dbe4] flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 sm:gap-4 shrink-0 z-20 shadow-sm">
         {/* Search with syntax hints */}
         <div className="relative flex-1 min-w-[180px] max-w-md">
-          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#ffaec9] text-xs">🐰</span>
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#ff4d80] text-xs">🐰</span>
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Tìm kiếm bài hát, ca sĩ... 🎀"
-            className="w-full bg-[#25132b] border border-[#ff85a2]/25 focus:border-[#ff85a2] rounded-full pl-9 pr-4 py-1.5 text-xs text-white placeholder-[#b89cb9] outline-none transition-all focus:shadow-[0_0_12px_rgba(255,133,162,0.3)]"
+            className="w-full bg-white border border-[#f3dbe4] focus:border-[#ff4d80] rounded-full pl-9 pr-4 py-1.5 text-xs text-[#5b2a47] placeholder-[#a8556f] outline-none transition-all focus:shadow-[0_2px_12px_rgba(255,77,128,0.2)]"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ffaec9] hover:text-white"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#a8556f] hover:text-[#ff4d80]"
             >
               ✕
             </button>
@@ -516,12 +516,12 @@ export default function AstroSongSelect({
 
         {/* Sort & Action controls */}
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-          <div className="flex items-center gap-1.5 text-xs text-[#d8bfd8]">
+          <div className="flex items-center gap-1.5 text-xs text-[#5b2a47] font-bold">
             <span className="hidden xs:inline">Sắp xếp:</span>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="bg-[#25132b] border border-[#ff85a2]/25 text-white text-xs rounded-xl px-2 sm:px-2.5 py-1 outline-none cursor-pointer hover:border-[#ff85a2]/50 transition-colors"
+              className="bg-white border border-[#f3dbe4] text-[#5b2a47] text-xs font-bold rounded-full px-3 py-1 outline-none cursor-pointer hover:border-[#ff85a2] transition-colors shadow-sm"
             >
               <option value="title">Tên (A-Z)</option>
               <option value="artist">Ca sĩ (A-Z)</option>
@@ -533,14 +533,14 @@ export default function AstroSongSelect({
 
           <button
             onClick={handleOpenTrash}
-            className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full bg-white/[0.05] hover:bg-white/[0.12] text-[#d8bfd8] hover:text-white text-xs font-bold transition-all border border-[#ff85a2]/20 cursor-pointer hover:scale-105"
+            className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full bg-white hover:bg-[#fff0f4] text-[#5b2a47] hover:text-[#ff4d80] text-xs font-bold transition-all border border-[#f3dbe4] hover:border-[#ff85a2] cursor-pointer hover:scale-105 shadow-sm"
             title="Thùng rác beatmap (khôi phục bài đã xóa)"
           >
             <span>🗑️</span>
             <span className="hidden sm:inline">Thùng rác 🐰</span>
           </button>
 
-          <label className="flex items-center gap-1 px-3 sm:px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] hover:from-[#ffaec9] hover:to-[#ff6b93] text-white text-xs font-bold cursor-pointer transition-all shadow-[0_0_14px_rgba(255,133,162,0.4)] hover:scale-105">
+          <label className="flex items-center gap-1 px-3 sm:px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] hover:from-[#ffaec9] hover:to-[#ff6b93] text-white text-xs font-bold cursor-pointer transition-all shadow-[0_2px_12px_rgba(255,77,128,0.25)] hover:scale-105">
             <span>{isImporting ? '⏳' : '🎀'}</span>
             <span className="hidden sm:inline">{isImporting ? 'Đang thêm...' : 'Thêm bài (+)'}</span>
             <span className="sm:hidden">{isImporting ? '...' : '+'}</span>
@@ -557,13 +557,13 @@ export default function AstroSongSelect({
       </div>
 
       {/* MOBILE TAB SWITCHER: Chuyển đổi giữa Danh sách và Chi tiết bài trên Mobile */}
-      <div className="flex md:hidden items-center justify-center gap-2 py-1.5 px-3 bg-[#1e1124] border-b border-[#ff85a2]/20 shrink-0">
+      <div className="flex md:hidden items-center justify-center gap-2 py-1.5 px-3 bg-[#fff1f5] border-b border-[#f3dbe4] shrink-0">
         <button
           onClick={() => { playHover(); setMobileTab('list'); }}
           className={`flex-1 py-1.5 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
             mobileTab === 'list'
-              ? 'bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] text-white shadow-[0_0_10px_rgba(255,133,162,0.4)]'
-              : 'bg-white/[0.04] text-[#d8bfd8] hover:text-white'
+              ? 'bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] text-white shadow-[0_2px_10px_rgba(255,77,128,0.25)]'
+              : 'bg-white text-[#5b2a47] border border-[#f3dbe4]'
           }`}
         >
           <span>🐰</span>
@@ -573,8 +573,8 @@ export default function AstroSongSelect({
           onClick={() => { playHover(); setMobileTab('info'); }}
           className={`flex-1 py-1.5 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
             mobileTab === 'info'
-              ? 'bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] text-white shadow-[0_0_10px_rgba(255,133,162,0.4)]'
-              : 'bg-white/[0.04] text-[#d8bfd8] hover:text-white'
+              ? 'bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] text-white shadow-[0_2px_10px_rgba(255,77,128,0.25)]'
+              : 'bg-white text-[#5b2a47] border border-[#f3dbe4]'
           }`}
         >
           <span>🎀</span>
@@ -584,26 +584,33 @@ export default function AstroSongSelect({
 
       {/* MAIN BODY: LEFT WEDGE + RIGHT CAROUSEL */}
       <div className="flex-1 flex overflow-hidden relative">
+        {/* Decorative background ribbons */}
+        <div className="bg-ribbons">
+          <span />
+          <span />
+          <span />
+        </div>
+
         {/* Blurred background cover image */}
         {coverUrl && (
           <div
-            className="absolute inset-0 bg-cover bg-center filter blur-3xl opacity-20 pointer-events-none scale-105"
+            className="absolute inset-0 bg-cover bg-center filter blur-3xl opacity-15 pointer-events-none scale-105"
             style={{ backgroundImage: `url(${coverUrl})` }}
           />
         )}
 
         {/* LEFT PANE: Song Wedge Info + Leaderboard */}
-        <div className={`w-full md:w-[400px] lg:w-[480px] h-full flex flex-col p-3 sm:p-6 overflow-y-auto custom-scrollbar border-r border-[#ff85a2]/15 bg-[#160c1a]/85 backdrop-blur-md z-10 shrink-0 ${mobileTab === 'info' ? 'flex' : 'hidden md:flex'}`}>
+        <div className={`w-full md:w-[400px] lg:w-[480px] h-full flex flex-col p-3 sm:p-6 overflow-y-auto custom-scrollbar border-r border-[#f3dbe4] bg-white/70 backdrop-blur-md z-10 shrink-0 ${mobileTab === 'info' ? 'flex' : 'hidden md:flex'}`}>
           {/* Song Info Wedge */}
-          <div className="p-5 rounded-2xl bg-[#241229]/90 border border-[#ff85a2]/25 shadow-[0_8px_32px_rgba(22,12,26,0.6)] flex flex-col gap-3 relative overflow-hidden">
+          <div className="p-5 rounded-3xl bg-white/95 border border-[#f3dbe4] shadow-[0_12px_40px_rgba(126,47,79,0.08)] flex flex-col gap-3 relative overflow-hidden">
             {/* Cute mini ribbon tag */}
-            <div className="flex items-center justify-between text-[10px] font-bold text-[#ffaec9] uppercase tracking-wider">
+            <div className="flex items-center justify-between text-[10px] font-black text-[#ff4d80] uppercase tracking-wider">
               <span className="flex items-center gap-1">
                 <span>🎀</span>
                 <span>BÀI HÁT ĐANG CHỌN</span>
                 <span>🐰</span>
               </span>
-              <span className="px-2 py-0.5 rounded-full bg-[#ff85a2]/20 text-[#ffaec9] border border-[#ff85a2]/30 text-[10px]">
+              <span className="px-2.5 py-0.5 rounded-full bg-[#fff0f4] text-[#ff4d80] border border-[#f3dbe4] text-[10px] font-bold">
                 {noteStats.total} Notes
               </span>
             </div>
@@ -611,47 +618,47 @@ export default function AstroSongSelect({
             {/* Top row: StarRating + BPM */}
             <div className="flex items-center justify-between">
               <StarRating stars={currentStars} size="md" />
-              <div className="flex items-center gap-2 text-xs font-mono font-bold text-[#ffd6e0]">
-                <span className="px-2.5 py-0.5 rounded-full bg-white/[0.08] border border-white/[0.1]">{currentBpm} BPM</span>
+              <div className="flex items-center gap-2 text-xs font-mono font-bold text-[#5b2a47]">
+                <span className="px-2.5 py-0.5 rounded-full bg-[#fff1f5] border border-[#f3dbe4]">{currentBpm} BPM</span>
               </div>
             </div>
 
             {/* Title & Artist */}
             <div>
-              <h1 className="text-xl font-black text-white tracking-wide truncate max-w-full font-torus">
+              <h1 className="text-xl font-black text-[#5b2a47] tracking-wide truncate max-w-full font-torus">
                 {currentTitle}
               </h1>
-              <p className="text-sm font-semibold text-[#ffaec9] truncate max-w-full">
+              <p className="text-sm font-bold text-[#ff4d80] truncate max-w-full">
                 {currentArtist}
               </p>
             </div>
 
             {/* Creator info */}
-            <div className="text-xs text-[#b89cb9]">
-              Mapper: <strong className="text-white">{currentCreator}</strong> 🎀
+            <div className="text-xs text-[#a8556f]">
+              Mapper: <strong className="text-[#5b2a47]">{currentCreator}</strong> 🎀
             </div>
 
             {/* Note breakdown badges */}
-            <div className="pt-2 border-t border-[#ff85a2]/15 flex flex-wrap gap-1.5 text-[11px] font-mono">
-              <span className="px-2 py-0.5 rounded-full bg-[#ff85a2]/15 text-[#ffaec9] border border-[#ff85a2]/35 font-bold">
+            <div className="pt-2 border-t border-[#f3dbe4] flex flex-wrap gap-1.5 text-[11px] font-mono">
+              <span className="px-2 py-0.5 rounded-full bg-[#fff0f4] text-[#e94267] border border-[#f3dbe4] font-bold">
                 Tap: {noteStats.tap} 🐰
               </span>
-              <span className="px-2 py-0.5 rounded-full bg-[#ffaec9]/15 text-[#ffd6e0] border border-[#ffaec9]/35 font-bold">
+              <span className="px-2 py-0.5 rounded-full bg-[#fff5eb] text-[#e78b21] border border-[#fde1bd] font-bold">
                 Hold: {noteStats.hold} 🎀
               </span>
-              <span className="px-2 py-0.5 rounded-full bg-[#ff4d80]/15 text-[#ff85a2] border border-[#ff4d80]/35 font-bold">
+              <span className="px-2 py-0.5 rounded-full bg-[#fff0f0] text-[#e8284f] border border-[#f9c2ce] font-bold">
                 Break: {noteStats.breakN} ✨
               </span>
-              <span className="px-2 py-0.5 rounded-full bg-[#ffd6e0]/20 text-white border border-[#ffd6e0]/40 font-bold">
+              <span className="px-2 py-0.5 rounded-full bg-[#f0f8ff] text-[#2980b9] border border-[#d2e8fc] font-bold">
                 Ring: {noteStats.ring} ⭕
               </span>
               {noteStats.slide > 0 && (
-                <span className="px-2 py-0.5 rounded-full bg-[#ffe082]/15 text-[#ffe082] border border-[#ffe082]/35 font-bold">
+                <span className="px-2 py-0.5 rounded-full bg-[#f6ffed] text-[#389e0d] border border-[#b7eb8f] font-bold">
                   Slide: {noteStats.slide}
                 </span>
               )}
               {noteStats.typing > 0 && (
-                <span className="px-2 py-0.5 rounded-full bg-[#b388ff]/15 text-[#b388ff] border border-[#b388ff]/35 font-bold">
+                <span className="px-2 py-0.5 rounded-full bg-[#f9f0ff] text-[#722ed1] border border-[#d3adf7] font-bold">
                   Typing: {noteStats.typing}
                 </span>
               )}
@@ -659,18 +666,18 @@ export default function AstroSongSelect({
           </div>
 
           {/* LEADERBOARD WIDGET */}
-          <div className="flex-1 mt-4 flex flex-col min-h-0 bg-[#241229]/75 rounded-2xl border border-[#ff85a2]/20 p-4 shadow-lg">
+          <div className="flex-1 mt-4 flex flex-col min-h-0 bg-white/95 rounded-3xl border border-[#f3dbe4] p-4 shadow-[0_12px_40px_rgba(126,47,79,0.08)]">
             {/* Header + Tabs */}
-            <div className="flex items-center justify-between pb-3 mb-2 border-b border-[#ff85a2]/15">
-              <div className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+            <div className="flex items-center justify-between pb-3 mb-2 border-b border-[#f3dbe4]">
+              <div className="text-xs font-black text-[#5b2a47] uppercase tracking-wider flex items-center gap-1.5">
                 <span>🏆</span>
                 <span>Bảng xếp hạng 🎀 ({selectedDiff?.difficultyName || 'All'})</span>
               </div>
-              <div className="flex gap-1 bg-[#1a0e21] p-0.5 rounded-full border border-[#ff85a2]/20">
+              <div className="flex gap-1 bg-[#fff1f5] p-0.5 rounded-full border border-[#f3dbe4]">
                 <button
                   onClick={() => { playHover(); setLeaderboardTab('global'); }}
                   className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
-                    leaderboardTab === 'global' ? 'bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] text-white shadow-[0_0_10px_rgba(255,133,162,0.4)]' : 'text-[#b89cb9] hover:text-white'
+                    leaderboardTab === 'global' ? 'bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] text-white shadow-[0_2px_8px_rgba(255,77,128,0.25)]' : 'text-[#5b2a47] hover:text-[#ff4d80]'
                   }`}
                 >
                   Global
@@ -678,7 +685,7 @@ export default function AstroSongSelect({
                 <button
                   onClick={() => { playHover(); setLeaderboardTab('local'); }}
                   className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
-                    leaderboardTab === 'local' ? 'bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] text-white shadow-[0_0_10px_rgba(255,133,162,0.4)]' : 'text-[#b89cb9] hover:text-white'
+                    leaderboardTab === 'local' ? 'bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] text-white shadow-[0_2px_8px_rgba(255,77,128,0.25)]' : 'text-[#5b2a47] hover:text-[#ff4d80]'
                   }`}
                 >
                   Local
@@ -689,38 +696,38 @@ export default function AstroSongSelect({
             {/* Scores List */}
             <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-1">
               {isLoadingScores ? (
-                <div className="text-center py-8 text-xs text-[#7c849c]">Đang tải bảng điểm...</div>
+                <div className="text-center py-8 text-xs text-[#a8556f]">Đang tải bảng điểm...</div>
               ) : (leaderboardTab === 'global' ? leaderboardScores : localScores).length === 0 ? (
-                <div className="text-center py-8 text-xs text-[#7c849c]">
+                <div className="text-center py-8 text-xs text-[#a8556f]">
                   Chưa có điểm nào được ghi nhận cho độ khó này. Hãy là người đầu tiên!
                 </div>
               ) : (
                 (leaderboardTab === 'global' ? leaderboardScores : localScores).map((s, idx) => (
                   <div
                     key={s.id || idx}
-                    className="p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.04] flex items-center justify-between gap-3 text-xs transition-colors"
+                    className="p-2.5 rounded-2xl bg-[#fff8fa] hover:bg-[#fff0f4] border border-[#f3dbe4] flex items-center justify-between gap-3 text-xs transition-colors"
                   >
                     <div className="flex items-center gap-2.5">
-                      <span className="font-mono font-bold text-[#ff66ab] w-4 text-center">
+                      <span className="font-mono font-black text-[#ff4d80] w-4 text-center">
                         #{idx + 1}
                       </span>
                       <RankBadge rank={s.rank || 'S'} size="sm" />
                       <div className="flex flex-col">
-                        <span className="font-bold text-white truncate max-w-[120px]">
+                        <span className="font-black text-[#5b2a47] truncate max-w-[120px]">
                           {s.user?.name || s.username || 'Player'}
                         </span>
-                        <span className="text-[10px] text-[#7c849c] font-mono">
+                        <span className="text-[10px] text-[#a8556f] font-mono">
                           {Number(s.accuracy || 0).toFixed(2)}% • {s.max_combo || s.maxCombo || 0}x
                         </span>
                       </div>
                     </div>
 
                     <div className="text-right font-mono">
-                      <div className="font-bold text-white">
+                      <div className="font-black text-[#5b2a47]">
                         {Number(s.score || 0).toLocaleString()}
                       </div>
                       {s.pp !== undefined && (
-                        <div className="text-[10px] text-[#ff66ab] font-bold">
+                        <div className="text-[10px] text-[#ff4d80] font-black">
                           {Math.round(s.pp)}pp
                         </div>
                       )}
@@ -753,17 +760,17 @@ export default function AstroSongSelect({
                   onSelectBeatmap(bm);
                 }}
                 onContextMenu={(e) => handleCardContextMenu(e, bm)}
-                className={`relative rounded-2xl transition-all duration-200 cursor-pointer overflow-hidden border ${
+                className={`relative rounded-3xl transition-all duration-200 cursor-pointer overflow-hidden border ${
                   isSelected
-                    ? 'border-[#ff85a2] shadow-[0_6px_28px_rgba(255,133,162,0.45)] scale-[1.01] bg-[#2d1734]/95'
-                    : 'border-[#ff85a2]/15 hover:border-[#ff85a2]/45 bg-[#221227]/85 hover:bg-[#2c1733]/90'
+                    ? 'border-[#ff4d80] shadow-[0_8px_30px_rgba(255,77,128,0.22)] scale-[1.01] bg-[#fff5f8]'
+                    : 'border-[#f3dbe4] hover:border-[#ff85a2] bg-white/95 hover:bg-[#fffafc] shadow-[0_4px_16px_rgba(126,47,79,0.04)]'
                 }`}
               >
                 {/* Horizontal Card Body */}
                 <div className="flex items-center justify-between p-3.5 gap-4 relative">
                   {/* Left: Thumbnail & Song Info */}
                   <div className="flex items-center gap-3.5 min-w-0">
-                    <div className="w-14 h-14 rounded-2xl overflow-hidden bg-[#180d1e] shrink-0 border border-[#ff85a2]/30 flex items-center justify-center shadow-md">
+                    <div className="w-14 h-14 rounded-2xl overflow-hidden bg-[#fff1f5] shrink-0 border border-[#f3dbe4] flex items-center justify-center shadow-sm">
                       {cardCover ? (
                         <img src={cardCover} alt="" className="w-full h-full object-cover" />
                       ) : (
@@ -772,15 +779,15 @@ export default function AstroSongSelect({
                     </div>
 
                     <div className="flex flex-col min-w-0">
-                      <span className="font-torus font-black text-sm text-white truncate max-w-sm group-hover:text-[#ffaec9] transition-colors">
+                      <span className="font-torus font-black text-sm text-[#5b2a47] truncate max-w-sm group-hover:text-[#ff4d80] transition-colors">
                         {title}
                       </span>
-                      <span className="text-xs font-semibold text-[#ffaec9] truncate max-w-xs mt-0.5">
+                      <span className="text-xs font-bold text-[#ff4d80] truncate max-w-xs mt-0.5">
                         {artist}
                       </span>
-                      <span className="text-[10px] text-[#b89cb9] mt-0.5 flex items-center gap-1">
+                      <span className="text-[10px] text-[#a8556f] mt-0.5 flex items-center gap-1">
                         <span>Mapper:</span>
-                        <strong className="text-[#ffd6e0]">{bm.creator || meta.creator || 'Mapper'}</strong>
+                        <strong className="text-[#5b2a47]">{bm.creator || meta.creator || 'Mapper'}</strong>
                         <span>🎀</span>
                       </span>
                     </div>
@@ -789,7 +796,7 @@ export default function AstroSongSelect({
                   {/* Right: StarRating + Diff count */}
                   <div className="flex items-center gap-3 shrink-0">
                     <StarRating stars={stars} size="sm" />
-                    <span className="text-xs text-[#ffaec9] font-mono px-2 py-0.5 rounded-full bg-white/[0.05] border border-[#ff85a2]/20">
+                    <span className="text-xs text-[#ff4d80] font-mono font-bold px-2.5 py-0.5 rounded-full bg-[#fff1f5] border border-[#f3dbe4]">
                       {bm.difficulties?.length || 1} diffs
                     </span>
                   </div>
@@ -797,8 +804,8 @@ export default function AstroSongSelect({
 
                 {/* Expanded Difficulties Bar if selected */}
                 {isSelected && diffList.length > 0 && (
-                  <div className="px-4 py-2.5 bg-[#180d1e]/90 border-t border-[#ff85a2]/15 flex items-center gap-2 overflow-x-auto custom-scrollbar">
-                    <span className="text-[11px] font-bold text-[#ffaec9] uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
+                  <div className="px-4 py-2.5 bg-[#fffafc] border-t border-[#f3dbe4] flex items-center gap-2 overflow-x-auto custom-scrollbar">
+                    <span className="text-[11px] font-black text-[#ff4d80] uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
                       <span>🎀</span>
                       <span>Độ khó:</span>
                     </span>
@@ -816,12 +823,12 @@ export default function AstroSongSelect({
                           }}
                           className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
                             isDiffActive
-                              ? 'bg-gradient-to-r from-[#ff85a2] via-[#ff6b93] to-[#ff4d80] text-white shadow-[0_0_12px_rgba(255,133,162,0.6)] scale-105'
-                              : 'bg-white/[0.06] text-[#ffd6e0] hover:bg-white/[0.12] hover:text-white border border-[#ff85a2]/20'
+                              ? 'bg-gradient-to-r from-[#ff85a2] via-[#ff6b93] to-[#ff4d80] text-white shadow-[0_2px_10px_rgba(255,77,128,0.3)] scale-105'
+                              : 'bg-white text-[#5b2a47] hover:text-[#ff4d80] border border-[#f3dbe4]'
                           }`}
                         >
                           <span>{d.difficultyName}</span>
-                          <span className="text-[10px] opacity-85">★{dStars.toFixed(1)}</span>
+                          <span className="text-[10px] opacity-90">★{dStars.toFixed(1)}</span>
                         </button>
                       );
                     })}
@@ -834,7 +841,7 @@ export default function AstroSongSelect({
       </div>
 
       {/* BOTTOM ACTION BAR */}
-      <div className="h-14 sm:h-16 px-3 sm:px-6 bg-[#1a0e21]/95 border-t border-[#ff85a2]/20 flex items-center justify-between z-30 shrink-0 gap-2">
+      <div className="h-14 sm:h-16 px-3 sm:px-6 bg-[#fffafc]/90 backdrop-blur-md border-t border-[#f3dbe4] flex items-center justify-between z-30 shrink-0 gap-2 shadow-[0_-4px_20px_rgba(126,47,79,0.04)]">
         {/* Left: Back */}
         <Button variant="ghost" size="sm" onClick={() => window.history.back()} icon="←" className="px-2.5 sm:px-4 text-xs">
           <span className="hidden sm:inline">Back (Esc) 🐰</span>
@@ -869,7 +876,7 @@ export default function AstroSongSelect({
           variant="primary"
           size="lg"
           onClick={handlePlaySelected}
-          className="px-4 sm:px-10 py-2 sm:py-3 text-sm sm:text-base font-black shadow-[0_0_28px_rgba(255,133,162,0.7)] hover:shadow-[0_0_38px_rgba(255,133,162,0.95)] hover:scale-105 active:scale-95 shrink-0"
+          className="px-4 sm:px-10 py-2 sm:py-3 text-sm sm:text-base font-black shadow-[0_4px_24px_rgba(255,77,128,0.4)] hover:shadow-[0_6px_32px_rgba(255,77,128,0.6)] hover:scale-105 active:scale-95 shrink-0"
           icon="🐰"
         >
           <span>CHƠI NGAY 🎀</span>
@@ -941,7 +948,7 @@ export default function AstroSongSelect({
       >
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
-            <p className="text-xs text-[#8890a4]">
+            <p className="text-xs text-[#a8556f]">
               Các bài hát bị xóa được lưu trữ an toàn tại đây để khôi phục bất cứ lúc nào.
             </p>
             {trashMaps.length > 0 && (
@@ -956,12 +963,12 @@ export default function AstroSongSelect({
             )}
           </div>
 
-          <div className="max-h-96 overflow-y-auto divide-y divide-white/[0.06] custom-scrollbar border border-white/[0.08] rounded-xl bg-[#141424]">
+          <div className="max-h-96 overflow-y-auto divide-y divide-[#f3dbe4] custom-scrollbar border border-[#f3dbe4] rounded-2xl bg-white shadow-sm">
             {trashMaps.length > 0 ? (
               trashMaps.map((m) => (
-                <div key={m.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-white/[0.02] transition-colors">
+                <div key={m.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-[#fff0f4] transition-colors">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-[#ff66ab] shrink-0 overflow-hidden">
+                    <div className="w-10 h-10 rounded-xl bg-[#fff1f5] border border-[#f3dbe4] flex items-center justify-center text-[#ff4d80] shrink-0 overflow-hidden shadow-sm">
                       {m.backgroundSource || m.serverAssets?.coverUrl ? (
                         <img
                           src={m.backgroundSource || m.serverAssets?.coverUrl}
@@ -973,10 +980,10 @@ export default function AstroSongSelect({
                       )}
                     </div>
                     <div className="flex flex-col min-w-0">
-                      <span className="font-bold text-white text-xs truncate max-w-xs">{m.title}</span>
-                      <span className="text-[10px] text-[#7c849c] truncate max-w-xs">{m.artist}</span>
+                      <span className="font-bold text-[#5b2a47] text-xs truncate max-w-xs">{m.title}</span>
+                      <span className="text-[10px] text-[#a8556f] truncate max-w-xs">{m.artist}</span>
                       {m.deletedAt && (
-                        <span className="text-[9px] font-mono text-[#ff80bf]">
+                        <span className="text-[9px] font-mono text-[#ff4d80] font-bold">
                           Đã xóa: {new Date(m.deletedAt).toLocaleString()}
                         </span>
                       )}
@@ -1004,7 +1011,7 @@ export default function AstroSongSelect({
                 </div>
               ))
             ) : (
-              <div className="p-8 text-center text-[#7c849c] text-xs">
+              <div className="p-8 text-center text-[#a8556f] text-xs font-bold">
                 Thùng rác trống. Không có bài hát nào bị xóa.
               </div>
             )}

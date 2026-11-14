@@ -52,18 +52,19 @@ export default function UIKitScreen({ onBack }) {
   };
 
   return (
-    <div className="w-full min-h-screen bg-[#0d0d1a] text-white p-8 custom-scrollbar overflow-y-auto pb-24 osu-screen-transition">
+    <div className="w-full min-h-screen bg-[#fff5f8] text-[#5b2a47] p-8 custom-scrollbar overflow-y-auto pb-24 osu-screen-transition">
       {/* Header */}
-      <div className="max-w-6xl mx-auto flex items-center justify-between pb-6 mb-8 border-b border-white/[0.08]">
+      <div className="max-w-6xl mx-auto flex items-center justify-between pb-6 mb-8 border-b border-[#f3dbe4]">
         <div>
           <div className="flex items-center gap-3">
-            <span className="w-3 h-3 rounded-full bg-[#ff66ab] shadow-[0_0_12px_#ff66ab]" />
-            <h1 className="text-2xl font-black tracking-wider uppercase text-white font-torus">
-              osu!(lazer) Design System & UI Kit
+            <span className="w-3.5 h-3.5 rounded-full bg-[#ff4d80] shadow-[0_0_12px_rgba(255,77,128,0.5)]" />
+            <h1 className="text-2xl font-black tracking-wider uppercase text-[#5b2a47] font-torus flex items-center gap-2">
+              <span>Kawaii Light Design System & UI Kit</span>
+              <span className="text-lg">🎀🐰</span>
             </h1>
           </div>
-          <p className="text-xs text-[#7c849c] mt-1">
-            Thư viện component đồng bộ chuẩn osu!(lazer) cho Triarhythm
+          <p className="text-xs text-[#a8556f] mt-1">
+            Thư viện component đồng bộ Kawaii Light Pastel Pink & Bunny cho Triarhythm
           </p>
         </div>
 
@@ -76,29 +77,31 @@ export default function UIKitScreen({ onBack }) {
 
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Section 1: Typography & Vietnamese support */}
-        <div className="bg-[#1a1a2e]/80 border border-white/[0.08] rounded-2xl p-6 flex flex-col gap-4">
-          <h2 className="text-sm font-bold tracking-widest text-[#ff66ab] uppercase">
-            1. Typography & Phông chữ Tiếng Việt
+        <div className="bg-white/80 border border-[#f3dbe4] rounded-2xl p-6 flex flex-col gap-4 shadow-sm">
+          <h2 className="text-sm font-bold tracking-widest text-[#ff4d80] uppercase flex items-center gap-1.5">
+            <span>1. Typography & Phông chữ Tiếng Việt</span>
+            <span>🐰</span>
           </h2>
-          <div className="flex flex-col gap-2 p-4 rounded-xl bg-[#111122]/90 border border-white/[0.04]">
-            <p className="text-xs text-[#7c849c]">Font Torus / Nunito / Be Vietnam Pro:</p>
-            <p className="text-lg font-bold text-white">
+          <div className="flex flex-col gap-2 p-4 rounded-xl bg-[#fff5f8] border border-[#f3dbe4]">
+            <p className="text-xs text-[#a8556f]">Font Torus / Nunito / Be Vietnam Pro:</p>
+            <p className="text-lg font-bold text-[#5b2a47]">
               Đất nước mặt trời lặn — Triarhythm VSRG Arcade
             </p>
-            <p className="text-sm text-[#b8c0d4]">
-              Kiểm tra ký tự có dấu: <span className="text-[#ff66ab] font-bold">“ă ặ â ấ ế ể ề ỗ ơ ở ữ ự đ”</span>
+            <p className="text-sm text-[#7e345b]">
+              Kiểm tra ký tự có dấu: <span className="text-[#ff4d80] font-bold">“ă ặ â ấ ế ể ề ỗ ơ ở ữ ự đ”</span>
             </p>
-            <p className="text-xs text-[#7c849c] leading-relaxed">
+            <p className="text-xs text-[#a8556f] leading-relaxed">
               Mọi dấu thanh điệu hiển thị chuẩn mực, không lệch baseline, không vỡ glyph.
             </p>
           </div>
         </div>
 
         {/* Section 2: WebAudio UI Sounds */}
-        <div className="bg-[#1a1a2e]/80 border border-white/[0.08] rounded-2xl p-6 flex flex-col gap-4">
+        <div className="bg-white/80 border border-[#f3dbe4] rounded-2xl p-6 flex flex-col gap-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold tracking-widest text-[#ff66ab] uppercase">
-              2. Âm thanh Web Audio UI (Không tải file)
+            <h2 className="text-sm font-bold tracking-widest text-[#ff4d80] uppercase flex items-center gap-1.5">
+              <span>2. Âm thanh Web Audio UI (Không tải file)</span>
+              <span>🔔</span>
             </h2>
             <Toggle
               checked={soundEnabled}
@@ -106,7 +109,7 @@ export default function UIKitScreen({ onBack }) {
               label={soundEnabled ? 'Bật âm UI' : 'Tắt'}
             />
           </div>
-          <p className="text-xs text-[#7c849c]">
+          <p className="text-xs text-[#a8556f]">
             Tổng hợp âm thanh nhẹ nhàng bằng bộ dao động tần số Web Audio API.
           </p>
           <div className="flex flex-wrap gap-2.5 pt-2">
@@ -129,9 +132,10 @@ export default function UIKitScreen({ onBack }) {
         </div>
 
         {/* Section 3: Buttons & IconButtons */}
-        <div className="bg-[#1a1a2e]/80 border border-white/[0.08] rounded-2xl p-6 flex flex-col gap-4">
-          <h2 className="text-sm font-bold tracking-widest text-[#ff66ab] uppercase">
-            3. Buttons & Icon Buttons
+        <div className="bg-white/80 border border-[#f3dbe4] rounded-2xl p-6 flex flex-col gap-4 shadow-sm">
+          <h2 className="text-sm font-bold tracking-widest text-[#ff4d80] uppercase flex items-center gap-1.5">
+            <span>3. Buttons & Icon Buttons</span>
+            <span>🎀</span>
           </h2>
           <div className="flex flex-wrap items-center gap-3">
             <Button variant="primary" size="md">
@@ -149,7 +153,7 @@ export default function UIKitScreen({ onBack }) {
           </div>
 
           <div className="flex items-center gap-3 pt-2">
-            <span className="text-xs text-[#7c849c]">Kích thước:</span>
+            <span className="text-xs text-[#a8556f]">Kích thước:</span>
             <Button variant="primary" size="sm">Small</Button>
             <Button variant="primary" size="md">Medium</Button>
             <Button variant="primary" size="lg">Large</Button>
@@ -157,7 +161,7 @@ export default function UIKitScreen({ onBack }) {
           </div>
 
           <div className="flex items-center gap-3 pt-2">
-            <span className="text-xs text-[#7c849c]">Icon Buttons:</span>
+            <span className="text-xs text-[#a8556f]">Icon Buttons:</span>
             <Tooltip content="Phát nhạc">
               <IconButton icon="▶" variant="primary" size="md" />
             </Tooltip>
@@ -174,9 +178,10 @@ export default function UIKitScreen({ onBack }) {
         </div>
 
         {/* Section 4: Form Controls */}
-        <div className="bg-[#1a1a2e]/80 border border-white/[0.08] rounded-2xl p-6 flex flex-col gap-4">
-          <h2 className="text-sm font-bold tracking-widest text-[#ff66ab] uppercase">
-            4. Form Controls (Toggles, Sliders, Dropdowns)
+        <div className="bg-white/80 border border-[#f3dbe4] rounded-2xl p-6 flex flex-col gap-4 shadow-sm">
+          <h2 className="text-sm font-bold tracking-widest text-[#ff4d80] uppercase flex items-center gap-1.5">
+            <span>4. Form Controls (Toggles, Sliders, Dropdowns)</span>
+            <span>⚙</span>
           </h2>
           <Toggle
             checked={toggleVal1}
@@ -225,9 +230,10 @@ export default function UIKitScreen({ onBack }) {
         </div>
 
         {/* Section 5: Tabs & Navigation */}
-        <div className="bg-[#1a1a2e]/80 border border-white/[0.08] rounded-2xl p-6 flex flex-col gap-4">
-          <h2 className="text-sm font-bold tracking-widest text-[#ff66ab] uppercase">
-            5. Tabs & Status Indicators
+        <div className="bg-white/80 border border-[#f3dbe4] rounded-2xl p-6 flex flex-col gap-4 shadow-sm">
+          <h2 className="text-sm font-bold tracking-widest text-[#ff4d80] uppercase flex items-center gap-1.5">
+            <span>5. Tabs & Status Indicators</span>
+            <span>✨</span>
           </h2>
           <Tabs
             activeTab={activeTab}
@@ -241,14 +247,14 @@ export default function UIKitScreen({ onBack }) {
           />
 
           <div className="pt-2">
-            <p className="text-xs text-[#7c849c] mb-2">Thanh tiến trình (Progress Bars):</p>
+            <p className="text-xs text-[#a8556f] mb-2">Thanh tiến trình (Progress Bars):</p>
             <ProgressBar value={72} max={100} color="pink" showLabel />
             <div className="h-2" />
             <ProgressBar value={45} max={100} color="purple" />
           </div>
 
           <div className="flex items-center gap-4 pt-2">
-            <span className="text-xs text-[#7c849c]">Avatars:</span>
+            <span className="text-xs text-[#a8556f]">Avatars:</span>
             <Avatar size="sm" name="Astro" status="online" />
             <Avatar size="md" name="Player" status="online" />
             <Avatar size="lg" name="God" status="offline" />
@@ -256,12 +262,13 @@ export default function UIKitScreen({ onBack }) {
         </div>
 
         {/* Section 6: StarRating & Rank Badges */}
-        <div className="bg-[#1a1a2e]/80 border border-white/[0.08] rounded-2xl p-6 flex flex-col gap-4">
-          <h2 className="text-sm font-bold tracking-widest text-[#ff66ab] uppercase">
-            6. osu! Star Rating & Rank Badges
+        <div className="bg-white/80 border border-[#f3dbe4] rounded-2xl p-6 flex flex-col gap-4 shadow-sm">
+          <h2 className="text-sm font-bold tracking-widest text-[#ff4d80] uppercase flex items-center gap-1.5">
+            <span>6. osu! Star Rating & Rank Badges</span>
+            <span>⭐</span>
           </h2>
           <div>
-            <p className="text-xs text-[#7c849c] mb-2">Màu sao theo độ khó (Star Rating):</p>
+            <p className="text-xs text-[#a8556f] mb-2">Màu sao theo độ khó (Star Rating):</p>
             <div className="flex flex-wrap gap-2">
               <StarRating stars={1.42} size="md" />
               <StarRating stars={3.25} size="md" />
@@ -273,7 +280,7 @@ export default function UIKitScreen({ onBack }) {
           </div>
 
           <div className="pt-2">
-            <p className="text-xs text-[#7c849c] mb-2">Cấp bậc xếp hạng (Rank Badges):</p>
+            <p className="text-xs text-[#a8556f] mb-2">Cấp bậc xếp hạng (Rank Badges):</p>
             <div className="flex flex-wrap gap-2.5 items-center">
               <RankBadge rank="SS+" size="md" />
               <RankBadge rank="SS" size="md" />
@@ -287,7 +294,7 @@ export default function UIKitScreen({ onBack }) {
           </div>
 
           <div className="pt-2">
-            <p className="text-xs text-[#7c849c] mb-2">Skeletons loading:</p>
+            <p className="text-xs text-[#a8556f] mb-2">Skeletons loading:</p>
             <div className="flex flex-col gap-2">
               <Skeleton variant="text" width="60%" />
               <Skeleton variant="text" width="85%" />
@@ -296,9 +303,10 @@ export default function UIKitScreen({ onBack }) {
         </div>
 
         {/* Section 7: Overlays, Modals & Toasts */}
-        <div className="bg-[#1a1a2e]/80 border border-white/[0.08] rounded-2xl p-6 flex flex-col gap-4 lg:col-span-2">
-          <h2 className="text-sm font-bold tracking-widest text-[#ff66ab] uppercase">
-            7. Modals, Confirm Dialog, Context Menu & Toasts
+        <div className="bg-white/80 border border-[#f3dbe4] rounded-2xl p-6 flex flex-col gap-4 shadow-sm lg:col-span-2">
+          <h2 className="text-sm font-bold tracking-widest text-[#ff4d80] uppercase flex items-center gap-1.5">
+            <span>7. Modals, Confirm Dialog, Context Menu & Toasts</span>
+            <span>🎀</span>
           </h2>
           <div className="flex flex-wrap gap-3">
             <Button variant="primary" size="sm" onClick={() => setIsModalOpen(true)}>
@@ -309,7 +317,7 @@ export default function UIKitScreen({ onBack }) {
             </Button>
             <div
               onContextMenu={handleRightClick}
-              className="px-4 py-2 rounded-xl bg-white/[0.06] border border-dashed border-white/[0.15] text-xs text-[#b8c0d4] flex items-center cursor-context-menu"
+              className="px-4 py-2 rounded-xl bg-[#fff5f8] border border-dashed border-[#ff85a2] text-xs text-[#a8556f] flex items-center cursor-context-menu"
             >
               Chuột phải vào ô này để mở Context Menu
             </div>
@@ -347,10 +355,10 @@ export default function UIKitScreen({ onBack }) {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="osu!(lazer) Modal Sample"
-        description="Lớp kính mờ backdrop-blur-md, animation mượt mà, đóng bằng phím ESC"
+        title="Kawaii Light Modal Sample"
+        description="Lớp kính mờ backdrop-blur-md, viền pastel, đóng bằng phím ESC"
       >
-        <p className="text-sm text-[#b8c0d4] leading-relaxed my-3">
+        <p className="text-sm text-[#5b2a47] leading-relaxed my-3">
           Đây là component Modal dùng chung cho mọi tính năng của Triarhythm: Settings, Auth, Map Info, Profile và Admin CRUD.
         </p>
         <div className="flex justify-end pt-4">
@@ -382,7 +390,6 @@ export default function UIKitScreen({ onBack }) {
         onClose={() => setContextMenuState({ isOpen: false, x: 0, y: 0 })}
         items={[
           { label: 'Chơi bài này', icon: '▶', shortcut: 'Enter', onClick: () => toast.info('Chơi bài') },
-          { label: 'Mở Beatmap Editor', icon: '✎', shortcut: 'Ctrl+E', onClick: () => toast.info('Mở Editor') },
           { label: 'Thêm vào yêu thích', icon: '★', onClick: () => toast.success('Đã thêm vào yêu thích!') },
           { divider: true },
           { label: 'Xóa khỏi máy', icon: '🗑', danger: true, onClick: () => setIsConfirmOpen(true) }

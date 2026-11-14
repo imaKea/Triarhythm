@@ -83,37 +83,37 @@ function HitTimingHistogram({ hitOffsets = [], ur = 0 }) {
   }, [hitOffsets]);
 
   return (
-    <div className="bg-[#121224]/85 border border-white/[0.08] rounded-2xl p-4 flex flex-col gap-2 shadow-xl">
+    <div className="bg-white/95 border border-[#f3dbe4] rounded-3xl p-4 flex flex-col gap-2 shadow-sm">
       <div className="flex items-center justify-between text-xs">
         <div className="flex items-center gap-2">
-          <span className="text-[#a29bfe] font-mono font-bold tracking-wider uppercase text-[10px]">
+          <span className="text-[#ff4d80] font-mono font-bold tracking-wider uppercase text-[10px]">
             Unstable Rate
           </span>
-          <span className="text-white font-mono font-black text-sm">
+          <span className="text-[#5b2a47] font-mono font-black text-sm">
             {Number(ur).toFixed(1)}
           </span>
         </div>
-        <div className="text-[11px] font-mono text-[#8c96ac]">
-          Mean: <span className={meanOffset < -2 ? 'text-[#38bdf8] font-bold' : meanOffset > 2 ? 'text-[#fb923c] font-bold' : 'text-emerald-400 font-bold'}>
+        <div className="text-[11px] font-mono text-[#a8556f]">
+          Mean: <span className={meanOffset < -2 ? 'text-sky-500 font-bold' : meanOffset > 2 ? 'text-amber-500 font-bold' : 'text-emerald-500 font-bold'}>
             {meanOffset > 0 ? `+${meanOffset.toFixed(1)}ms` : `${meanOffset.toFixed(1)}ms`}
           </span> ({meanOffset < -3 ? 'Early' : meanOffset > 3 ? 'Late' : 'Balanced'})
         </div>
       </div>
 
       {/* Histogram Bar Chart */}
-      <div className="h-16 w-full flex items-end gap-[3px] px-1 relative border-b border-white/[0.08] pt-2">
+      <div className="h-16 w-full flex items-end gap-[3px] px-1 relative border-b border-[#f3dbe4] pt-2">
         {/* Center Target Marker (0ms line) */}
-        <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[1.5px] bg-[#ff66ab] shadow-[0_0_8px_#ff66ab] z-10 opacity-70 pointer-events-none" />
+        <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[1.5px] bg-[#ff4d80] shadow-[0_0_8px_#ff4d80] z-10 opacity-70 pointer-events-none" />
 
         {buckets.map((count, i) => {
           const heightPercent = count > 0 ? Math.max(8, Math.round((count / maxBucketCount) * 100)) : 0;
           const isEarly = i < 10;
           const isCenter = i === 10;
           const barColor = isCenter
-            ? 'bg-gradient-to-t from-[#ff66ab] to-[#facc15]'
+            ? 'bg-gradient-to-t from-[#ff85a2] to-[#ff4d80]'
             : isEarly
-              ? 'bg-gradient-to-t from-[#0284c7] to-[#38bdf8]'
-              : 'bg-gradient-to-t from-[#ea580c] to-[#fb923c]';
+              ? 'bg-gradient-to-t from-[#7dd3fc] to-[#38bdf8]'
+              : 'bg-gradient-to-t from-[#fdba74] to-[#fb923c]';
 
           return (
             <div
@@ -125,7 +125,7 @@ function HitTimingHistogram({ hitOffsets = [], ur = 0 }) {
                 style={{ height: `${heightPercent}%`, minHeight: count > 0 ? '4px' : '0px' }}
               />
               {count > 0 && (
-                <div className="absolute -top-6 hidden group-hover:flex px-1.5 py-0.5 rounded bg-black/90 text-[9px] text-white font-mono whitespace-nowrap z-20 pointer-events-none border border-white/20">
+                <div className="absolute -top-6 hidden group-hover:flex px-1.5 py-0.5 rounded bg-white text-[9px] text-[#5b2a47] font-bold font-mono whitespace-nowrap z-20 pointer-events-none border border-[#f3dbe4] shadow-md">
                   {count} hits
                 </div>
               )}
@@ -135,14 +135,14 @@ function HitTimingHistogram({ hitOffsets = [], ur = 0 }) {
       </div>
 
       {/* Legend */}
-      <div className="flex justify-between items-center text-[10px] font-mono text-[#8c96ac] px-1">
-        <span className="text-[#38bdf8] flex items-center gap-1 font-semibold">
+      <div className="flex justify-between items-center text-[10px] font-mono text-[#a8556f] px-1">
+        <span className="text-[#0284c7] flex items-center gap-1 font-bold">
           ◀ EARLY ({earlyCount})
         </span>
-        <span className="text-emerald-400 font-semibold">
+        <span className="text-emerald-600 font-bold">
           PERFECT ({perfectCount})
         </span>
-        <span className="text-[#fb923c] flex items-center gap-1 font-semibold">
+        <span className="text-[#ea580c] flex items-center gap-1 font-bold">
           LATE ({lateCount}) ▶
         </span>
       </div>
@@ -274,57 +274,57 @@ export default function AstroResultScreen({
   const isAP = result?.flags?.isAP || (isFC && counts.great === 0 && counts.good === 0 && counts.perfect === 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#0b0c16] text-white select-none overflow-hidden animate-fadeIn font-sans">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[#fff5f8] text-[#5b2a47] select-none overflow-hidden animate-fadeIn font-sans">
       {/* Background Cover with Blur & Dim */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
         {coverUrl ? (
           <img
             src={coverUrl}
             alt="background"
-            className="w-full h-full object-cover filter blur-3xl scale-110 opacity-25 brightness-50"
+            className="w-full h-full object-cover filter blur-3xl scale-110 opacity-15"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-[#1a1329] via-[#0d0f1f] to-[#080812]" />
+          <div className="w-full h-full bg-gradient-to-br from-[#ffd9e5] via-[#fff5f8] to-[#f8a3bb]/20" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0b0c16] via-transparent to-[#0b0c16]/80" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#fff5f8] via-transparent to-[#fff5f8]/80" />
       </div>
 
       {/* Top Header Wedge: Map Info */}
-      <header className="relative z-10 flex items-center justify-between px-8 py-4 border-b border-[#ff85a2]/20 bg-[#1a0e21]/75 backdrop-blur-md">
+      <header className="relative z-10 flex items-center justify-between px-8 py-4 border-b border-[#f3dbe4] bg-[#fffafc]/85 backdrop-blur-md shadow-sm">
         <div className="flex items-center gap-4 min-w-0">
-          <div className="w-14 h-14 rounded-2xl overflow-hidden bg-white/10 border border-[#ff85a2]/30 flex-shrink-0 shadow-[0_0_15px_rgba(255,133,162,0.35)]">
+          <div className="w-14 h-14 rounded-2xl overflow-hidden bg-[#fff1f5] border border-[#f3dbe4] flex-shrink-0 shadow-sm">
             {coverUrl ? (
               <img src={coverUrl} alt="cover" className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-xl text-[#ffaec9]">🐰</div>
+              <div className="w-full h-full flex items-center justify-center text-xl text-[#ff4d80]">🐰</div>
             )}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-black text-white truncate tracking-tight flex items-center gap-1.5">
+              <h1 className="text-xl font-black text-[#5b2a47] truncate tracking-tight flex items-center gap-1.5 font-torus">
                 <span>{title}</span>
                 <span className="text-sm">🎀</span>
               </h1>
               {isAutoplay && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#ff9800]/20 text-[#ffb74d] border border-[#ff9800]/40">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#ff9800]/20 text-[#e65100] border border-[#ff9800]/40">
                   AUTO PLAY
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 text-xs text-[#d8bfd8] font-medium truncate mt-0.5">
+            <div className="flex items-center gap-2 text-xs text-[#a8556f] font-medium truncate mt-0.5">
               <span>{artist}</span>
               <span>•</span>
-              <span className="text-[#ffaec9] font-bold">[{diffName}]</span>
+              <span className="text-[#ff4d80] font-bold">[{diffName}]</span>
               <span>•</span>
               <StarRating stars={stars} size="sm" />
               <span>•</span>
-              <span className="text-[#a890aa]">mapped by {creator} 🐰</span>
+              <span className="text-[#a8556f]">mapped by {creator} 🐰</span>
             </div>
           </div>
         </div>
 
         {/* User Card on Right */}
-        <div className="flex items-center gap-3 bg-white/[0.05] border border-[#ff85a2]/25 px-4 py-2 rounded-full shadow-sm">
+        <div className="flex items-center gap-3 bg-white border border-[#f3dbe4] px-4 py-2 rounded-full shadow-sm">
           <div className="relative">
             <Avatar
               src={currentUser?.avatar}
@@ -335,10 +335,10 @@ export default function AstroResultScreen({
             <span className="absolute -top-1 -right-1 text-[10px]">🎀</span>
           </div>
           <div className="text-right">
-            <div className="text-xs font-bold text-white leading-tight">
+            <div className="text-xs font-bold text-[#5b2a47] leading-tight">
               {currentUser?.name || 'Guest'}
             </div>
-            <div className="text-[10px] text-[#ffaec9] font-mono">
+            <div className="text-[10px] text-[#ff4d80] font-mono font-bold">
               {currentUser ? `#${currentUser.rank || 1} • ${(currentUser.pp || currentUser.rating || 0).toFixed(0)}pp` : 'Offline Play 🐰'}
             </div>
           </div>
@@ -353,9 +353,9 @@ export default function AstroResultScreen({
           <div className="relative group my-2 flex items-center gap-3">
             <span className="text-2xl animate-kawaii-wiggle inline-block select-none">🎀</span>
             <div className="relative">
-              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-[#ff85a2]/40 via-[#ffaec9]/30 to-[#ffd6e0]/30 blur-2xl transform scale-150 animate-pulse pointer-events-none" />
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-[#ff85a2]/30 via-[#ffaec9]/20 to-[#ffd6e0]/20 blur-2xl transform scale-150 animate-pulse pointer-events-none" />
               <div className="relative transform hover:scale-105 transition-transform duration-300">
-                <RankBadge rank={result?.rank || 'D'} size="xl" className="w-28 h-28 text-5xl rounded-3xl shadow-2xl" />
+                <RankBadge rank={result?.rank || 'D'} size="xl" className="w-28 h-28 text-5xl rounded-3xl shadow-xl" />
               </div>
             </div>
             <span className="text-2xl animate-kawaii-bounce inline-block select-none">🐰</span>
@@ -363,27 +363,27 @@ export default function AstroResultScreen({
 
           {/* Rolling Score & Accuracy */}
           <div className="w-full text-center lg:text-left">
-            <div className="text-[10px] text-[#ff66ab] font-mono font-bold tracking-[0.25em] uppercase">
+            <div className="text-[10px] text-[#ff4d80] font-mono font-bold tracking-[0.25em] uppercase">
               TOTAL SCORE
             </div>
-            <div className="text-5xl lg:text-6xl font-black text-white tracking-tight font-mono drop-shadow-md">
+            <div className="text-5xl lg:text-6xl font-black text-[#5b2a47] tracking-tight font-mono drop-shadow-sm">
               {animatedScore.toLocaleString('en-US')}
             </div>
 
             <div className="flex items-center justify-center lg:justify-start gap-4 mt-2">
-              <div className="text-2xl lg:text-3xl font-black text-emerald-400 font-mono">
+              <div className="text-2xl lg:text-3xl font-black text-emerald-600 font-mono">
                 {rawAccuracy.toFixed(2)}%
               </div>
-              <div className="text-sm font-bold text-[#8c96ac] font-mono flex items-center gap-1.5">
+              <div className="text-sm font-bold text-[#a8556f] font-mono flex items-center gap-1.5">
                 <span>MAX COMBO:</span>
-                <span className="text-white font-black">{result?.maxCombo || 0}x</span>
+                <span className="text-[#5b2a47] font-black">{result?.maxCombo || 0}x</span>
                 {isAP && (
-                  <span className="px-2 py-0.5 rounded bg-yellow-400/20 text-yellow-300 text-[10px] font-black border border-yellow-400/50 shadow-[0_0_8px_rgba(250,204,21,0.5)]">
+                  <span className="px-2 py-0.5 rounded bg-amber-400/20 text-amber-600 text-[10px] font-black border border-amber-400/50 shadow-sm">
                     AP
                   </span>
                 )}
                 {isFC && !isAP && (
-                  <span className="px-2 py-0.5 rounded bg-emerald-400/20 text-emerald-300 text-[10px] font-black border border-emerald-400/50">
+                  <span className="px-2 py-0.5 rounded bg-emerald-400/20 text-emerald-600 text-[10px] font-black border border-emerald-400/50">
                     FC
                   </span>
                 )}
@@ -392,60 +392,60 @@ export default function AstroResultScreen({
           </div>
 
           {/* Personal Best Card */}
-          <div className="w-full bg-[#15162b]/85 border border-white/[0.08] rounded-2xl p-4 shadow-xl">
+          <div className="w-full bg-white/95 border border-[#f3dbe4] rounded-3xl p-4 shadow-sm">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-mono font-bold text-[#a29bfe] tracking-wider uppercase">
+              <span className="text-[10px] font-mono font-bold text-[#ff4d80] tracking-wider uppercase">
                 PERSONAL RECORD
               </span>
               {pbComparison.isNewRecord && (
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-gradient-to-r from-amber-400 to-[#ff66ab] text-slate-950 shadow-[0_0_12px_rgba(255,102,171,0.5)]">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-gradient-to-r from-amber-400 to-[#ff4d80] text-white shadow-sm">
                   ★ NEW RECORD!
                 </span>
               )}
             </div>
 
             {loadingPB ? (
-              <div className="text-xs text-[#7c849c] font-mono">Checking records...</div>
+              <div className="text-xs text-[#a8556f] font-mono">Checking records...</div>
             ) : personalBest ? (
               <div className="grid grid-cols-3 gap-2 text-xs font-mono">
                 <div>
-                  <div className="text-[10px] text-[#7c849c]">BEST SCORE</div>
-                  <div className="text-white font-bold truncate">
+                  <div className="text-[10px] text-[#a8556f]">BEST SCORE</div>
+                  <div className="text-[#5b2a47] font-bold truncate">
                     {(personalBest.score || 0).toLocaleString('en-US')}
                   </div>
                   {pbComparison.scoreDiff !== null && (
-                    <div className={`text-[10px] font-bold ${pbComparison.scoreDiff >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    <div className={`text-[10px] font-bold ${pbComparison.scoreDiff >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
                       {pbComparison.scoreDiff >= 0 ? `+${pbComparison.scoreDiff.toLocaleString()}` : pbComparison.scoreDiff.toLocaleString()}
                     </div>
                   )}
                 </div>
 
                 <div>
-                  <div className="text-[10px] text-[#7c849c]">BEST ACC</div>
-                  <div className="text-white font-bold">
+                  <div className="text-[10px] text-[#a8556f]">BEST ACC</div>
+                  <div className="text-[#5b2a47] font-bold">
                     {Number(personalBest.achievement || 0).toFixed(2)}%
                   </div>
                   {pbComparison.accDiff !== null && (
-                    <div className={`text-[10px] font-bold ${pbComparison.accDiff >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    <div className={`text-[10px] font-bold ${pbComparison.accDiff >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
                       {pbComparison.accDiff >= 0 ? `+${pbComparison.accDiff.toFixed(2)}%` : `${pbComparison.accDiff.toFixed(2)}%`}
                     </div>
                   )}
                 </div>
 
                 <div>
-                  <div className="text-[10px] text-[#7c849c]">BEST PP</div>
-                  <div className="text-[#a29bfe] font-bold">
+                  <div className="text-[10px] text-[#a8556f]">BEST PP</div>
+                  <div className="text-[#ff4d80] font-bold">
                     {Number(personalBest.pp || 0).toFixed(0)}pp
                   </div>
                   {pbComparison.ppDiff !== null && !isAutoplay && (
-                    <div className={`text-[10px] font-bold ${pbComparison.ppDiff >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    <div className={`text-[10px] font-bold ${pbComparison.ppDiff >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
                       {pbComparison.ppDiff >= 0 ? `+${pbComparison.ppDiff.toFixed(0)}pp` : `${pbComparison.ppDiff.toFixed(0)}pp`}
                     </div>
                   )}
                 </div>
               </div>
             ) : (
-              <div className="text-xs text-[#7c849c] font-mono">
+              <div className="text-xs text-[#a8556f] font-mono">
                 First time clearing this chart! Record saved.
               </div>
             )}
@@ -455,55 +455,55 @@ export default function AstroResultScreen({
         {/* Right Column (7 Cols): PP Breakdown, Judgements Grid, UR Histogram */}
         <div className="col-span-12 lg:col-span-7 flex flex-col gap-4">
           {/* PP Breakdown Card */}
-          <div className="bg-[#15162b]/85 border border-white/[0.08] rounded-2xl p-4 shadow-xl">
+          <div className="bg-white/95 border border-[#f3dbe4] rounded-3xl p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] font-mono font-bold text-[#ff66ab] tracking-wider uppercase">
+              <span className="text-[10px] font-mono font-bold text-[#ff4d80] tracking-wider uppercase">
                 PERFORMANCE POINTS BREAKDOWN
               </span>
               <div className="flex items-center gap-1.5">
-                <span className="text-2xl font-black text-[#ff66ab] font-mono">
+                <span className="text-2xl font-black text-[#ff4d80] font-mono">
                   {ppData.totalPP.toFixed(1)}
                 </span>
-                <span className="text-xs font-bold text-[#a29bfe] font-mono">pp</span>
+                <span className="text-xs font-bold text-[#a8556f] font-mono">pp</span>
               </div>
             </div>
 
             {/* PP sub-cards: Aim / Speed / Accuracy */}
             <div className="grid grid-cols-3 gap-3">
-              <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 flex flex-col items-center">
-                <span className="text-[10px] text-[#7c849c] font-mono uppercase font-bold">AIM PP</span>
-                <span className="text-lg font-black text-sky-400 font-mono mt-0.5">
+              <div className="bg-[#fff8fa] border border-[#f3dbe4] rounded-2xl p-3 flex flex-col items-center">
+                <span className="text-[10px] text-[#a8556f] font-mono uppercase font-bold">AIM PP</span>
+                <span className="text-lg font-black text-sky-500 font-mono mt-0.5">
                   {ppData.aimPP.toFixed(1)}
                 </span>
-                <div className="w-full bg-white/10 h-1 rounded-full mt-2 overflow-hidden">
+                <div className="w-full bg-[#f3dbe4] h-1.5 rounded-full mt-2 overflow-hidden">
                   <div
-                    className="h-full bg-sky-400 rounded-full"
+                    className="h-full bg-sky-500 rounded-full"
                     style={{ width: `${ppData.totalPP > 0 ? (ppData.aimPP / ppData.totalPP) * 100 : 0}%` }}
                   />
                 </div>
               </div>
 
-              <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 flex flex-col items-center">
-                <span className="text-[10px] text-[#7c849c] font-mono uppercase font-bold">SPEED PP</span>
-                <span className="text-lg font-black text-purple-400 font-mono mt-0.5">
+              <div className="bg-[#fff8fa] border border-[#f3dbe4] rounded-2xl p-3 flex flex-col items-center">
+                <span className="text-[10px] text-[#a8556f] font-mono uppercase font-bold">SPEED PP</span>
+                <span className="text-lg font-black text-purple-500 font-mono mt-0.5">
                   {ppData.speedPP.toFixed(1)}
                 </span>
-                <div className="w-full bg-white/10 h-1 rounded-full mt-2 overflow-hidden">
+                <div className="w-full bg-[#f3dbe4] h-1.5 rounded-full mt-2 overflow-hidden">
                   <div
-                    className="h-full bg-purple-400 rounded-full"
+                    className="h-full bg-purple-500 rounded-full"
                     style={{ width: `${ppData.totalPP > 0 ? (ppData.speedPP / ppData.totalPP) * 100 : 0}%` }}
                   />
                 </div>
               </div>
 
-              <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 flex flex-col items-center">
-                <span className="text-[10px] text-[#7c849c] font-mono uppercase font-bold">ACCURACY PP</span>
-                <span className="text-lg font-black text-emerald-400 font-mono mt-0.5">
+              <div className="bg-[#fff8fa] border border-[#f3dbe4] rounded-2xl p-3 flex flex-col items-center">
+                <span className="text-[10px] text-[#a8556f] font-mono uppercase font-bold">ACCURACY PP</span>
+                <span className="text-lg font-black text-emerald-500 font-mono mt-0.5">
                   {ppData.accPP.toFixed(1)}
                 </span>
-                <div className="w-full bg-white/10 h-1 rounded-full mt-2 overflow-hidden">
+                <div className="w-full bg-[#f3dbe4] h-1.5 rounded-full mt-2 overflow-hidden">
                   <div
-                    className="h-full bg-emerald-400 rounded-full"
+                    className="h-full bg-emerald-500 rounded-full"
                     style={{ width: `${ppData.totalPP > 0 ? (ppData.accPP / ppData.totalPP) * 100 : 0}%` }}
                   />
                 </div>
@@ -512,59 +512,59 @@ export default function AstroResultScreen({
           </div>
 
           {/* Judgement Counts osu! Table */}
-          <div className="bg-[#15162b]/85 border border-white/[0.08] rounded-2xl p-4 shadow-xl">
-            <div className="text-[10px] font-mono font-bold text-[#a29bfe] tracking-wider uppercase mb-3">
+          <div className="bg-white/95 border border-[#f3dbe4] rounded-3xl p-4 shadow-sm">
+            <div className="text-[10px] font-mono font-bold text-[#ff4d80] tracking-wider uppercase mb-3">
               JUDGEMENT BREAKDOWN
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs font-mono">
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.05]">
+              <div className="flex items-center justify-between p-2.5 rounded-2xl bg-[#fff8fa] border border-[#f3dbe4]">
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#ffdd57] shadow-[0_0_6px_#ffdd57]" />
-                  <span className="text-[#ffdd57] font-bold">CRITICAL</span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#ffea00] shadow-[0_0_6px_#ffea00]" />
+                  <span className="text-[#b28900] font-bold">CRITICAL</span>
                 </div>
-                <span className="text-white font-black text-sm">{counts.criticalPerfect}</span>
+                <span className="text-[#5b2a47] font-black text-sm">{counts.criticalPerfect}</span>
               </div>
 
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.05]">
+              <div className="flex items-center justify-between p-2.5 rounded-2xl bg-[#fff8fa] border border-[#f3dbe4]">
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#ff9800] shadow-[0_0_6px_#ff9800]" />
-                  <span className="text-[#ff9800] font-bold">PERFECT</span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#ffd600] shadow-[0_0_6px_#ffd600]" />
+                  <span className="text-[#a67c00] font-bold">PERFECT</span>
                 </div>
-                <span className="text-white font-black text-sm">{counts.perfect}</span>
+                <span className="text-[#5b2a47] font-black text-sm">{counts.perfect}</span>
               </div>
 
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.05]">
+              <div className="flex items-center justify-between p-2.5 rounded-2xl bg-[#fff8fa] border border-[#f3dbe4]">
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#66bb6a] shadow-[0_0_6px_#66bb6a]" />
-                  <span className="text-[#66bb6a] font-bold">GREAT</span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#00e676] shadow-[0_0_6px_#00e676]" />
+                  <span className="text-[#008f4c] font-bold">GREAT</span>
                 </div>
-                <span className="text-white font-black text-sm">{counts.great}</span>
+                <span className="text-[#5b2a47] font-black text-sm">{counts.great}</span>
               </div>
 
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.05]">
+              <div className="flex items-center justify-between p-2.5 rounded-2xl bg-[#fff8fa] border border-[#f3dbe4]">
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#4fc3f7] shadow-[0_0_6px_#4fc3f7]" />
-                  <span className="text-[#4fc3f7] font-bold">GOOD</span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#ff9100] shadow-[0_0_6px_#ff9100]" />
+                  <span className="text-[#c76500] font-bold">GOOD</span>
                 </div>
-                <span className="text-white font-black text-sm">{counts.good}</span>
+                <span className="text-[#5b2a47] font-black text-sm">{counts.good}</span>
               </div>
 
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.05]">
+              <div className="flex items-center justify-between p-2.5 rounded-2xl bg-[#fff8fa] border border-[#f3dbe4]">
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-[#ef5350] shadow-[0_0_6px_#ef5350]" />
-                  <span className="text-[#ef5350] font-bold">MISS</span>
+                  <span className="text-[#c62828] font-bold">MISS</span>
                 </div>
-                <span className={`font-black text-sm ${counts.miss > 0 ? 'text-[#ef5350]' : 'text-white'}`}>
+                <span className={`font-black text-sm ${counts.miss > 0 ? 'text-[#c62828]' : 'text-[#5b2a47]'}`}>
                   {counts.miss}
                 </span>
               </div>
 
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.05]">
+              <div className="flex items-center justify-between p-2.5 rounded-2xl bg-[#fff8fa] border border-[#f3dbe4]">
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-purple-400 shadow-[0_0_6px_rgba(168,85,247,0.7)]" />
-                  <span className="text-purple-300 font-bold">TOTAL NOTES</span>
+                  <span className="text-purple-600 font-bold">TOTAL NOTES</span>
                 </div>
-                <span className="text-white font-black text-sm">{noteCount}</span>
+                <span className="text-[#5b2a47] font-black text-sm">{noteCount}</span>
               </div>
             </div>
           </div>
@@ -575,9 +575,9 @@ export default function AstroResultScreen({
       </main>
 
       {/* Bottom Action Footer Bar */}
-      <footer className="relative z-10 flex items-center justify-between px-8 py-4 border-t border-[#ff85a2]/20 bg-[#140b17]/95 backdrop-blur-md">
-        <div className="flex items-center gap-2 text-xs font-mono text-[#b89cb9]">
-          <span className="px-2 py-0.5 rounded-full bg-white/[0.08] text-white">Esc</span> Quay lại chọn bài 🐰
+      <footer className="relative z-10 flex items-center justify-between px-8 py-4 border-t border-[#f3dbe4] bg-[#fffafc]/90 backdrop-blur-md shadow-[0_-4px_20px_rgba(126,47,79,0.04)]">
+        <div className="flex items-center gap-2 text-xs font-mono text-[#a8556f] font-bold">
+          <span className="px-2 py-0.5 rounded-full bg-[#fff1f5] text-[#5b2a47] border border-[#f3dbe4]">Esc</span> Quay lại chọn bài 🐰
         </div>
 
         <div className="flex items-center gap-3">

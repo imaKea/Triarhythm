@@ -43,35 +43,35 @@ export default function AstroAuthModal({ isOpen, onClose, onLoginSuccess }) {
     }
   };
 
-  const inputClass = "w-full px-4 py-2.5 rounded-2xl bg-[#28152e] border border-[#ff85a2]/25 text-white placeholder-[#b89cb9] focus:border-[#ff85a2] focus:shadow-[0_0_12px_rgba(255,133,162,0.3)] focus:outline-none transition-all text-sm";
+  const inputClass = "w-full px-4 py-2.5 rounded-2xl bg-[#fff8fa] border border-[#f3dbe4] text-[#5b2a47] placeholder-[#a8556f] focus:border-[#ff4d80] focus:shadow-[0_2px_12px_rgba(255,77,128,0.2)] focus:outline-none transition-all text-sm font-bold";
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#140b17]/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn select-none">
-      <div className="w-full max-w-sm bg-[#1f1126] rounded-3xl border border-[#ff85a2]/30 p-6 shadow-[0_20px_50px_rgba(16,8,20,0.85),0_0_25px_rgba(255,133,162,0.25)]">
+    <div className="fixed inset-0 z-50 bg-[#5b2a47]/30 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn select-none">
+      <div className="w-full max-w-sm bg-white/95 rounded-3xl border border-[#f3dbe4] p-6 shadow-[0_20px_60px_rgba(126,47,79,0.15)]">
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#ffaec9] via-[#ff85a2] to-[#ff4d80] flex items-center justify-center shadow-[0_0_14px_rgba(255,133,162,0.5)] text-base select-none">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#ffaec9] via-[#ff85a2] to-[#ff4d80] flex items-center justify-center shadow-[0_2px_12px_rgba(255,133,162,0.4)] text-base select-none">
               🐰
             </div>
             <div>
-              <h3 className="font-bold text-base text-white flex items-center gap-1.5 font-torus">
+              <h3 className="font-bold text-base text-[#5b2a47] flex items-center gap-1.5 font-torus">
                 <span>{isRegister ? 'Tạo tài khoản' : 'Đăng nhập'}</span>
                 <span>🎀</span>
               </h3>
-              <p className="text-[10px] text-[#ffaec9]">Đồng bộ điểm số & bảng xếp hạng</p>
+              <p className="text-[10px] text-[#ff4d80] font-bold">Đồng bộ điểm số & bảng xếp hạng</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-7 h-7 rounded-full bg-white/[0.06] hover:bg-white/[0.14] text-[#ffaec9] hover:text-white flex items-center justify-center text-xs transition-colors cursor-pointer border border-[#ff85a2]/20"
+            className="w-7 h-7 rounded-full bg-white hover:bg-[#fff0f4] text-[#a8556f] hover:text-[#ff4d80] flex items-center justify-center text-xs transition-colors cursor-pointer border border-[#f3dbe4] shadow-sm"
           >
             ✕
           </button>
         </div>
 
         {errorMsg && (
-          <div className="mb-4 p-2.5 rounded-2xl bg-rose-500/15 border border-rose-500/35 text-rose-300 text-xs">
+          <div className="mb-4 p-2.5 rounded-2xl bg-[#ffeef2] border border-[#f5b8c7] text-[#e94267] text-xs font-bold">
             {errorMsg}
           </div>
         )}
@@ -118,21 +118,21 @@ export default function AstroAuthModal({ isOpen, onClose, onLoginSuccess }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 mt-1 rounded-full osu-btn text-sm font-black tracking-wide cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-[0_4px_18px_rgba(255,133,162,0.4)]"
+            className="w-full py-2.5 mt-1 rounded-full osu-btn text-sm font-black tracking-wide cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-[0_4px_18px_rgba(255,77,128,0.3)]"
           >
             <span>🐰</span>
             <span>{loading ? 'Đang kết nối...' : (isRegister ? 'Tạo tài khoản 🎀' : 'Đăng nhập 🎀')}</span>
           </button>
         </form>
 
-        <div className="mt-4 text-center text-xs text-[#b89cb9]">
+        <div className="mt-4 text-center text-xs text-[#a8556f] font-medium">
           {isRegister ? (
             <span>
               Đã có tài khoản?{' '}
               <button
                 type="button"
                 onClick={() => { setIsRegister(false); setErrorMsg(''); }}
-                className="text-[#ffaec9] hover:text-white font-bold underline ml-1 cursor-pointer"
+                className="text-[#ff4d80] hover:underline font-bold ml-1 cursor-pointer"
               >
                 Đăng nhập ngay
               </button>
@@ -143,7 +143,7 @@ export default function AstroAuthModal({ isOpen, onClose, onLoginSuccess }) {
               <button
                 type="button"
                 onClick={() => { setIsRegister(true); setErrorMsg(''); }}
-                className="text-[#ffaec9] hover:text-white font-bold underline ml-1 cursor-pointer"
+                className="text-[#ff4d80] hover:underline font-bold ml-1 cursor-pointer"
               >
                 Đăng ký ngay
               </button>

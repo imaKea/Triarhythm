@@ -38,15 +38,15 @@ export default function LeaderboardView({ currentUser, onBack }) {
   return (
     <div className="w-full max-w-5xl h-[calc(100vh-52px-24px)] mt-[52px] mb-6 flex flex-col overflow-hidden select-none osu-screen-transition p-6">
       {/* Top Header Bar */}
-      <div className="flex items-center justify-between pb-4 mb-4 border-b border-white/[0.08] shrink-0">
+      <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#f3dbe4] shrink-0">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={onBack} icon="←">
-            Back (Esc)
+            Back (Esc) 🐰
           </Button>
           <div className="flex items-center gap-2">
             <span className="text-xl">🏆</span>
-            <h1 className="font-torus font-black text-xl text-white tracking-wide">
-              BẢNG XẾP HẠNG TOÀN CẦU (GLOBAL RANKINGS)
+            <h1 className="font-torus font-black text-xl text-[#5b2a47] tracking-wide">
+              BẢNG XẾP HẠNG TOÀN CẦU 🎀
             </h1>
           </div>
         </div>
@@ -68,8 +68,8 @@ export default function LeaderboardView({ currentUser, onBack }) {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Tìm người chơi..."
-            className="w-48 bg-[#1a1a2e] border border-white/[0.08] focus:border-[#ff66ab]/50 rounded-full px-3.5 py-1.5 text-xs text-white placeholder-[#7c849c] outline-none"
+            placeholder="Tìm người chơi... 🐰"
+            className="w-48 bg-white border border-[#f3dbe4] focus:border-[#ff4d80] rounded-full px-3.5 py-1.5 text-xs text-[#5b2a47] placeholder-[#a8556f] outline-none shadow-sm font-bold"
           />
 
           <Button variant="ghost" size="sm" onClick={fetchLeaderboard} icon="↻">
@@ -79,9 +79,9 @@ export default function LeaderboardView({ currentUser, onBack }) {
       </div>
 
       {/* Leaderboard Table Container */}
-      <div className="flex-1 bg-[#1a1a2e]/80 border border-white/[0.06] rounded-2xl overflow-hidden flex flex-col shadow-2xl backdrop-blur-md">
+      <div className="flex-1 bg-white/95 border border-[#f3dbe4] rounded-3xl overflow-hidden flex flex-col shadow-sm backdrop-blur-md">
         {/* Table Header */}
-        <div className="grid grid-cols-12 px-6 py-3 bg-[#111122]/90 border-b border-white/[0.06] text-[11px] font-bold text-[#7c849c] uppercase tracking-wider font-mono">
+        <div className="grid grid-cols-12 px-6 py-3.5 bg-[#fff8fa] border-b border-[#f3dbe4] text-[11px] font-bold text-[#a8556f] uppercase tracking-wider font-mono">
           <div className="col-span-1 text-center"># Rank</div>
           <div className="col-span-4">Người chơi (Player)</div>
           <div className="col-span-2 text-right">Performance / Stars</div>
@@ -91,14 +91,14 @@ export default function LeaderboardView({ currentUser, onBack }) {
         </div>
 
         {/* Table Rows */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-white/[0.04]">
+        <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-[#f3dbe4]">
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-20 text-xs text-[#7c849c] gap-3">
-              <div className="w-8 h-8 rounded-full border-2 border-[#ff66ab]/30 border-t-[#ff66ab] animate-spin" />
-              <span>Đang tải bảng xếp hạng...</span>
+            <div className="flex flex-col items-center justify-center py-20 text-xs text-[#a8556f] gap-3">
+              <div className="w-8 h-8 rounded-full border-2 border-[#ff85a2]/30 border-t-[#ff4d80] animate-spin" />
+              <span className="font-bold">Đang tải bảng xếp hạng... 🐰</span>
             </div>
           ) : filteredPlayers.length === 0 ? (
-            <div className="text-center py-20 text-xs text-[#7c849c]">
+            <div className="text-center py-20 text-xs text-[#a8556f] font-bold">
               Không tìm thấy người chơi nào.
             </div>
           ) : (
@@ -115,10 +115,10 @@ export default function LeaderboardView({ currentUser, onBack }) {
                     setViewingUser(player);
                   }}
                   onMouseEnter={() => playHover()}
-                  className={`grid grid-cols-12 items-center px-6 py-3 text-xs transition-colors cursor-pointer ${
+                  className={`grid grid-cols-12 items-center px-6 py-3.5 text-xs transition-colors cursor-pointer ${
                     isCurrent
-                      ? 'bg-[#ff66ab]/15 hover:bg-[#ff66ab]/25 border-l-4 border-l-[#ff66ab]'
-                      : 'hover:bg-white/[0.04]'
+                      ? 'bg-[#fff0f4] hover:bg-[#ffe5ec] border-l-4 border-l-[#ff4d80]'
+                      : 'hover:bg-[#fffafc]'
                   }`}
                 >
                   {/* Rank position */}
@@ -126,7 +126,7 @@ export default function LeaderboardView({ currentUser, onBack }) {
                     {rankMedal ? (
                       <span className="text-base">{rankMedal}</span>
                     ) : (
-                      <span className={rank <= 10 ? 'text-[#ff66ab]' : 'text-[#7c849c]'}>
+                      <span className={rank <= 10 ? 'text-[#ff4d80]' : 'text-[#a8556f]'}>
                         #{rank}
                       </span>
                     )}
@@ -141,32 +141,32 @@ export default function LeaderboardView({ currentUser, onBack }) {
                       status="online"
                     />
                     <div className="flex flex-col truncate">
-                      <span className="font-bold text-white group-hover:text-[#ff66ab] transition-colors truncate">
+                      <span className="font-bold text-[#5b2a47] group-hover:text-[#ff4d80] transition-colors truncate">
                         {player.name || player.username}
                       </span>
-                      <span className="text-[10px] text-[#7c849c] font-mono">
+                      <span className="text-[10px] text-[#a8556f] font-mono">
                         @{player.username}
                       </span>
                     </div>
                   </div>
 
                   {/* Performance / Stars */}
-                  <div className="col-span-2 text-right font-mono font-bold text-sm text-[#ff66ab]">
+                  <div className="col-span-2 text-right font-mono font-black text-sm text-[#ff4d80]">
                     {player.total_pp ? `${Number(player.total_pp).toLocaleString()}pp` : `${Number(player.rating || 0).toFixed(2)}★`}
                   </div>
 
                   {/* Accuracy */}
-                  <div className="col-span-2 text-right font-mono font-semibold text-white">
+                  <div className="col-span-2 text-right font-mono font-bold text-[#5b2a47]">
                     {Number(player.rating ? (player.rating / 15 * 100) : 98.5).toFixed(2)}%
                   </div>
 
                   {/* Total score */}
-                  <div className="col-span-2 text-right font-mono text-[#b8c0d4]">
+                  <div className="col-span-2 text-right font-mono font-semibold text-[#5b2a47]">
                     {Number(player.total_score || 0).toLocaleString()}
                   </div>
 
                   {/* Play count */}
-                  <div className="col-span-1 text-right font-mono text-[#7c849c]">
+                  <div className="col-span-1 text-right font-mono text-[#a8556f]">
                     {Number(player.play_count || 0).toLocaleString()}
                   </div>
                 </div>

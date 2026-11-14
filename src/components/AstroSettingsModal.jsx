@@ -149,28 +149,28 @@ export default function AstroSettingsModal({
     >
       <div className="flex h-full select-none">
         {/* LEFT SIDEBAR */}
-        <div className="w-56 bg-[#1a0e21] border-r border-[#ff85a2]/20 p-4 flex flex-col justify-between shrink-0">
+        <div className="w-56 bg-[#fffafc] border-r border-[#f3dbe4] p-4 flex flex-col justify-between shrink-0">
           <div className="flex flex-col gap-3">
             {/* Header */}
             <div className="px-2 pt-1">
-              <span className="text-xs font-black tracking-widest text-[#ffaec9] uppercase flex items-center gap-1">
+              <span className="text-xs font-black tracking-widest text-[#ff4d80] uppercase flex items-center gap-1">
                 <span>🎀</span>
                 <span>Settings</span>
               </span>
-              <h2 className="text-lg font-black text-white font-torus flex items-center gap-1.5">
+              <h2 className="text-lg font-black text-[#5b2a47] font-torus flex items-center gap-1.5">
                 <span>🐰 TÙY CHỈNH</span>
               </h2>
             </div>
 
             {/* Search Input */}
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#ffaec9] text-xs">⌕</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#ff4d80] text-xs">⌕</span>
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Tìm cài đặt... 🎀"
-                className="w-full bg-[#25132b] border border-[#ff85a2]/25 focus:border-[#ff85a2] focus:shadow-[0_0_10px_rgba(255,133,162,0.25)] rounded-2xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-[#b89cb9] outline-none transition-all"
+                className="w-full bg-white border border-[#f3dbe4] focus:border-[#ff4d80] focus:shadow-[0_2px_10px_rgba(255,77,128,0.2)] rounded-2xl pl-8 pr-3 py-1.5 text-xs text-[#5b2a47] placeholder-[#a8556f] outline-none transition-all font-bold"
               />
             </div>
 
@@ -189,8 +189,8 @@ export default function AstroSettingsModal({
                     onMouseEnter={() => !isActive && playHover()}
                     className={`px-3 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer text-left ${
                       isActive
-                        ? 'bg-gradient-to-r from-[#ff85a2] via-[#ff6b93] to-[#ff4d80] text-white shadow-[0_2px_12px_rgba(255,133,162,0.45)] scale-[1.02]'
-                        : 'text-[#d8bfd8] hover:bg-white/[0.06] hover:text-white'
+                        ? 'bg-gradient-to-r from-[#ff85a2] via-[#ff6b93] to-[#ff4d80] text-white shadow-[0_2px_10px_rgba(255,77,128,0.25)] scale-[1.02]'
+                        : 'text-[#5b2a47] hover:bg-[#fff0f4] hover:text-[#ff4d80]'
                     }`}
                   >
                     <span>{cat.icon}</span>
@@ -202,11 +202,11 @@ export default function AstroSettingsModal({
           </div>
 
           {/* Bottom Backup & Export actions */}
-          <div className="pt-4 border-t border-white/[0.06] flex flex-col gap-2">
+          <div className="pt-4 border-t border-[#f3dbe4] flex flex-col gap-2">
             <Button variant="ghost" size="sm" onClick={handleExportSettings} icon="💾">
               Export Settings
             </Button>
-            <label className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.06] hover:bg-white/[0.1] text-[#b8c0d4] text-xs font-bold cursor-pointer transition-colors">
+            <label className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full bg-white hover:bg-[#fff0f4] text-[#5b2a47] border border-[#f3dbe4] text-xs font-bold cursor-pointer transition-colors shadow-sm">
               <span>📂</span>
               <span>Import Settings</span>
               <input type="file" accept=".json" onChange={handleImportSettings} className="hidden" />
@@ -215,12 +215,12 @@ export default function AstroSettingsModal({
         </div>
 
         {/* RIGHT CONTENT AREA */}
-        <div className="flex-1 bg-[#1a1a2e]/90 flex flex-col overflow-hidden">
+        <div className="flex-1 bg-white/95 flex flex-col overflow-hidden">
           {/* Header of Content */}
-          <div className="h-14 px-6 border-b border-white/[0.06] flex items-center justify-between shrink-0 bg-[#16162a]/95">
+          <div className="h-14 px-6 border-b border-[#f3dbe4] flex items-center justify-between shrink-0 bg-[#fff8fa]">
             <div className="flex items-center gap-2">
               <span className="text-base">{categories.find((c) => c.id === activeCategory)?.icon}</span>
-              <h3 className="font-torus font-black text-base text-white uppercase tracking-wider">
+              <h3 className="font-torus font-black text-base text-[#5b2a47] uppercase tracking-wider">
                 {categories.find((c) => c.id === activeCategory)?.label}
               </h3>
             </div>
@@ -246,9 +246,9 @@ export default function AstroSettingsModal({
                   description="Phát hiệu ứng âm thanh tổng hợp Web Audio khi hover, click, gạt toggle hoặc trượt slider"
                 />
 
-                <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] text-xs text-[#b8c0d4] space-y-2">
-                  <div className="font-bold text-white">Ngôn ngữ hiển thị (Language)</div>
-                  <p>Hệ thống hiện đang hỗ trợ toàn diện Tiếng Việt (Vietnamese) với phông chữ Torus / Nunito / Be Vietnam Pro sắc nét.</p>
+                <div className="p-4 rounded-2xl bg-[#fff8fa] border border-[#f3dbe4] text-xs text-[#5b2a47] space-y-2">
+                  <div className="font-bold text-[#5b2a47]">Ngôn ngữ hiển thị (Language)</div>
+                  <p>Hệ thống hiện đang hỗ trợ toàn diện Tiếng Việt (Vietnamese) với phông chữ Nunito / Be Vietnam Pro sắc nét.</p>
                 </div>
               </div>
             )}
@@ -346,10 +346,10 @@ export default function AstroSettingsModal({
                   onChange={(val) => update('userOffset', val)}
                 />
 
-                <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-between text-xs">
+                <div className="p-3.5 rounded-2xl bg-[#fff8fa] border border-[#f3dbe4] flex items-center justify-between text-xs">
                   <div>
-                    <div className="font-bold text-white">Hiệu chuẩn độ trễ âm thanh</div>
-                    <div className="text-[11px] text-[#7c849c]">Bấm nút kiểm tra để nghe thử nhịp metronome</div>
+                    <div className="font-bold text-[#5b2a47]">Hiệu chuẩn độ trễ âm thanh</div>
+                    <div className="text-[11px] text-[#a8556f]">Bấm nút kiểm tra để nghe thử nhịp metronome</div>
                   </div>
                   <Button variant="ghost" size="sm" onClick={() => playClick()}>
                     Thử nhịp (Test Tick)
@@ -362,7 +362,7 @@ export default function AstroSettingsModal({
             {activeCategory === 'input' && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs text-[#7c849c]">
+                  <p className="text-xs text-[#a8556f] font-bold">
                     Nhấp vào ô phím để bắt đầu gán phím mới (nhấn Esc để huỷ):
                   </p>
                   <Button variant="ghost" size="sm" onClick={handleResetCategory} icon="↺">
@@ -390,9 +390,9 @@ export default function AstroSettingsModal({
                     return (
                       <div
                         key={laneDef.key}
-                        className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-between text-xs"
+                        className="p-3 rounded-2xl bg-[#fff8fa] border border-[#f3dbe4] flex items-center justify-between text-xs"
                       >
-                        <span className="font-bold text-[#b8c0d4]">{laneDef.label}</span>
+                        <span className="font-bold text-[#5b2a47]">{laneDef.label}</span>
                         <div className="flex gap-1.5">
                           {currentKeys.slice(0, 2).map((kCode, kIdx) => {
                             const isThisSlot = isCapturing && listeningSlot?.index === kIdx;
@@ -404,10 +404,10 @@ export default function AstroSettingsModal({
                                   playClick();
                                   setListeningSlot({ laneKey: laneDef.key, index: kIdx });
                                 }}
-                                className={`px-2.5 py-1 rounded-lg font-mono font-bold text-xs transition-all cursor-pointer ${
+                                className={`px-2.5 py-1 rounded-xl font-mono font-bold text-xs transition-all cursor-pointer ${
                                   isThisSlot
-                                    ? 'bg-[#ff66ab] text-white animate-pulse shadow-[0_0_10px_#ff66ab]'
-                                    : 'bg-[#111122] hover:bg-[#222238] text-white border border-white/[0.1]'
+                                    ? 'bg-[#ff4d80] text-white animate-pulse shadow-[0_0_10px_#ff4d80]'
+                                    : 'bg-white hover:bg-[#fff0f4] text-[#5b2a47] border border-[#f3dbe4]'
                                 }`}
                               >
                                 {isThisSlot ? 'Press key...' : formatKeyCode(kCode)}
@@ -463,18 +463,18 @@ export default function AstroSettingsModal({
             {activeCategory === 'account' && (
               <div className="space-y-4">
                 {currentUser ? (
-                  <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-between">
+                  <div className="p-4 rounded-2xl bg-[#fff8fa] border border-[#f3dbe4] flex items-center justify-between">
                     <div>
-                      <div className="text-sm font-bold text-white">{currentUser.name || currentUser.username}</div>
-                      <div className="text-xs text-[#7c849c] font-mono">{currentUser.email || `@${currentUser.username}`}</div>
+                      <div className="text-sm font-bold text-[#5b2a47]">{currentUser.name || currentUser.username}</div>
+                      <div className="text-xs text-[#a8556f] font-mono">{currentUser.email || `@${currentUser.username}`}</div>
                     </div>
                     <Button variant="danger" size="sm" onClick={onLogout}>
                       Đăng xuất
                     </Button>
                   </div>
                 ) : (
-                  <div className="p-6 rounded-xl bg-white/[0.03] border border-white/[0.06] text-center space-y-3">
-                    <p className="text-xs text-[#b8c0d4]">
+                  <div className="p-6 rounded-2xl bg-[#fff8fa] border border-[#f3dbe4] text-center space-y-3">
+                    <p className="text-xs text-[#5b2a47]">
                       Đăng nhập để đồng bộ điểm số lên Bảng xếp hạng toàn cầu và lưu cài đặt trên đám mây.
                     </p>
                     <Button variant="primary" size="md" onClick={onOpenAuthModal}>

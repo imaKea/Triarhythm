@@ -76,53 +76,53 @@ export default function ProfileModal({
       className="p-0 overflow-hidden"
     >
       {/* Profile Header Banner */}
-      <div className="relative p-6 bg-gradient-to-br from-[#381a3d] via-[#241229] to-[#180c1a] border-b border-[#ff85a2]/20 flex items-center gap-5">
+      <div className="relative p-6 bg-gradient-to-br from-[#ffd9e5] via-[#fff0f4] to-[#fff5f8] border-b border-[#f3dbe4] flex items-center gap-5">
         <div className="relative">
           <Avatar
             src={avatarUrl}
             name={name || user.username}
             size="xl"
             status="online"
-            className="ring-4 ring-[#ff85a2]/50 shadow-[0_0_20px_rgba(255,133,162,0.4)]"
+            className="ring-4 ring-[#ff85a2]/60 shadow-[0_0_20px_rgba(255,133,162,0.35)]"
           />
           <span className="absolute -top-1.5 -right-1.5 text-base">🎀</span>
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black text-white truncate font-torus flex items-center gap-2">
+            <h1 className="text-2xl font-black text-[#5b2a47] truncate font-torus flex items-center gap-2">
               <span>{name || user.username}</span>
               <span className="text-sm">🐰</span>
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#ff85a2]/20 text-[#ffaec9] border border-[#ff85a2]/35">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#ff85a2]/20 text-[#e94270] border border-[#ff85a2]/40">
               {user.role === 'admin' ? 'ADMIN 🛡️' : 'PLAYER 🎀'}
             </span>
           </div>
-          <p className="text-xs text-[#b89cb9] font-mono mt-0.5">@{user.username}</p>
+          <p className="text-xs text-[#a8556f] font-mono mt-0.5">@{user.username}</p>
 
           {/* Core Stats Row */}
           <div className="flex items-center gap-4 mt-3 text-xs font-mono">
             <div>
-              <span className="text-[#ffaec9] block text-[10px] font-bold">TOTAL PP</span>
-              <span className="text-base font-black text-white">
+              <span className="text-[#a8556f] block text-[10px] font-bold">TOTAL PP</span>
+              <span className="text-base font-black text-[#5b2a47]">
                 {Number(totalPP || 0).toLocaleString()}pp
               </span>
             </div>
             <div>
-              <span className="text-[#ffaec9] block text-[10px] font-bold">ACCURACY</span>
-              <span className="text-base font-black text-white">
+              <span className="text-[#a8556f] block text-[10px] font-bold">ACCURACY</span>
+              <span className="text-base font-black text-[#5b2a47]">
                 {Number(user.rating ? (user.rating / 15 * 100) : 98.5).toFixed(2)}%
               </span>
             </div>
             <div>
-              <span className="text-[#ffaec9] block text-[10px] font-bold">PLAYS</span>
-              <span className="text-base font-black text-white">
+              <span className="text-[#a8556f] block text-[10px] font-bold">PLAYS</span>
+              <span className="text-base font-black text-[#5b2a47]">
                 {Number(user.play_count || scores.length).toLocaleString()}
               </span>
             </div>
             <div>
-              <span className="text-[#ffaec9] block text-[10px] font-bold">SCORE</span>
-              <span className="text-base font-black text-[#ffd6e0]">
+              <span className="text-[#a8556f] block text-[10px] font-bold">SCORE</span>
+              <span className="text-base font-black text-[#e94270]">
                 {Number(user.total_score || 0).toLocaleString()}
               </span>
             </div>
@@ -131,7 +131,7 @@ export default function ProfileModal({
       </div>
 
       {/* Tabs navigation */}
-      <div className="px-6 pt-4 pb-2 bg-[#1a0e21] flex items-center justify-between border-b border-[#ff85a2]/15">
+      <div className="px-6 pt-4 pb-2 bg-[#fff5f8] flex items-center justify-between border-b border-[#f3dbe4]">
         <Tabs
           activeTab={activeTab}
           onChange={setActiveTab}
@@ -144,32 +144,32 @@ export default function ProfileModal({
       </div>
 
       {/* Tab Contents */}
-      <div className="p-6 bg-[#111122]/95 min-h-[320px] max-h-[420px] overflow-y-auto custom-scrollbar">
+      <div className="p-6 bg-white/95 min-h-[320px] max-h-[420px] overflow-y-auto custom-scrollbar">
         {/* TAB 1: BEST PERFORMANCES WITH 0.95^i */}
         {activeTab === 'best' && (
           <div className="space-y-2">
             {isLoadingScores ? (
-              <div className="text-center py-12 text-xs text-[#7c849c]">Đang tải thành tích...</div>
+              <div className="text-center py-12 text-xs text-[#a8556f]">Đang tải thành tích...</div>
             ) : bestScores.length === 0 ? (
-              <div className="text-center py-12 text-xs text-[#7c849c]">
+              <div className="text-center py-12 text-xs text-[#a8556f]">
                 Chưa có điểm chơi trực tuyến nào được lưu trên máy chủ.
               </div>
             ) : (
               bestScores.map((s, idx) => (
                 <div
                   key={s.id || idx}
-                  className="p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.04] flex items-center justify-between gap-3 text-xs transition-colors"
+                  className="p-3 rounded-2xl bg-[#fff5f8]/70 hover:bg-[#fff0f4] border border-[#f3dbe4] flex items-center justify-between gap-3 text-xs transition-colors shadow-sm"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="font-mono font-bold text-[#ff66ab] w-5 text-center">
+                    <span className="font-mono font-bold text-[#ff4d80] w-5 text-center">
                       #{idx + 1}
                     </span>
                     <RankBadge rank={s.rank || 'S'} size="sm" />
                     <div className="flex flex-col">
-                      <span className="font-bold text-white truncate max-w-[240px]">
-                        {s.song_id || 'Beatmap Track'} <span className="text-[#ff66ab]">[{s.difficulty_name || 'Normal'}]</span>
+                      <span className="font-bold text-[#5b2a47] truncate max-w-[240px]">
+                        {s.song_id || 'Beatmap Track'} <span className="text-[#ff4d80]">[{s.difficulty_name || 'Normal'}]</span>
                       </span>
-                      <span className="text-[10px] text-[#7c849c] font-mono">
+                      <span className="text-[10px] text-[#a8556f] font-mono">
                         {Number(s.accuracy || 0).toFixed(2)}% • {s.max_combo || 0}x combo
                       </span>
                     </div>
@@ -177,10 +177,10 @@ export default function ProfileModal({
 
                   {/* PP + Weight indicator */}
                   <div className="text-right font-mono">
-                    <div className="font-bold text-[#ff66ab]">
+                    <div className="font-bold text-[#ff4d80]">
                       {Math.round(s.pp || 0)}pp
                     </div>
-                    <div className="text-[10px] text-[#7c849c]">
+                    <div className="text-[10px] text-[#a8556f]">
                       weighted {Math.round(s.weight * 100)}% ({Math.round(s.weightedPP)}pp)
                     </div>
                   </div>
@@ -194,27 +194,27 @@ export default function ProfileModal({
         {activeTab === 'recent' && (
           <div className="space-y-2">
             {scores.length === 0 ? (
-              <div className="text-center py-12 text-xs text-[#7c849c]">
+              <div className="text-center py-12 text-xs text-[#a8556f]">
                 Chưa có lượt chơi gần đây nào.
               </div>
             ) : (
               scores.slice(0, 30).map((s, idx) => (
                 <div
                   key={s.id || idx}
-                  className="p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.04] flex items-center justify-between gap-3 text-xs"
+                  className="p-3 rounded-2xl bg-[#fff5f8]/70 hover:bg-[#fff0f4] border border-[#f3dbe4] flex items-center justify-between gap-3 text-xs shadow-sm"
                 >
                   <div className="flex items-center gap-3">
                     <RankBadge rank={s.rank || 'A'} size="sm" />
                     <div>
-                      <div className="font-bold text-white truncate max-w-[240px]">
+                      <div className="font-bold text-[#5b2a47] truncate max-w-[240px]">
                         {s.song_id} [{s.difficulty_name}]
                       </div>
-                      <div className="text-[10px] text-[#7c849c] font-mono">
+                      <div className="text-[10px] text-[#a8556f] font-mono">
                         {Number(s.accuracy || 0).toFixed(2)}% • Score: {Number(s.score || 0).toLocaleString()}
                       </div>
                     </div>
                   </div>
-                  <div className="font-mono font-bold text-[#ff66ab] text-right">
+                  <div className="font-mono font-bold text-[#ff4d80] text-right">
                     {Math.round(s.pp || 0)}pp
                   </div>
                 </div>
@@ -227,38 +227,38 @@ export default function ProfileModal({
         {activeTab === 'edit' && (
           <form onSubmit={handleSaveProfile} className="space-y-4 max-w-md mx-auto py-2">
             <div>
-              <label className="block text-xs font-bold text-[#b8c0d4] mb-1">Tên hiển thị (Display Name)</label>
+              <label className="block text-xs font-bold text-[#5b2a47] mb-1">Tên hiển thị (Display Name)</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full h-10 px-3.5 rounded-xl bg-[#1a1a2e] border border-white/[0.08] focus:border-[#ff66ab] text-sm text-white outline-none"
+                className="w-full h-10 px-3.5 rounded-xl bg-[#fff5f8] border border-[#f3dbe4] focus:border-[#ff4d80] text-sm text-[#5b2a47] outline-none shadow-inner"
                 placeholder="Nhập tên của bạn..."
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-[#b8c0d4] mb-1">Avatar URL</label>
+              <label className="block text-xs font-bold text-[#5b2a47] mb-1">Avatar URL</label>
               <input
                 type="url"
                 value={avatarUrl}
                 onChange={(e) => setAvatarUrl(e.target.value)}
-                className="w-full h-10 px-3.5 rounded-xl bg-[#1a1a2e] border border-white/[0.08] focus:border-[#ff66ab] text-sm text-white outline-none"
+                className="w-full h-10 px-3.5 rounded-xl bg-[#fff5f8] border border-[#f3dbe4] focus:border-[#ff4d80] text-sm text-[#5b2a47] outline-none shadow-inner"
                 placeholder="https://..."
               />
-              <span className="text-[10px] text-[#7c849c] mt-1 block">
+              <span className="text-[10px] text-[#a8556f] mt-1 block">
                 Hỗ trợ link ảnh trực tiếp PNG, JPG hoặc Dicebear avatar.
               </span>
             </div>
 
-            <div className="pt-4 border-t border-white/[0.06] flex items-center justify-between">
+            <div className="pt-4 border-t border-[#f3dbe4] flex items-center justify-between">
               <button
                 type="button"
                 onClick={() => {
                   onClose();
                   if (onLogout) onLogout();
                 }}
-                className="px-3.5 py-2 rounded-xl bg-red-500/15 hover:bg-red-500/30 text-red-400 hover:text-red-300 border border-red-500/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                className="px-3.5 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-200 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <span>⎋</span>
                 <span>Đăng xuất tài khoản</span>
