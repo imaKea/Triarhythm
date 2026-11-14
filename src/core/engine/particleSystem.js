@@ -56,7 +56,7 @@ export class ParticleSystem {
    * @param {number} speed Tốc độ bung
    * @param {boolean} isStar Hạt hình sao (dành cho Break)
    */
-  spawnBurst(x, y, color = '#ff4081', count = 16, speed = 120, isStar = false) {
+  spawnBurst(x, y, color = '#ff4d80', count = 16, speed = 120, isStar = false) {
     for (let i = 0; i < count; i++) {
       if (this.activeCount >= this.maxParticles) break;
 

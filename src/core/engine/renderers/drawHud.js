@@ -102,12 +102,12 @@ export function drawHud(renderer, gameState, width, height) {
     const barY = 6;
 
     ctx.save();
-    // Nền console tối viền bạc mờ chuẩn arcade
+    // Nền console mờ pastel
     ctx.beginPath();
     ctx.roundRect(barX, barY, barW, barH, 13);
-    ctx.fillStyle = 'rgba(10, 13, 19, 0.96)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.32)';
+    ctx.strokeStyle = 'rgba(255, 124, 160, 0.5)';
     ctx.lineWidth = 1.2;
     ctx.stroke();
 
@@ -126,7 +126,7 @@ export function drawHud(renderer, gameState, width, height) {
 
     for (let i = 0; i < ticksCount; i++) {
       const isFilled = (i + 1) / ticksCount <= prog;
-      ctx.fillStyle = isFilled ? '#ffffff' : 'rgba(255, 255, 255, 0.14)';
+      ctx.fillStyle = isFilled ? '#ff4d80' : 'rgba(255, 255, 255, 0.5)';
       ctx.fillRect(tickStartX + i * tickSpacing, tickY, tickW, tickH);
     }
 
@@ -139,7 +139,7 @@ export function drawHud(renderer, gameState, width, height) {
     ctx.roundRect(rankBadgeX, rankBadgeY, rankBadgeW, rankBadgeH, 9);
 
     const isGoldRank = gameState.rank === 'SSS+' || gameState.rank === 'SSS';
-    ctx.fillStyle = isGoldRank ? '#ffd700' : '#ff2a70';
+    ctx.fillStyle = isGoldRank ? '#ffd700' : '#ff6f99';
     ctx.fill();
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 1;
@@ -155,7 +155,7 @@ export function drawHud(renderer, gameState, width, height) {
     ctx.font = "900 13px 'JetBrains Mono', monospace";
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#5b2a47';
     ctx.fillText(`${gameState.achievement.toFixed(4)}%`, barX + barW - 12, barY + barH / 2);
     ctx.restore();
 
@@ -212,13 +212,13 @@ export function drawSkipPrompt(renderer, width, height) {
   // Nền viên thuốc capsule
   ctx.beginPath();
   ctx.roundRect(promptX, promptY, promptW, promptH, 17);
-  ctx.fillStyle = 'rgba(10, 14, 22, 0.94)';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
   ctx.fill();
 
-  // Viền phát sáng neon cyan
-  ctx.strokeStyle = `rgba(6, 182, 212, ${0.55 + 0.45 * pulse})`;
+  // Viền phát sáng neon hồng
+  ctx.strokeStyle = `rgba(255, 124, 160, ${0.55 + 0.45 * pulse})`;
   ctx.lineWidth = 1.6;
-  ctx.shadowColor = '#06b6d4';
+  ctx.shadowColor = '#ff7ca0';
   ctx.shadowBlur = 12 * pulse;
   ctx.stroke();
 
@@ -227,7 +227,7 @@ export function drawSkipPrompt(renderer, width, height) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.font = 'bold 11px "Torus", "Nunito", sans-serif';
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = '#5b2a47';
   ctx.fillText('⏩ NHẤN SPACE ĐỂ SKIP', width / 2, promptY + promptH / 2);
 
   ctx.restore();
@@ -245,19 +245,19 @@ export function drawURBar(renderer, width, height, urValue, isTypingActive = fal
 
   ctx.save();
   // Nền bar
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
   ctx.fillRect(cx - barWidth / 2, cy - barHeight / 2, barWidth, barHeight);
 
   // Vạch cửa sổ Critical Perfect (±25ms)
   const cpWidth = (barWidth * 25) / 150;
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.70)';
   ctx.fillRect(cx - cpWidth, cy - barHeight / 2, cpWidth * 2, barHeight);
 
   // Vạch trung tâm 0ms
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = '#ff4d80';
   ctx.fillRect(cx - 1, cy - 6, 2, 12);
 
-  // Vẽ các tick của các lần nhấn phím gần nhất
+  // Vẽ các tick của các lần nhấn phím gần nhất (giữ nguyên màu judgement)
   for (const tick of renderer.urTicks) {
     const tickX = cx + (tick.deltaMs / 150) * (barWidth / 2);
     ctx.fillStyle = tick.judgement === 'CRITICAL_PERFECT' ? '#ffffff' : '#ffd54f';
@@ -269,7 +269,7 @@ export function drawURBar(renderer, width, height, urValue, isTypingActive = fal
   ctx.globalAlpha = 1.0;
   ctx.textAlign = 'center';
   ctx.font = `9px 'JetBrains Mono', monospace`;
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+  ctx.fillStyle = '#a8556f';
   ctx.fillText(`UR: ${urValue.toFixed(1)}`, cx, cy + 14);
 
   ctx.restore();

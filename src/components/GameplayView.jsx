@@ -445,17 +445,17 @@ export default function GameplayView({
   ];
 
   return (
-    <div className="fixed inset-0 z-40 bg-[#090912] flex flex-col select-none overflow-hidden osu-screen-transition">
+    <div className="fixed inset-0 z-40 bg-[#fff5f8] flex flex-col select-none overflow-hidden osu-screen-transition">
       {/* 1. TOP PROGRESS BAR (Thin 3px line across entire top) */}
-      <div className="absolute top-0 left-0 right-0 h-[3px] bg-white/[0.08] z-30 pointer-events-none">
+      <div className="absolute top-0 left-0 right-0 h-[3px] bg-white/40 z-30 pointer-events-none">
         <div
-          className="h-full bg-gradient-to-r from-[#cc5289] to-[#ff66ab] shadow-[0_0_8px_#ff66ab] transition-all duration-75"
+          className="h-full bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] shadow-[0_0_8px_rgba(255,77,128,0.5)] transition-all duration-75"
           style={{ width: `${songProgress * 100}%` }}
         />
       </div>
 
       {/* 2. TOP HUD: Left Song Info + Right Score & Accuracy */}
-      <div className="h-12 sm:h-14 px-2.5 sm:px-5 flex items-center justify-between z-20 shrink-0 bg-gradient-to-b from-[#090912]/95 to-transparent">
+      <div className="h-12 sm:h-14 px-2.5 sm:px-5 flex items-center justify-between z-20 shrink-0 bg-gradient-to-b from-white/95 via-white/80 to-transparent border-b border-[#f3dbe4]/50">
         {/* Left: Back + Pause + Settings + Fullscreen + Map Info */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
           <Button
@@ -463,7 +463,7 @@ export default function GameplayView({
             size="sm"
             onClick={handleBack}
             icon="←"
-            className="text-[#b8c0d4] hover:text-white shrink-0 px-2 sm:px-3 text-xs"
+            className="text-[#5b2a47] hover:text-[#ff4d80] shrink-0 px-2 sm:px-3 text-xs"
           >
             <span className="hidden sm:inline">Back</span>
           </Button>
@@ -474,7 +474,7 @@ export default function GameplayView({
             size="sm"
             onClick={handlePauseToggle}
             icon={isPaused ? '▶' : '⏸'}
-            className="text-[#ffaec9] hover:text-white shrink-0 px-2 sm:px-3 text-xs"
+            className="text-[#e94270] hover:text-[#ff4d80] shrink-0 px-2 sm:px-3 text-xs"
             title="Tạm dừng / Tiếp tục"
           >
             <span className="hidden sm:inline">{isPaused ? 'Tiếp tục' : 'Tạm dừng'}</span>
@@ -488,7 +488,7 @@ export default function GameplayView({
               if (onOpenSettings) onOpenSettings();
             }}
             icon="⚙"
-            className="text-[#b8c0d4] hover:text-white shrink-0 px-2 sm:px-3 text-xs"
+            className="text-[#5b2a47] hover:text-[#ff4d80] shrink-0 px-2 sm:px-3 text-xs"
           >
             <span className="hidden sm:inline">Settings</span>
           </Button>
@@ -502,43 +502,43 @@ export default function GameplayView({
                 document.exitFullscreen().catch(() => {});
               }
             }}
-            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-[#ffaec9] hover:text-white flex items-center justify-center text-xs shrink-0 cursor-pointer transition-colors"
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/80 hover:bg-white text-[#e94270] hover:text-[#ff4d80] border border-[#f3dbe4] flex items-center justify-center text-xs shrink-0 cursor-pointer transition-colors shadow-sm"
             title="Toàn màn hình"
           >
             ⛶
           </button>
 
-          <div className="h-5 w-px bg-white/10 mx-0.5 sm:mx-1 shrink-0" />
+          <div className="h-5 w-px bg-[#f3dbe4] mx-0.5 sm:mx-1 shrink-0" />
 
           {/* Map Info with Thumbnail */}
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg overflow-hidden bg-white/5 border border-white/10 shrink-0 shadow-sm flex items-center justify-center">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl overflow-hidden bg-white border border-[#f3dbe4] shrink-0 shadow-sm flex items-center justify-center">
               {coverUrl ? (
                 <img src={coverUrl} alt="Cover" className="w-full h-full object-cover" />
               ) : (
-                <span className="text-[#ff66ab] text-sm font-bold">♪</span>
+                <span className="text-[#ff4d80] text-sm font-bold">🐰</span>
               )}
             </div>
 
             <div className="flex flex-col min-w-0">
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className="text-white font-torus font-black text-xs sm:text-sm truncate max-w-[110px] xs:max-w-[160px] sm:max-w-[280px]">
+                <span className="text-[#5b2a47] font-torus font-black text-xs sm:text-sm truncate max-w-[110px] xs:max-w-[160px] sm:max-w-[280px]">
                   {activeChartName}
                 </span>
-                <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-[#ff66ab]/20 text-[#ff66ab] text-[9px] sm:text-[10px] font-bold shrink-0">
+                <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-[#ff85a2]/20 text-[#e94270] border border-[#ff85a2]/40 text-[9px] sm:text-[10px] font-bold shrink-0">
                   {activeDiffName}
                 </span>
                 <div className="hidden sm:block">
                   <StarRating stars={activeStars} size="sm" showIcon={true} />
                 </div>
                 {isAutoplay && (
-                  <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-[#ffdd57]/20 text-[#ffdd57] text-[9px] sm:text-[10px] font-black animate-pulse shrink-0">
+                  <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-[#ffdd57]/20 text-[#ff85a2] text-[9px] sm:text-[10px] font-black animate-pulse shrink-0">
                     AUTO
                   </span>
                 )}
               </div>
               {activeArtist && (
-                <span className="text-[10px] sm:text-[11px] text-[#7c849c] truncate max-w-[110px] xs:max-w-[160px] sm:max-w-[280px]">
+                <span className="text-[10px] sm:text-[11px] text-[#a8556f] truncate max-w-[110px] xs:max-w-[160px] sm:max-w-[280px]">
                   {activeArtist}
                 </span>
               )}
@@ -549,10 +549,10 @@ export default function GameplayView({
         {/* Right: 7-8 Digit Score + Accuracy with Circular Ring */}
         <div className="flex items-center gap-2 sm:gap-4 shrink-0">
           <div className="flex flex-col items-end">
-            <span className="font-mono font-black text-lg sm:text-2xl text-white tracking-widest drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+            <span className="font-mono font-black text-lg sm:text-2xl text-[#5b2a47] tracking-widest drop-shadow-[0_2px_8px_rgba(255,133,162,0.3)]">
               {formattedScore}
             </span>
-            <div className="flex items-center gap-1 text-[11px] sm:text-xs font-mono font-bold text-[#b8c0d4]">
+            <div className="flex items-center gap-1 text-[11px] sm:text-xs font-mono font-bold text-[#a8556f]">
               <span>{liveAccuracy.toFixed(2)}%</span>
             </div>
           </div>
@@ -564,14 +564,14 @@ export default function GameplayView({
                 cx="16"
                 cy="16"
                 r="13"
-                className="stroke-white/[0.1] fill-none sm:hidden"
+                className="stroke-pink-200/50 fill-none sm:hidden"
                 strokeWidth="2.5"
               />
               <circle
                 cx="16"
                 cy="16"
                 r="13"
-                className="stroke-[#ff66ab] fill-none transition-all duration-100 sm:hidden"
+                className="stroke-[#ff4d80] fill-none transition-all duration-100 sm:hidden"
                 strokeWidth="2.5"
                 strokeDasharray="81.68"
                 strokeDashoffset={81.68 - (81.68 * liveAccuracy) / 100}
@@ -581,21 +581,21 @@ export default function GameplayView({
                 cx="20"
                 cy="20"
                 r="16"
-                className="stroke-white/[0.1] fill-none hidden sm:block"
+                className="stroke-pink-200/50 fill-none hidden sm:block"
                 strokeWidth="3"
               />
               <circle
                 cx="20"
                 cy="20"
                 r="16"
-                className="stroke-[#ff66ab] fill-none transition-all duration-100 hidden sm:block"
+                className="stroke-[#ff4d80] fill-none transition-all duration-100 hidden sm:block"
                 strokeWidth="3"
                 strokeDasharray="100.5"
                 strokeDashoffset={100.5 - (100.5 * liveAccuracy) / 100}
                 strokeLinecap="round"
               />
             </svg>
-            <div className="absolute inset-0 flex items-center justify-center text-[9px] sm:text-[10px] font-black text-[#ff66ab]">
+            <div className="absolute inset-0 flex items-center justify-center text-[9px] sm:text-[10px] font-black text-[#ff4d80]">
               ★
             </div>
           </div>
@@ -642,10 +642,10 @@ export default function GameplayView({
         {/* 4. BOTTOM-LEFT HUD: Large Combo Counter */}
         {liveCombo > 0 && (
           <div className="absolute bottom-4 left-4 sm:bottom-10 sm:left-8 z-20 pointer-events-none flex flex-col items-start animate-fadeIn">
-            <div className="font-torus font-black text-3xl sm:text-5xl text-white tracking-wider drop-shadow-[0_4px_16px_rgba(255,102,171,0.5)]">
+            <div className="font-torus font-black text-3xl sm:text-5xl text-[#5b2a47] tracking-wider drop-shadow-[0_4px_16px_rgba(255,77,128,0.35)]">
               {liveCombo}x
             </div>
-            <div className="text-[10px] sm:text-[11px] font-black tracking-widest text-[#ff66ab] uppercase -mt-0.5 ml-0.5">
+            <div className="text-[10px] sm:text-[11px] font-black tracking-widest text-[#ff4d80] uppercase -mt-0.5 ml-0.5">
               COMBO
             </div>
           </div>
@@ -653,7 +653,7 @@ export default function GameplayView({
 
         {/* 5. RIGHT KEY OVERLAY (osu! style key press counter - ẩn trên mobile để không che các nút bên phải) */}
         {settings?.showKeyOverlay !== false && isPlaying && (
-          <div className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 z-20 pointer-events-none flex flex-col gap-1.5 p-2 rounded-2xl bg-[#111122]/70 backdrop-blur-md border border-white/[0.06]">
+          <div className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 z-20 pointer-events-none flex flex-col gap-1.5 p-2 rounded-2xl bg-white/70 backdrop-blur-md border border-[#f3dbe4] shadow-sm">
             {keyOverlayLanes.map((lane) => {
               const isPressed = activePressedLanes.has(lane.key);
               const count = keyPressCounts[lane.key] || 0;
@@ -662,12 +662,12 @@ export default function GameplayView({
                   key={lane.key}
                   className={`w-12 h-6.5 rounded-lg flex items-center justify-between px-2 text-[10px] font-mono font-bold transition-all ${
                     isPressed
-                      ? 'bg-gradient-to-r from-[#ff66ab] to-[#cc5289] text-white shadow-[0_0_12px_#ff66ab] scale-105'
-                      : 'bg-white/[0.04] text-[#7c849c]'
+                      ? 'bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] text-white shadow-[0_0_12px_rgba(255,77,128,0.5)] scale-105'
+                      : 'bg-[#fff5f8] text-[#a8556f]'
                   }`}
                 >
                   <span>{lane.label}</span>
-                  <span className={isPressed ? 'text-white' : 'text-[#b8c0d4]'}>{count}</span>
+                  <span className={isPressed ? 'text-white' : 'text-[#5b2a47]'}>{count}</span>
                 </div>
               );
             })}
@@ -680,7 +680,7 @@ export default function GameplayView({
             onClick={() => {
               if (engineRef.current) engineRef.current.skipBreak();
             }}
-            className="absolute bottom-4 right-4 sm:bottom-8 sm:right-8 z-20 flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2 sm:py-2.5 rounded-full bg-[#111122]/90 hover:bg-[#ff66ab] text-white border border-[#ff66ab]/40 text-xs font-bold transition-all cursor-pointer shadow-[0_4px_20px_rgba(255,102,171,0.3)] hover:scale-105 active:scale-95"
+            className="absolute bottom-4 right-4 sm:bottom-8 sm:right-8 z-20 flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2 sm:py-2.5 rounded-full bg-white/85 hover:bg-[#ff4d80] text-[#5b2a47] hover:text-white border border-[#ff85a2]/50 text-xs font-bold transition-all cursor-pointer shadow-[0_4px_20px_rgba(255,133,162,0.3)] hover:scale-105 active:scale-95"
           >
             <span>Skip (Chạm / Space)</span>
             <span>⏩</span>
@@ -691,13 +691,13 @@ export default function GameplayView({
 
         {/* 8. PAUSE MENU (Cute bunny & ribbon style with keyboard navigation) */}
         {isPaused && (
-          <div className="absolute inset-0 z-30 bg-[#140b17]/90 backdrop-blur-md flex flex-col items-center justify-center text-center animate-fadeIn select-none">
-            <div className="text-4xl font-black text-white mb-1 tracking-widest font-torus drop-shadow-[0_0_25px_rgba(255,133,162,0.7)] flex items-center gap-2">
+          <div className="absolute inset-0 z-30 bg-[#fff5f8]/92 backdrop-blur-md flex flex-col items-center justify-center text-center animate-fadeIn select-none">
+            <div className="text-4xl font-black text-[#5b2a47] mb-1 tracking-widest font-torus drop-shadow-[0_0_25px_rgba(255,133,162,0.5)] flex items-center gap-2">
               <span className="text-3xl animate-kawaii-bounce inline-block">🐰</span>
               <span>TẠM DỪNG</span>
               <span className="text-3xl animate-kawaii-wiggle inline-block">🎀</span>
             </div>
-            <div className="text-xs text-[#ffaec9] mb-6 font-mono">
+            <div className="text-xs text-[#a8556f] mb-6 font-mono">
               {activeChartName} [{activeDiffName}]
             </div>
 
@@ -728,7 +728,7 @@ export default function GameplayView({
                     className={`w-full py-3 px-4 rounded-full text-xs font-bold tracking-wider uppercase transition-all cursor-pointer flex items-center justify-center gap-2 ${
                       isSelected
                         ? 'bg-gradient-to-r from-[#ff85a2] via-[#ff6b93] to-[#ff4d80] text-white shadow-[0_4px_24px_rgba(255,133,162,0.6)] scale-105'
-                        : 'bg-white/[0.06] text-[#ffd6e0] hover:bg-white/[0.12] hover:text-white border border-[#ff85a2]/20'
+                        : 'bg-white/85 text-[#5b2a47] hover:bg-white hover:text-[#ff4d80] border border-[#f3dbe4] shadow-sm'
                     }`}
                   >
                     <span>{item.label}</span>
@@ -737,7 +737,7 @@ export default function GameplayView({
               })}
             </div>
 
-            <div className="mt-6 text-[11px] text-[#b89cb9] font-mono">
+            <div className="mt-6 text-[11px] text-[#a8556f] font-mono">
               [↑ / ↓] Di chuyển • [Enter] Chọn • [Esc] Tiếp tục 🐰
             </div>
           </div>

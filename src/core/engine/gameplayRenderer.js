@@ -230,16 +230,16 @@ export class GameplayRenderer {
     // Vầng hào quang ngoài khi nhấn
     ctx.beginPath();
     ctx.arc(0, 0, ringRadius * (isDown ? 1.35 : 1.1), 0, Math.PI * 2);
-    ctx.fillStyle = isDown ? 'rgba(0, 229, 255, 0.28)' : 'rgba(255, 255, 255, 0.08)';
+    ctx.fillStyle = isDown ? 'rgba(255, 77, 128, 0.28)' : 'rgba(255, 255, 255, 0.15)';
     ctx.fill();
 
     // Vòng tròn định vị chính
     ctx.beginPath();
     ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
-    ctx.strokeStyle = isDown ? '#00e5ff' : 'rgba(255, 255, 255, 0.65)';
+    ctx.strokeStyle = isDown ? '#ff4d80' : 'rgba(255, 255, 255, 0.75)';
     ctx.lineWidth = isDown ? 2.5 : 1.5;
     if (isDown) {
-      ctx.shadowColor = '#00e5ff';
+      ctx.shadowColor = '#ff4d80';
       ctx.shadowBlur = 14;
     }
     ctx.stroke();

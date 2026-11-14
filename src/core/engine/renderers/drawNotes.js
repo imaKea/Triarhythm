@@ -49,17 +49,17 @@ export function drawNotes(renderer, notes, songTime, travelTime, scale, width, h
     if (pHead > 1.12 && note.type !== 'hold') continue;
 
     // Màu note: Cặp nốt đồng thời (each) chuyển sang vàng neon
-    let noteColor = '#ff2a70'; // Maimai Pink
+    let noteColor = '#ff6f99'; // Kawaii Pink
     if (note.isEach) {
-      noteColor = '#ffe600'; // Vàng "each"
+      noteColor = '#ffd76f'; // Vàng "each"
     } else if (note.type === 'hold') {
-      noteColor = '#ff9100'; // Hold cam vàng
+      noteColor = '#ff9d62'; // Hold cam vàng
     } else if (note.type === 'break') {
-      noteColor = '#ff3d00'; // Break cam đỏ
+      noteColor = '#e8284f'; // Break cam đỏ
     }
 
     if (note.isHoldingDropped) {
-      noteColor = '#607d8b'; // Hold bị thả sớm
+      noteColor = '#b9a3ad'; // Hold bị thả sớm
     }
 
     // Xử lý HOLD NOTE: Dải capsule dọc theo tia
@@ -265,8 +265,8 @@ function drawRingNote(ctx, note, songTime, travelTime, scale, width, height) {
     const currentScale = Math.max(0.01, p);
     const pts = getScaledPoints(currentScale);
 
-    const noteColor = '#00e5ff';
-    const auraColor = 'rgba(0, 229, 255, 0.28)';
+    const noteColor = '#67b9ed';
+    const auraColor = 'rgba(103, 185, 237, 0.35)';
 
     ctx.save();
     ctx.globalAlpha = alpha;
@@ -302,8 +302,8 @@ function drawRingNote(ctx, note, songTime, travelTime, scale, width, height) {
 
     if (isEnding && (songTime - note.endTime) > 150) return;
 
-    const greenColor = '#00e676';
-    const greenAura = 'rgba(0, 230, 118, 0.35)';
+    const greenColor = '#8fd0f5';
+    const greenAura = 'rgba(143, 208, 245, 0.35)';
 
     if (isApproaching) {
       // Giai đoạn bay tới (Phóng to dần từ tâm ra viền outline, thuần màu xanh lá neon #00e676, rỗng lòng)
@@ -362,7 +362,7 @@ function drawRingNote(ctx, note, songTime, travelTime, scale, width, height) {
         ctx.beginPath();
         tracePoints(outerPts); // Subpath 1: Viền đầu ngoài
         tracePoints(innerPts); // Subpath 2: Viền đuôi trong
-        ctx.fillStyle = 'rgba(0, 230, 118, 0.18)';
+        ctx.fillStyle = 'rgba(143, 208, 245, 0.25)';
         ctx.fill('evenodd');
         ctx.restore();
       }
@@ -457,15 +457,15 @@ export function drawTypingSection(ctx, note, songTime, travelTime, width, height
   } else {
     ctx.rect(stripX, stripY, stripWidth, stripHeight);
   }
-  ctx.fillStyle = 'rgba(8, 12, 18, 0.92)';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
   ctx.fill();
-  ctx.strokeStyle = 'rgba(0, 229, 255, 0.4)';
+  ctx.strokeStyle = 'rgba(255, 124, 160, 0.5)';
   ctx.lineWidth = 1.5;
   ctx.stroke();
 
   // 2. Nhãn dải "TYPING SECTION" ở góc trái
   ctx.font = `bold ${Math.round(9 * (scale / 240))}px Orbitron, sans-serif`;
-  ctx.fillStyle = 'rgba(0, 229, 255, 0.85)';
+  ctx.fillStyle = '#e94270';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
   ctx.fillText('TYPING SECTION', stripX + 12, stripY + 6);
@@ -474,10 +474,10 @@ export function drawTypingSection(ctx, note, songTime, travelTime, width, height
   ctx.beginPath();
   ctx.moveTo(hitLineX, stripY + 4);
   ctx.lineTo(hitLineX, stripY + stripHeight - 4);
-  ctx.strokeStyle = '#00e5ff';
+  ctx.strokeStyle = '#ff4d80';
   ctx.lineWidth = 2.5;
   if (ctx.shadowColor !== undefined) {
-    ctx.shadowColor = '#00e5ff';
+    ctx.shadowColor = '#ff4d80';
     ctx.shadowBlur = 10;
   }
   ctx.stroke();
@@ -519,9 +519,9 @@ export function drawTypingSection(ctx, note, songTime, travelTime, width, height
       ctx.rect(-chipW / 2, 0, chipW, chipH);
     }
 
-    let borderColor = 'rgba(255, 255, 255, 0.3)';
-    let bgColor = 'rgba(18, 24, 36, 0.9)';
-    let textColor = '#ffffff';
+    let borderColor = 'rgba(255, 124, 160, 0.4)';
+    let bgColor = 'rgba(255, 255, 255, 0.9)';
+    let textColor = '#5b2a47';
 
     if (charObj.state === 'JUDGED') {
       const jCol = {
@@ -531,18 +531,18 @@ export function drawTypingSection(ctx, note, songTime, travelTime, width, height
         GOOD: '#ff9100'
       }[charObj.judgement] || '#00e676';
       borderColor = jCol;
-      bgColor = 'rgba(10, 35, 25, 0.85)';
+      bgColor = 'rgba(255, 255, 255, 0.95)';
       textColor = jCol;
     } else if (charObj.state === 'MISSED') {
       borderColor = 'rgba(120, 144, 156, 0.4)';
-      bgColor = 'rgba(30, 20, 25, 0.6)';
+      bgColor = 'rgba(255, 240, 245, 0.8)';
       textColor = '#78909c';
     } else if (isTarget) {
-      borderColor = '#ffe600';
-      bgColor = 'rgba(35, 30, 10, 0.95)';
-      textColor = '#fff176';
+      borderColor = '#ff4d80';
+      bgColor = '#fff0f4';
+      textColor = '#e94270';
       if (ctx.shadowColor !== undefined) {
-        ctx.shadowColor = '#ffe600';
+        ctx.shadowColor = '#ff4d80';
         ctx.shadowBlur = 12;
       }
     }

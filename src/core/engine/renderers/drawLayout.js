@@ -20,13 +20,17 @@ export function drawPlayfield(renderer, gameState, width, height, scale, travelT
   const { ctx } = renderer;
   const songTime = gameState.songTime;
 
-  // 1. Nền tối Arcade chuẩn maimai (áp dụng Background Dim mờ khi có Video nền)
+  // 1. Nền Kawaii pastel gradient (áp dụng Background Dim mờ khi có Video nền)
   ctx.clearRect(0, 0, width, height);
   if (!gameState.hasBackgroundVideo) {
-    ctx.fillStyle = '#040507';
+    const grad = ctx.createLinearGradient(0, 0, width, height);
+    grad.addColorStop(0, '#ffd9e5');
+    grad.addColorStop(0.42, '#f8a3bb');
+    grad.addColorStop(1, '#ffdce7');
+    ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
   } else {
-    ctx.fillStyle = `rgba(4, 5, 7, ${renderer.backgroundDim})`;
+    ctx.fillStyle = `rgba(255, 217, 229, ${renderer.backgroundDim})`;
     ctx.fillRect(0, 0, width, height);
   }
 
@@ -53,7 +57,7 @@ export function drawPlayfield(renderer, gameState, width, height, scale, travelT
   ctx.quadraticCurveTo(cpRightPix.x, cpRightPix.y, bPix.x, bPix.y);
   ctx.quadraticCurveTo(cpLeftPix.x, cpLeftPix.y, tlPix.x, tlPix.y);
   ctx.closePath();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
   ctx.lineWidth = 6;
   ctx.stroke();
 
@@ -62,10 +66,10 @@ export function drawPlayfield(renderer, gameState, width, height, scale, travelT
   ctx.lineWidth = 2.5;
   ctx.stroke();
 
-  // 3. Đường dẫn mờ (Guide Lines) cực mảnh nối từ tâm ra 9 nút bấm (opacity ~12%)
+  // 3. Đường dẫn mờ (Guide Lines) cực mảnh nối từ tâm ra 9 nút bấm (opacity ~35%)
   if (renderer.showRayGuides) {
     ctx.save();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
     ctx.lineWidth = 1.0;
     ctx.setLineDash([4, 6]);
     for (const lane of TRI_RING_LAYOUT.tapLanes) {
@@ -107,16 +111,16 @@ export function drawPlayfield(renderer, gameState, width, height, scale, travelT
     // Vùng cảm ứng hình tròn chuẩn SEGA maimai
     ctx.beginPath();
     ctx.arc(0, 0, rPix, 0, Math.PI * 2);
-    ctx.fillStyle = isActive ? 'rgba(255, 255, 255, 0.18)' : 'rgba(255, 255, 255, 0.015)';
+    ctx.fillStyle = isActive ? 'rgba(255, 255, 255, 0.55)' : 'rgba(255, 255, 255, 0.17)';
     ctx.fill();
-    ctx.strokeStyle = isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.32)';
-    ctx.lineWidth = isActive ? 2.5 : 1.5;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = isActive ? 3.0 : 1.8;
     ctx.stroke();
 
     // Vòng sensor tròn bên trong
     ctx.beginPath();
     ctx.arc(0, 0, rPix * 0.65, 0, Math.PI * 2);
-    ctx.strokeStyle = isActive ? 'rgba(255, 255, 255, 0.55)' : 'rgba(255, 255, 255, 0.12)';
+    ctx.strokeStyle = isActive ? 'rgba(255, 255, 255, 0.75)' : 'rgba(255, 255, 255, 0.35)';
     ctx.lineWidth = 1.0;
     ctx.stroke();
 
@@ -124,20 +128,20 @@ export function drawPlayfield(renderer, gameState, width, height, scale, travelT
     const isMaimaiDisabled = lane.lane === 1; // Lane 1 có dấu X đỏ cho Maimai
     const badgeRadius = Math.max(12, 14.0 * (scale / 240));
 
-    // Nền pill tối tương phản cao để chữ phím nổi bật 100%
+    // Nền pill Kawaii tương phản cao để chữ phím nổi bật 100%
     ctx.beginPath();
     ctx.arc(0, 0, badgeRadius, 0, Math.PI * 2);
     ctx.fillStyle = isActive
-      ? '#ffe082'
-      : (isMaimaiDisabled ? 'rgba(40, 10, 15, 0.85)' : 'rgba(15, 23, 42, 0.90)');
+      ? '#ffd76f'
+      : (isMaimaiDisabled ? 'rgba(255, 255, 255, 0.70)' : '#ffffff');
     ctx.fill();
 
     ctx.strokeStyle = isActive
       ? '#ffffff'
-      : (isMaimaiDisabled ? 'rgba(244, 67, 54, 0.7)' : 'rgba(0, 229, 255, 0.6)');
-    ctx.lineWidth = isActive ? 2.5 : 1.5;
+      : (isMaimaiDisabled ? 'rgba(232, 40, 79, 0.65)' : '#ff7ca0');
+    ctx.lineWidth = isActive ? 2.5 : 1.6;
     if (isActive) {
-      ctx.shadowColor = '#ffe082';
+      ctx.shadowColor = '#ff4d80';
       ctx.shadowBlur = 12;
     }
     ctx.stroke();
@@ -150,8 +154,8 @@ export function drawPlayfield(renderer, gameState, width, height, scale, travelT
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = isActive
-      ? '#0f172a'
-      : (isMaimaiDisabled ? '#ef5350' : '#ffffff');
+      ? '#5b2a47'
+      : (isMaimaiDisabled ? '#e8284f' : '#e94270');
     ctx.fillText(displayLabel, 0, 0.5);
 
     ctx.restore();
@@ -162,25 +166,25 @@ export function drawPlayfield(renderer, gameState, width, height, scale, travelT
   // Vòng ngoài hub
   ctx.beginPath();
   ctx.arc(originPix.x, originPix.y, 22 * (scale / 240), 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(12, 15, 22, 0.95)';
+  ctx.fillStyle = '#ffffff';
   ctx.fill();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
-  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = '#ff86a5';
+  ctx.lineWidth = 2.0;
   ctx.stroke();
 
   // Vòng trong hub
   ctx.beginPath();
   ctx.arc(originPix.x, originPix.y, 8 * (scale / 240), 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(22, 26, 36, 0.9)';
+  ctx.fillStyle = '#ffd6e0';
   ctx.fill();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+  ctx.strokeStyle = '#ff7ca0';
   ctx.lineWidth = 1.2;
   ctx.stroke();
 
-  // Chốt định vị tâm trắng
+  // Chốt định vị tâm
   ctx.beginPath();
   ctx.arc(originPix.x, originPix.y, 2.5, 0, Math.PI * 2);
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = '#ff4d80';
   ctx.fill();
   ctx.restore(); // Kết thúc Hub
 
