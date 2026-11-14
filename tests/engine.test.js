@@ -563,4 +563,53 @@ describe('GĐ3 Unit Tests - Core Engine & Scoring', () => {
     expect(engine.notes[0].state).toBe('JUDGED');
     expect(engine.scoreManager.counts.criticalPerfect).toBe(1);
   });
+
+  // =========================================================================
+  // Giai đoạn P3: Đếm ngược 3-2-1 trước khi bắt đầu map
+  // =========================================================================
+  it('19. Khởi động GameEngine với trạng thái COUNTDOWN 3-2-1, chặn input và đóng băng đồng hồ', async () => {
+    const dummyCanvas = { width: 800, height: 600, getContext: () => ({}) };
+    const engine = new GameEngine(dummyCanvas);
+
+    const beatmap = {
+      timingPoints: [{ bpm: 120, beatLength: 500 }],
+      notes: [{ type: 'tap', lane: 4, time: 2000 }]
+    };
+
+    await engine.loadChart(beatmap);
+    await engine.start(0, true);
+
+    expect(engine.isCountdown).toBe(true);
+    expect(engine.resumeCountdown).toBeGreaterThan(3.0);
+    expect(engine.countdownType).toBe('START');
+
+    // Trong countdown: input phán định bị chặn hoàn toàn
+    engine.handleLaneDown(4, 2000, 2000);
+    expect(engine.notes[0].state).toBe('PENDING');
+    expect(engine.scoreManager.counts.criticalPerfect).toBe(0);
+
+    engine.stop();
+  });
+
+  it('20. Hủy countdown an toàn khi bấm Pause/Esc hoặc Stop giữa lúc đếm ngược', async () => {
+    const dummyCanvas = { width: 800, height: 600, getContext: () => ({}) };
+    const engine = new GameEngine(dummyCanvas);
+
+    const beatmap = {
+      timingPoints: [{ bpm: 120, beatLength: 500 }],
+      notes: [{ type: 'tap', lane: 4, time: 2000 }]
+    };
+
+    await engine.loadChart(beatmap);
+    await engine.start(0, true);
+    expect(engine.isCountdown).toBe(true);
+
+    // Người chơi bấm Esc (Pause) trong khi countdown đang chạy
+    engine.togglePause();
+    expect(engine.isCountdown).toBe(false);
+    expect(engine.isPaused).toBe(true);
+    expect(engine.resumeCountdown).toBe(0);
+
+    engine.stop();
+  });
 });

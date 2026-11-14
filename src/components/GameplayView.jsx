@@ -81,6 +81,15 @@ export default function GameplayView({
       }
     };
 
+    engine.onCountdownEnd = (sec) => {
+      if (videoRef.current && showVideo) {
+        try {
+          videoRef.current.currentTime = sec || 0;
+          videoRef.current.play().catch(() => {});
+        } catch (_) {}
+      }
+    };
+
     const offPause = gameEvents.on('pause', () => {
       setIsPaused(true);
       setPauseMenuIndex(0);
@@ -172,6 +181,23 @@ export default function GameplayView({
 
       await engine.loadChart(parsedBeatmap, audioBlob, hitsounds);
       engine.renderer.backgroundDim = backgroundDim;
+      engine.enableStartCountdown = (settings?.enableStartCountdown ?? settings?.countdownBeforeStart) !== false;
+
+      // Tự động khởi động trận đấu kèm đếm ngược 3-2-1
+      setIsPlaying(true);
+      setIsPaused(false);
+      setGameResult(null);
+      setLiveScore(0);
+      setLiveAccuracy(100.0);
+      setLiveCombo(0);
+      setSongProgress(0);
+
+      if (videoRef.current) {
+        videoRef.current.currentTime = 0;
+        videoRef.current.pause();
+      }
+
+      await engine.start(0, engine.enableStartCountdown);
     };
 
     setupChart();
@@ -308,11 +334,13 @@ export default function GameplayView({
     setLiveCombo(0);
     setSongProgress(0);
 
-    if (videoRef.current && showVideo) {
+    if (videoRef.current) {
       videoRef.current.currentTime = 0;
-      videoRef.current.play().catch(() => {});
+      videoRef.current.pause();
     }
-    await engineRef.current.start(0);
+
+    const withCountdown = (settings?.enableStartCountdown ?? settings?.countdownBeforeStart) !== false;
+    await engineRef.current.start(0, withCountdown);
   };
 
   const handlePauseToggle = () => {
@@ -320,8 +348,7 @@ export default function GameplayView({
     engineRef.current.togglePause();
     setIsPaused(engineRef.current.isPaused);
     if (videoRef.current) {
-      if (engineRef.current.isPaused) videoRef.current.pause();
-      else videoRef.current.play().catch(() => {});
+      videoRef.current.pause();
     }
   };
 
@@ -330,6 +357,7 @@ export default function GameplayView({
     engineRef.current.stop();
     if (videoRef.current) {
       videoRef.current.currentTime = 0;
+      videoRef.current.pause();
     }
     await handleStartGame();
   };
@@ -538,30 +566,7 @@ export default function GameplayView({
           </button>
         )}
 
-        {/* 7. PRE-GAME OVERLAY */}
-        {!isPlaying && !gameResult && (
-          <div className="absolute inset-0 z-30 bg-[#0d0d1a]/85 backdrop-blur-sm flex flex-col items-center justify-center text-center animate-fadeIn">
-            <div className="text-4xl font-black text-white mb-2 tracking-[0.2em] font-torus">
-              TRIARHYTHM
-            </div>
-            <p className="text-xs text-[#7c849c] tracking-wider mb-8 uppercase">
-              VSRG Triangle Arcade • osu!(lazer) Engine
-            </p>
 
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={handleStartGame}
-              className="px-14 py-4 text-base tracking-widest shadow-[0_0_30px_rgba(255,102,171,0.7)]"
-            >
-              PLAY
-            </Button>
-
-            <div className="mt-6 text-xs text-[#7c849c]">
-              Press <kbd className="px-2 py-0.5 rounded bg-white/10 text-white font-mono">SPACE</kbd> or <kbd className="px-2 py-0.5 rounded bg-white/10 text-white font-mono">ENTER</kbd> to start
-            </div>
-          </div>
-        )}
 
         {/* 8. PAUSE MENU (osu! lazer style with keyboard navigation) */}
         {isPaused && (

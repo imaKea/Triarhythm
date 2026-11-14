@@ -386,6 +386,40 @@ export class AudioEngine {
     this.playHitsound('normal', 0.6);
   }
 
+  /**
+   * Phát âm thanh tick khi đếm ngược 3-2-1 hoặc GO (tổng hợp trực tiếp qua Web Audio)
+   */
+  playCountdownTick(isGo = false) {
+    if (!this.audioCtx) return;
+    try {
+      const now = this.audioCtx.currentTime;
+      const osc = this.audioCtx.createOscillator();
+      const gain = this.audioCtx.createGain();
+
+      if (isGo) {
+        // Âm GO: cao hơn (880Hz -> 1320Hz), ngân vang hơn
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(880, now);
+        osc.frequency.exponentialRampToValueAtTime(1320, now + 0.15);
+        gain.gain.setValueAtTime(0.45 * (this.hitsoundVolume ?? 1.0), now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+        osc.start(now);
+        osc.stop(now + 0.25);
+      } else {
+        // Âm 3, 2, 1: tick ngắn (660Hz)
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(660, now);
+        gain.gain.setValueAtTime(0.38 * (this.hitsoundVolume ?? 1.0), now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+        osc.start(now);
+        osc.stop(now + 0.09);
+      }
+
+      osc.connect(gain);
+      gain.connect(this.hitsoundGain || this.audioCtx.destination);
+    } catch (_) {}
+  }
+
   setVolumes(musicVol, hitVol) {
     this.musicVolume = Math.max(0, Math.min(1, musicVol));
     this.hitsoundVolume = Math.max(0, Math.min(1, hitVol));

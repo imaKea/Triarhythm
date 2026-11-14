@@ -70,17 +70,21 @@ export class InputManager {
     this.rebuildKeyMap();
   }
 
-  attach(targetElement = window) {
+  attach(targetElement = typeof window !== 'undefined' ? window : null) {
     if (this.isAttached) return;
-    targetElement.addEventListener('keydown', this.boundKeyDown);
-    targetElement.addEventListener('keyup', this.boundKeyUp);
+    if (targetElement && targetElement.addEventListener) {
+      targetElement.addEventListener('keydown', this.boundKeyDown);
+      targetElement.addEventListener('keyup', this.boundKeyUp);
+    }
     this.isAttached = true;
   }
 
-  detach(targetElement = window) {
+  detach(targetElement = typeof window !== 'undefined' ? window : null) {
     if (!this.isAttached) return;
-    targetElement.removeEventListener('keydown', this.boundKeyDown);
-    targetElement.removeEventListener('keyup', this.boundKeyUp);
+    if (targetElement && targetElement.removeEventListener) {
+      targetElement.removeEventListener('keydown', this.boundKeyDown);
+      targetElement.removeEventListener('keyup', this.boundKeyUp);
+    }
     this.isAttached = false;
   }
 

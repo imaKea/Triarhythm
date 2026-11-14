@@ -264,8 +264,11 @@ export default function AstroSettingsModal({
                 />
 
                 <Toggle
-                  checked={settings.countdownBeforeStart !== false}
-                  onChange={(val) => update('countdownBeforeStart', val)}
+                  checked={(settings.enableStartCountdown ?? settings.countdownBeforeStart) !== false}
+                  onChange={(val) => {
+                    update('enableStartCountdown', val);
+                    update('countdownBeforeStart', val);
+                  }}
                   label="Đếm ngược 3-2-1 trước khi bắt đầu bài hát"
                   description="Hiển thị đếm nhịp 3-2-1 trước khi nốt nhạc đầu tiên xuất hiện để người chơi chuẩn bị"
                 />

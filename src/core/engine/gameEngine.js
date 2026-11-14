@@ -37,8 +37,14 @@ export class GameEngine {
     this.resyncIntervalMs = 1500;
     this.lastResyncTime = 0;
 
-    // Đếm ngược 3 giây khi tiếp tục
+    // Đếm ngược 3-2-1 khi bắt đầu hoặc tiếp tục (P3 osu! lazer style)
     this.resumeCountdown = 0;
+    this.isCountdown = false;
+    this.countdownType = null; // 'START' | 'RESUME'
+    this.countdownStartOffset = 0;
+    this.lastCountdownStep = -1;
+    this.enableStartCountdown = true;
+    this.onCountdownEnd = null;
 
     // Trạng thái giữ Hold của 9 lane
     this.holdingNotes = new Map(); // lane -> note
@@ -297,7 +303,10 @@ export class GameEngine {
   /**
    * Bắt đầu chơi bài hát
    */
-  async start(startOffsetSec = 0) {
+  async start(startOffsetSec = 0, withCountdown = true) {
+    // Chống start đôi khi nhấn phím hoặc click nhiều lần
+    if (this.isRunning && (this.isCountdown || !this.isPaused)) return;
+
     await this.audioEngine.init();
     this.inputManager.attach();
 
@@ -333,17 +342,34 @@ export class GameEngine {
       }
     }
 
-    this.isRunning = true;
-    this.isPaused = false;
-    this.resumeCountdown = 0;
+    const useCountdown = withCountdown && (this.enableStartCountdown !== false);
 
-    this.audioEngine.startMusic(startOffsetSec);
+    if (useCountdown) {
+      this.isRunning = true;
+      this.isPaused = false;
+      this.isCountdown = true;
+      this.countdownType = 'START';
+      this.countdownStartOffset = startOffsetSec;
+      this.resumeCountdown = 3.4; // 3.0s (3, 2, 1) + 0.4s ("GO!")
+      this.lastCountdownStep = -1;
 
-    this.lastFramePerfTime = performance.now();
-    this.lastResyncTime = performance.now();
+      this.lastFramePerfTime = performance.now();
+      gameEvents.emit('countdownStart', { type: 'START' });
+      this.loop();
+    } else {
+      this.isRunning = true;
+      this.isPaused = false;
+      this.isCountdown = false;
+      this.resumeCountdown = 0;
 
-    this.loop();
-    gameEvents.emit('gameStart', { beatmap: this.beatmap });
+      this.audioEngine.startMusic(startOffsetSec);
+
+      this.lastFramePerfTime = performance.now();
+      this.lastResyncTime = performance.now();
+
+      this.loop();
+      gameEvents.emit('gameStart', { beatmap: this.beatmap });
+    }
   }
 
   /**
@@ -411,16 +437,74 @@ export class GameEngine {
         this.finishGame();
         return;
       }
-    } else if (this.resumeCountdown > 0) {
+    } else if (this.isCountdown && this.resumeCountdown > 0) {
       this.resumeCountdown -= dt;
+
+      // Xác định nhịp:
+      // 3: (2.4, 3.4]
+      // 2: (1.4, 2.4]
+      // 1: (0.4, 1.4]
+      // 0: [0, 0.4] ("GO!")
+      let currentStep;
+      if (this.resumeCountdown > 2.4) currentStep = 3;
+      else if (this.resumeCountdown > 1.4) currentStep = 2;
+      else if (this.resumeCountdown > 0.4) currentStep = 1;
+      else currentStep = 0;
+
+      if (currentStep !== this.lastCountdownStep) {
+        this.lastCountdownStep = currentStep;
+        this.audioEngine.playCountdownTick(currentStep === 0);
+        gameEvents.emit('countdownTick', { step: currentStep });
+      }
+
       this.renderCountdown();
+
       if (this.resumeCountdown <= 0) {
-        this.resumeCountdown = 0;
-        this.audioEngine.resumeMusic();
+        this.finishCountdown();
       }
     }
 
-    this.animFrameId = requestAnimationFrame(this.loop.bind(this));
+    if (typeof requestAnimationFrame !== 'undefined') {
+      this.animFrameId = requestAnimationFrame(this.loop.bind(this));
+    }
+  }
+
+  /**
+   * Kết thúc đếm ngược và bắt đầu phát nhạc / đồng bộ video chính xác
+   */
+  finishCountdown() {
+    this.isCountdown = false;
+    this.resumeCountdown = 0;
+    this.lastCountdownStep = -1;
+
+    if (this.countdownType === 'START') {
+      this.audioEngine.startMusic(this.countdownStartOffset);
+      this.lastResyncTime = performance.now();
+      if (this.onCountdownEnd) {
+        this.onCountdownEnd(this.countdownStartOffset);
+      }
+      gameEvents.emit('countdownEnd');
+      gameEvents.emit('gameStart', { beatmap: this.beatmap });
+    } else if (this.countdownType === 'RESUME') {
+      this.audioEngine.resumeMusic();
+      this.lastResyncTime = performance.now();
+      if (this.onCountdownEnd) {
+        this.onCountdownEnd(this.audioEngine.pausedAt);
+      }
+      gameEvents.emit('countdownEnd');
+      gameEvents.emit('resume');
+    }
+    this.countdownType = null;
+  }
+
+  /**
+   * Hủy đếm ngược an toàn (ví dụ khi Pause hoặc Stop giữa chừng)
+   */
+  cancelCountdown() {
+    this.isCountdown = false;
+    this.resumeCountdown = 0;
+    this.lastCountdownStep = -1;
+    this.countdownType = null;
   }
 
   updateNotes(songTime) {
@@ -972,9 +1056,21 @@ export class GameEngine {
   togglePause() {
     if (!this.isRunning) return;
 
+    if (this.isCountdown) {
+      // Hủy countdown an toàn khi bấm Esc lúc đang đếm ngược
+      this.cancelCountdown();
+      this.isPaused = true;
+      gameEvents.emit('pause');
+      return;
+    }
+
     if (this.isPaused) {
       this.isPaused = false;
-      this.resumeCountdown = 3.0;
+      this.isCountdown = true;
+      this.countdownType = 'RESUME';
+      this.resumeCountdown = 3.4;
+      this.lastCountdownStep = -1;
+      gameEvents.emit('countdownStart', { type: 'RESUME' });
     } else {
       this.isPaused = true;
       this.audioEngine.pauseMusic();
@@ -984,19 +1080,104 @@ export class GameEngine {
 
   renderCountdown() {
     const { ctx, canvas } = this.renderer;
+    if (!ctx || !ctx.fillRect || !canvas) return;
+    const width = canvas.width || 800;
+    const height = canvas.height || 600;
+
+    // 1. Dựng nền sân đấu tĩnh ở thời điểm đóng băng để người chơi nhìn thấy nốt sắp tới
+    const frozenTime = this.countdownType === 'START'
+      ? (this.countdownStartOffset || 0) * 1000
+      : (this.audioEngine.pausedAt || 0) * 1000;
+
+    const gameState = {
+      songTime: frozenTime,
+      totalDuration: this.totalDuration,
+      canSkip: false,
+      combo: this.scoreManager.combo,
+      comboPunch: 0,
+      achievement: this.scoreManager.achievement,
+      rank: this.scoreManager.rank,
+      rankColor: this.scoreManager.getRankColor(),
+      ur: this.scoreManager.ur,
+      activeLanes: this.inputManager.isKeyDown,
+      holdingLanes: this.getHoldingLanesArray(),
+      activeNotes: this.getActiveNotes(frozenTime),
+      pointer: {
+        pos: this.inputManager.pointerPos,
+        isDown: this.inputManager.isPointerDown
+      },
+      hasBackgroundVideo: Boolean(this.hasBackgroundVideo),
+      isAutoplay: Boolean(this.isAutoplay),
+      isTypingActive: false,
+      activeTypingSection: null
+    };
+
+    if (ctx.clearRect) {
+      try {
+        this.renderer.render(gameState, this.particleSystem);
+      } catch (_) {}
+    }
+
+    // 2. Lớp phủ vignette mờ nhẹ
     ctx.save();
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'rgba(9, 9, 18, 0.45)';
+    ctx.fillRect(0, 0, width, height);
+
+    // 3. Tọa độ tâm tam giác
+    const originPix = layoutToPixels(
+      TRI_RING_LAYOUT.origin.x,
+      TRI_RING_LAYOUT.origin.y,
+      width,
+      height
+    );
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = '900 64px Orbitron, sans-serif';
-    ctx.fillStyle = '#00e5ff';
-    ctx.shadowColor = '#00e5ff';
-    ctx.shadowBlur = 20;
 
-    const countNum = Math.ceil(this.resumeCountdown);
-    ctx.fillText(`${countNum}`, canvas.width / 2, canvas.height / 2);
+    let text = '';
+    let scale = 1.0;
+    let alpha = 1.0;
+    let color = '#ff66ab';
+    let subtext = 'READY';
+
+    if (this.resumeCountdown > 2.4) {
+      text = '3';
+      const stepProg = (this.resumeCountdown - 2.4) / 1.0;
+      scale = 1.0 + Math.pow(stepProg, 1.8) * 0.45;
+      alpha = Math.min(1.0, stepProg * 2.2);
+    } else if (this.resumeCountdown > 1.4) {
+      text = '2';
+      const stepProg = (this.resumeCountdown - 1.4) / 1.0;
+      scale = 1.0 + Math.pow(stepProg, 1.8) * 0.45;
+      alpha = Math.min(1.0, stepProg * 2.2);
+    } else if (this.resumeCountdown > 0.4) {
+      text = '1';
+      const stepProg = (this.resumeCountdown - 0.4) / 1.0;
+      scale = 1.0 + Math.pow(stepProg, 1.8) * 0.45;
+      alpha = Math.min(1.0, stepProg * 2.2);
+    } else {
+      text = 'GO!';
+      color = '#ffdd57';
+      subtext = '';
+      const goProg = this.resumeCountdown / 0.4;
+      scale = 1.0 + Math.pow(goProg, 1.4) * 0.35;
+      alpha = Math.min(1.0, goProg * 3.0);
+    }
+
+    ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+    ctx.font = `900 ${Math.round(88 * scale)}px 'Torus', 'Nunito', 'Be Vietnam Pro', sans-serif`;
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 32;
+    ctx.fillText(text, originPix.x, originPix.y);
+
+    if (subtext) {
+      ctx.font = `bold 12px 'Torus', 'Nunito', sans-serif`;
+      ctx.fillStyle = 'rgba(255, 102, 171, 0.85)';
+      ctx.shadowBlur = 10;
+      ctx.fillText(subtext, originPix.x, originPix.y + 62);
+    }
+
     ctx.restore();
   }
 
@@ -1023,10 +1204,13 @@ export class GameEngine {
   }
 
   stop() {
+    this.cancelCountdown();
     this.isRunning = false;
     this.isPaused = false;
     if (this.animFrameId) {
-      cancelAnimationFrame(this.animFrameId);
+      if (typeof cancelAnimationFrame !== 'undefined') {
+        cancelAnimationFrame(this.animFrameId);
+      }
       this.animFrameId = null;
     }
     if (this.canvas && this.boundPointerMove) {
