@@ -612,4 +612,33 @@ describe('GĐ3 Unit Tests - Core Engine & Scoring', () => {
 
     engine.stop();
   });
+
+  it('21. Bắt đầu map có 1 giây lead-in không nhạc (-1000ms) để chống rocket note', async () => {
+    const dummyCanvas = { width: 800, height: 600, getContext: () => ({}) };
+    const engine = new GameEngine(dummyCanvas);
+
+    const beatmap = {
+      timingPoints: [{ bpm: 120, beatLength: 500 }],
+      notes: [{ type: 'tap', lane: 4, time: 200 }] // Nốt đầu xuất hiện rất sớm ở 200ms
+    };
+
+    await engine.loadChart(beatmap);
+    // Bắt đầu không đếm ngược (để kiểm tra trực tiếp lead-in khi bài bắt đầu)
+    await engine.start(0, false);
+
+    // Thời gian bài hát ban đầu âm ~ -1000ms (1 giây trống không có nhạc)
+    const songTime = engine.audioEngine.getSongTimeMs();
+    expect(songTime).toBeLessThanOrEqual(-900);
+    expect(songTime).toBeGreaterThanOrEqual(-1100);
+
+    // Với travelTime 450ms, nốt ở 200ms xuất hiện tại 200 - 450 = -250ms
+    // Tại thời điểm -1000ms, nốt chưa bị ACTIVE quá sớm
+    expect(engine.notes[0].state).toBe('PENDING');
+
+    // Khi thời gian tới -200ms (sau 800ms của lead-in): nốt chuyển ACTIVE mượt mà trước khi nhạc bắt đầu lúc 0ms
+    engine.updateNotes(-200);
+    expect(engine.notes[0].state).toBe('ACTIVE');
+
+    engine.stop();
+  });
 });

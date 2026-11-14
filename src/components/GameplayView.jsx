@@ -81,7 +81,16 @@ export default function GameplayView({
       }
     };
 
-    engine.onCountdownEnd = (sec) => {
+    engine.onCountdownEnd = () => {
+      if (videoRef.current) {
+        try {
+          videoRef.current.currentTime = 0;
+          videoRef.current.pause();
+        } catch (_) {}
+      }
+    };
+
+    engine.onMusicStart = (sec) => {
       if (videoRef.current && showVideo) {
         try {
           videoRef.current.currentTime = sec || 0;

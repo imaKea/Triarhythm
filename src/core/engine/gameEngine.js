@@ -46,6 +46,11 @@ export class GameEngine {
     this.enableStartCountdown = true;
     this.onCountdownEnd = null;
 
+    // Khoảng trống 1 giây không nhạc ở đầu map để chống "rocket note"
+    this.leadInSec = 1.0;
+    this.hasStartedAudio = false;
+    this.onMusicStart = null;
+
     // Trạng thái giữ Hold của 9 lane
     this.holdingNotes = new Map(); // lane -> note
     this.hasBackgroundVideo = false;
@@ -361,8 +366,10 @@ export class GameEngine {
       this.isPaused = false;
       this.isCountdown = false;
       this.resumeCountdown = 0;
+      this.hasStartedAudio = false;
 
-      this.audioEngine.startMusic(startOffsetSec);
+      // Áp dụng 1 giây trống không có nhạc ở đầu map
+      this.audioEngine.startMusic(startOffsetSec, this.leadInSec);
 
       this.lastFramePerfTime = performance.now();
       this.lastResyncTime = performance.now();
@@ -384,6 +391,15 @@ export class GameEngine {
 
     if (!this.isPaused && this.resumeCountdown <= 0) {
       const songTime = this.audioEngine.getSongTimeMs();
+
+      // Đồng bộ thời điểm nhạc bắt đầu phát thực tế (sau 1 giây trống lead-in)
+      if (!this.hasStartedAudio && songTime >= (this.countdownStartOffset || 0) * 1000) {
+        this.hasStartedAudio = true;
+        if (this.onMusicStart) {
+          this.onMusicStart(this.countdownStartOffset || 0);
+        }
+        gameEvents.emit('musicStart', { offsetSec: this.countdownStartOffset || 0 });
+      }
 
       if (nowPerf - this.lastResyncTime > this.resyncIntervalMs) {
         this.audioEngine.resyncTimeAnchor();
@@ -478,7 +494,9 @@ export class GameEngine {
     this.lastCountdownStep = -1;
 
     if (this.countdownType === 'START') {
-      this.audioEngine.startMusic(this.countdownStartOffset);
+      this.hasStartedAudio = false;
+      // Áp dụng 1 giây trống không có nhạc ở đầu map sau countdown
+      this.audioEngine.startMusic(this.countdownStartOffset, this.leadInSec);
       this.lastResyncTime = performance.now();
       if (this.onCountdownEnd) {
         this.onCountdownEnd(this.countdownStartOffset);
@@ -505,6 +523,7 @@ export class GameEngine {
     this.resumeCountdown = 0;
     this.lastCountdownStep = -1;
     this.countdownType = null;
+    this.hasStartedAudio = false;
   }
 
   updateNotes(songTime) {

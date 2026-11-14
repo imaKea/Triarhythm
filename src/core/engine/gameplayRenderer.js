@@ -140,6 +140,7 @@ export class GameplayRenderer {
    */
   render(gameState, particleSystem) {
     const { ctx, canvas } = this;
+    if (!ctx || !ctx.clearRect || !canvas) return;
     const width = canvas.width;
     const height = canvas.height;
 

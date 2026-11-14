@@ -140,25 +140,25 @@ export class AudioEngine {
     if (!this.audioCtx) {
       // Môi trường test / headless không có Web Audio API
       const elapsedPerfMs = performance.now() - this.startPerfTime;
-      return Math.max(0, elapsedPerfMs + this.userOffsetMs);
+      return elapsedPerfMs + this.userOffsetMs;
     }
 
     const elapsedSec = this.audioCtx.currentTime - this.startTime;
     const hardwareLatencySec = (this.audioCtx.baseLatency || 0) + (this.audioCtx.outputLatency || 0);
     const audioTimeMs = (elapsedSec - hardwareLatencySec) * 1000 + this.userOffsetMs;
-    return Math.max(0, audioTimeMs);
+    return audioTimeMs;
   }
 
   perfToAudioTime(eventPerfTime) {
     if (!this.isPlaying) return this.getSongTimeMs();
     if (!this.audioCtx) {
       const elapsedPerfMs = eventPerfTime - this.startPerfTime;
-      return Math.max(0, elapsedPerfMs + this.userOffsetMs);
+      return elapsedPerfMs + this.userOffsetMs;
     }
     // Độ lệch âm thanh/bàn phím được hiệu chỉnh triệt để: đồng bộ chính xác với getSongTimeMs()
     const nowPerf = performance.now();
     const songNow = this.getSongTimeMs();
-    return Math.max(0, songNow + (eventPerfTime - nowPerf));
+    return songNow + (eventPerfTime - nowPerf);
   }
 
   resyncTimeAnchor() {
@@ -272,7 +272,10 @@ export class AudioEngine {
     }
   }
 
-  startMusic(offsetSec = 0) {
+  /**
+   * Bắt đầu phát nhạc với hỗ trợ khoảng trống lead-in (leadInSec) ở đầu bài
+   */
+  startMusic(offsetSec = 0, leadInSec = 0) {
     if (this.musicSource) {
       try {
         this.musicSource.stop();
@@ -288,28 +291,34 @@ export class AudioEngine {
     const duration = this.musicBuffer?.duration || 30;
     const safeOffset = Math.max(0, Math.min(offsetSec, Math.max(0, duration - 0.05)));
 
-    this.resync(safeOffset);
+    this.resync(safeOffset, leadInSec);
 
     if (this.musicBuffer && this.audioCtx) {
       this.musicSource = this.audioCtx.createBufferSource();
       this.musicSource.buffer = this.musicBuffer;
       this.musicSource.connect(this.musicGain);
-      // Sử dụng 0 để Web Audio API phát ngay tức thì từ safeOffset
-      this.musicSource.start(0, safeOffset);
+
+      // Nếu có khoảng trống leadInSec (tránh rocket note): lên lịch phát chuẩn xác sau leadInSec
+      const scheduledStartTime = leadInSec > 0
+        ? this.audioCtx.currentTime + leadInSec
+        : 0;
+
+      this.musicSource.start(scheduledStartTime, safeOffset);
     }
 
     this.isPlaying = true;
     this.isPaused = false;
   }
 
-  resync(offsetSec = 0) {
+  resync(offsetSec = 0, leadInSec = 0) {
+    const effectiveOffset = offsetSec - (leadInSec || 0);
     if (this.audioCtx) {
-      this.startTime = this.audioCtx.currentTime - offsetSec;
+      this.startTime = this.audioCtx.currentTime - effectiveOffset;
     } else {
-      this.startTime = -offsetSec;
+      this.startTime = -effectiveOffset;
     }
-    this.startPerfTime = performance.now() - offsetSec * 1000;
-    this.pausedAt = offsetSec;
+    this.startPerfTime = performance.now() - effectiveOffset * 1000;
+    this.pausedAt = effectiveOffset;
   }
 
   pauseMusic() {
@@ -328,7 +337,8 @@ export class AudioEngine {
 
   resumeMusic() {
     if (!this.isPaused) return;
-    this.startMusic(this.pausedAt);
+    // Tiếp tục sau Pause: không thêm lead-in nữa
+    this.startMusic(Math.max(0, this.pausedAt), 0);
   }
 
   stopMusic() {
