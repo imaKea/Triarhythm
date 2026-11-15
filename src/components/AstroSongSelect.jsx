@@ -620,9 +620,15 @@ export default function AstroSongSelect({
       const existing = await dbManager.getBeatmap(map.song_id);
       const mapEntry = buildSongEntryFromServerMap(map, {}, existing);
       const [audio, background, video] = await Promise.all([
-        map.audio_url ? apiClient.fetchAssetBlob(map.audio_url) : null,
-        map.cover_url ? apiClient.fetchAssetBlob(map.cover_url) : null,
-        map.video_url ? apiClient.fetchAssetBlob(map.video_url) : null
+        map.audio_download_url || map.audio_url
+          ? apiClient.fetchAssetBlob(map.audio_download_url || map.audio_url)
+          : null,
+        map.cover_download_url || map.cover_url
+          ? apiClient.fetchAssetBlob(map.cover_download_url || map.cover_url)
+          : null,
+        map.video_download_url || map.video_url
+          ? apiClient.fetchAssetBlob(map.video_download_url || map.video_url)
+          : null
       ]);
       const entry = buildSongEntryFromServerMap(map, { audio, background, video }, mapEntry);
       await dbManager.saveBeatmap(entry);

@@ -23,6 +23,7 @@ Route::prefix('auth')->group(function () {
 // Maps Routes
 Route::prefix('maps')->group(function () {
     Route::get('/', [MapController::class, 'index']);
+    Route::get('/{song_id}/assets/{asset}', [MapController::class, 'showAsset']);
 
     // Quản lý và thao tác beatmaps yêu cầu xác thực người dùng
     Route::middleware('auth.api')->group(function () {

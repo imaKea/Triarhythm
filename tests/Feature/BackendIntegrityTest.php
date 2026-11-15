@@ -173,6 +173,24 @@ class BackendIntegrityTest extends TestCase
             ->assertJsonPath('maps.0.chart_available', false);
     }
 
+    public function test_map_media_can_be_streamed_through_the_api_for_other_origins(): void
+    {
+        [$owner] = $this->createUser();
+        $map = $this->createMap($owner);
+        $path = "beatmaps/{$map->song_id}/track.ogg";
+        Storage::fake('public');
+        Storage::disk('public')->put($path, 'audio-bytes');
+        $map->update(['audio_url' => "/storage/{$path}"]);
+
+        $this->getJson("/api/maps/{$map->song_id}")
+            ->assertOk()
+            ->assertJsonPath('map.audio_download_url', "/api/maps/{$map->song_id}/assets/audio");
+
+        $this->get("/api/maps/{$map->song_id}/assets/audio")
+            ->assertOk()
+            ->assertStreamedContent('audio-bytes');
+    }
+
     public function test_non_owner_cannot_replace_map_metadata_or_assets(): void
     {
         [$owner, $ownerToken] = $this->createUser();

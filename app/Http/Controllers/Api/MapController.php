@@ -7,6 +7,7 @@ use App\Models\Map;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class MapController extends Controller
 {
@@ -199,9 +200,44 @@ class MapController extends Controller
             return response()->json(['success' => false, 'message' => 'Không tìm thấy beatmap'], 404);
         }
 
+        $assetEndpoint = '/api/maps/' . rawurlencode($song_id) . '/assets/';
+        $map->setAttribute('audio_download_url', $map->audio_url ? $assetEndpoint . 'audio' : null);
+        $map->setAttribute('cover_download_url', $map->cover_url ? $assetEndpoint . 'background' : null);
+        $map->setAttribute('video_download_url', $map->video_url ? $assetEndpoint . 'video' : null);
+
         return response()->json([
             'success' => true,
             'map' => $map,
+        ]);
+    }
+
+    public function showAsset(string $song_id, string $asset): JsonResponse|StreamedResponse
+    {
+        $map = Map::where('song_id', $song_id)->first();
+        if (!$map) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy beatmap'], 404);
+        }
+
+        $column = match ($asset) {
+            'audio' => 'audio_url',
+            'background' => 'cover_url',
+            'video' => 'video_url',
+            default => null,
+        };
+        $url = $column ? $map->{$column} : null;
+        $expectedPrefix = "/storage/beatmaps/{$song_id}/";
+        if (!is_string($url) || !str_starts_with($url, $expectedPrefix)) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy file media'], 404);
+        }
+
+        $path = substr($url, strlen('/storage/'));
+        $disk = Storage::disk('public');
+        if (!$disk->exists($path)) {
+            return response()->json(['success' => false, 'message' => 'File media không còn trên server'], 404);
+        }
+
+        return $disk->response($path, basename($path), [
+            'Cache-Control' => 'public, max-age=86400',
         ]);
     }
 
