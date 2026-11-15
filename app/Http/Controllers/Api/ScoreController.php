@@ -145,7 +145,7 @@ class ScoreController extends Controller
         ], 201);
     }
 
-    public function userScores(int $userId): JsonResponse
+    public function userScores(Request $request, int $userId): JsonResponse
     {
         $user = User::find($userId);
 
@@ -153,12 +153,24 @@ class ScoreController extends Controller
             return response()->json(['success' => false, 'message' => 'Không tìm thấy người chơi'], 404);
         }
 
-        $scores = $user->scores()
-            ->with('map:song_id,title,artist,cover_url')
-            ->orderByDesc('pp')
-            ->orderByDesc('score')
-            ->limit(100)
-            ->get();
+        $scoresQuery = $user->scores()
+            ->with([
+                'user:id,name,username,avatar',
+                'map:song_id,title,artist,cover_url',
+            ]);
+
+        $hasMapFilter = false;
+        if ($songId = $request->query('song_id')) {
+            $scoresQuery->where('song_id', $songId);
+            $hasMapFilter = true;
+        }
+        if ($difficultyName = $request->query('difficulty_name')) {
+            $scoresQuery->where('difficulty_name', $difficultyName);
+            $hasMapFilter = true;
+        }
+
+        $scoresQuery->orderByDesc($hasMapFilter ? 'score' : 'pp')->orderByDesc('pp');
+        $scores = $scoresQuery->limit(100)->get();
 
         return response()->json([
             'success' => true,

@@ -169,6 +169,7 @@ export function buildSongEntry({
 
 /**
  * Chuyển songEntry (IndexedDB) sang payload MySQL của Laravel MapController.
+ * Gửi kèm chart đầy đủ để các thiết bị khác có thể tải và chơi lại map.
  */
 export function songEntryToMapPayload(songEntry) {
   const beatmap = songEntry?.beatmap || {};
@@ -186,9 +187,85 @@ export function songEntryToMapPayload(songEntry) {
     difficulties: (songEntry.difficulties || []).map((d) => ({
       difficultyName: d.difficultyName,
       difficultyLevel: d.difficultyLevel,
-      noteCount: d.noteCount
+      noteCount: d.noteCount,
+      stars: d.stars || 0,
+      beatmap: d.beatmap || null
     })),
     metadata: beatmap.metadata || {}
+  };
+}
+
+export function buildSongEntryFromServerMap(serverMap, assets = {}, existing = null) {
+  if (!serverMap?.song_id) throw new Error('Server map is missing its song ID.');
+
+  const source = serverMap.source || 'maimai';
+  const metadata = {
+    ...(serverMap.metadata || {}),
+    id: serverMap.song_id,
+    title: serverMap.title || serverMap.metadata?.title || 'Untitled Track',
+    artist: serverMap.artist || serverMap.metadata?.artist || 'Unknown Artist',
+    creator: serverMap.creator || serverMap.metadata?.creator || 'Mapper',
+    source,
+    previewTime: serverMap.preview_time || serverMap.metadata?.previewTime || 0
+  };
+  const difficulties = (serverMap.difficulties || [])
+    .map((difficulty) => {
+      const sourceChart = difficulty.beatmap || difficulty.chart;
+      if (!Array.isArray(sourceChart?.notes)) return null;
+      const difficultyName = difficulty.difficultyName || sourceChart.metadata?.difficultyName || 'Normal';
+      const difficultyLevel = difficulty.difficultyLevel || sourceChart.metadata?.difficultyLevel || '5';
+      const chartMetadata = {
+        ...metadata,
+        ...(sourceChart.metadata || {}),
+        id: serverMap.song_id,
+        title: metadata.title,
+        artist: metadata.artist,
+        difficultyName,
+        difficultyLevel
+      };
+      return {
+        ...difficulty,
+        difficultyName,
+        difficultyLevel,
+        noteCount: difficulty.noteCount ?? sourceChart.notes.length,
+        beatmap: { ...sourceChart, metadata: chartMetadata }
+      };
+    })
+    .filter(Boolean);
+
+  if (difficulties.length === 0) {
+    throw new Error('This server map has no chart data. Re-import and upload the original map package first.');
+  }
+
+  const primaryDifficulty = difficulties.find((difficulty) =>
+    String(difficulty.difficultyName).toLowerCase() === 'master'
+  ) || difficulties[difficulties.length - 1];
+  const serverAssets = {
+    audioUrl: serverMap.audio_url || existing?.serverAssets?.audioUrl || null,
+    coverUrl: serverMap.cover_url || existing?.serverAssets?.coverUrl || null,
+    videoUrl: serverMap.video_url || existing?.serverAssets?.videoUrl || null
+  };
+
+  return {
+    ...(existing || {}),
+    id: serverMap.song_id,
+    source,
+    title: metadata.title,
+    artist: metadata.artist,
+    creator: metadata.creator,
+    difficultyName: primaryDifficulty.difficultyName,
+    difficultyLevel: primaryDifficulty.difficultyLevel,
+    difficulties,
+    beatmap: primaryDifficulty.beatmap,
+    metadata,
+    audioBlob: assets.audio || existing?.audioBlob || null,
+    backgroundBlob: assets.background || existing?.backgroundBlob || null,
+    videoBlob: assets.video || existing?.videoBlob || null,
+    serverAssets,
+    sourcePackageBlob: existing?.sourcePackageBlob || null,
+    sourceText: existing?.sourceText || null,
+    sourceFileName: existing?.sourceFileName || '',
+    updatedAt: Date.now()
   };
 }
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { dbManager } from '../core/storage/db.js';
-import { importFiles } from '../core/parser/index.js';
+import { importFiles, buildSongEntryFromServerMap, songEntryToMapPayload } from '../core/parser/index.js';
 import { exportBeatmapFile } from '../core/parser/exportService.js';
 import { apiClient } from '../core/api/client.js';
 import { resolveDifficultyBeatmap } from '../core/beatmap/difficulty.js';
@@ -39,10 +39,12 @@ export default function AstroSongSelect({
   const [groupBy, setGroupBy] = useState('none'); // 'none' | 'artist' | 'stars'
   const [selectedDiffIndex, setSelectedDiffIndex] = useState(0);
   const [isImporting, setIsImporting] = useState(false);
-  const [leaderboardTab, setLeaderboardTab] = useState(currentUser ? 'global' : 'local'); // 'global' | 'local'
+  const [leaderboardTab, setLeaderboardTab] = useState(currentUser ? 'global' : 'local'); // 'global' | 'local' | 'online'
   const [leaderboardScores, setLeaderboardScores] = useState([]);
   const [localScores, setLocalScores] = useState([]);
   const [isLoadingScores, setIsLoadingScores] = useState(false);
+  const [onlineUserScores, setOnlineUserScores] = useState([]);
+  const [isLoadingOnlineUserScores, setIsLoadingOnlineUserScores] = useState(false);
   const [mobileTab, setMobileTab] = useState('list'); // 'list' | 'info' on mobile screen
 
   // History stack for Shift+F2 (Previous Random)
@@ -59,6 +61,12 @@ export default function AstroSongSelect({
   const [newCollectionName, setNewCollectionName] = useState('');
   const [isSavingCollection, setIsSavingCollection] = useState(false);
   const [collectionDeleteConfirm, setCollectionDeleteConfirm] = useState(null);
+  const [isDownloadMapsOpen, setIsDownloadMapsOpen] = useState(false);
+  const [serverMaps, setServerMaps] = useState([]);
+  const [serverMapSearch, setServerMapSearch] = useState('');
+  const [isLoadingServerMaps, setIsLoadingServerMaps] = useState(false);
+  const [downloadingMapId, setDownloadingMapId] = useState(null);
+  const [uploadingMapId, setUploadingMapId] = useState(null);
 
   // Chế độ chọn hàng loạt & Bulk Delete
   const [isSelectMode, setIsSelectMode] = useState(false);
@@ -159,6 +167,13 @@ export default function AstroSongSelect({
   const current = activeCollectionId
     ? filteredBeatmaps.find((beatmap) => beatmap.id === selectedBeatmap?.id) || filteredBeatmaps[0] || null
     : selectedBeatmap || filteredBeatmaps[0] || null;
+  const filteredServerMaps = useMemo(() => {
+    const query = serverMapSearch.trim().toLowerCase();
+    if (!query) return serverMaps;
+    return serverMaps.filter((map) =>
+      `${map.title || ''} ${map.artist || ''} ${map.creator || ''}`.toLowerCase().includes(query)
+    );
+  }, [serverMaps, serverMapSearch]);
 
   // Extract difficulty list from current beatmap set (excluding Utage per Maimai rules)
   const diffList = useMemo(() => {
@@ -319,6 +334,48 @@ export default function AstroSongSelect({
 
     return () => { isCancelled = true; };
   }, [current?.id, selectedDiff?.difficultyName]);
+
+  useEffect(() => {
+    if (!current?.id || !currentUser?.id) {
+      setOnlineUserScores([]);
+      setIsLoadingOnlineUserScores(false);
+      return;
+    }
+
+    let isCancelled = false;
+    setIsLoadingOnlineUserScores(true);
+    apiClient.getUserScores(currentUser.id, {
+      song_id: current.id,
+      difficulty_name: selectedDiff?.difficultyName || ''
+    })
+      .then((response) => {
+        if (!isCancelled) setOnlineUserScores(response?.scores || []);
+      })
+      .catch((error) => {
+        if (!isCancelled) {
+          console.warn('Online personal scores error:', error.message);
+          setOnlineUserScores([]);
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) setIsLoadingOnlineUserScores(false);
+      });
+
+    return () => { isCancelled = true; };
+  }, [current?.id, currentUser?.id, selectedDiff?.difficultyName]);
+
+  const displayedLeaderboardScores = leaderboardTab === 'global'
+    ? leaderboardScores
+    : leaderboardTab === 'online'
+      ? onlineUserScores
+      : localScores;
+  const isLoadingDisplayedScores = leaderboardTab === 'online'
+    ? isLoadingOnlineUserScores
+    : isLoadingScores;
+
+  useEffect(() => {
+    if (!currentUser && leaderboardTab === 'online') setLeaderboardTab('local');
+  }, [currentUser, leaderboardTab]);
 
   // Keyboard Navigation: ↑ / ↓ to scroll cards, ← / → to change diff, Enter to Play, F2 for Random
   useEffect(() => {
@@ -536,6 +593,86 @@ export default function AstroSongSelect({
       toast.error(`Could not delete collection: ${error.message}`);
     } finally {
       setCollectionDeleteConfirm(null);
+    }
+  };
+
+  const handleOpenServerMapLibrary = async () => {
+    setIsDownloadMapsOpen(true);
+    setIsLoadingServerMaps(true);
+    try {
+      const response = await apiClient.getMaps();
+      setServerMaps(Array.isArray(response?.maps) ? response.maps : []);
+    } catch (error) {
+      toast.error(`Could not load online maps: ${error.message}`);
+    } finally {
+      setIsLoadingServerMaps(false);
+    }
+  };
+
+  const handleDownloadServerMap = async (serverMap) => {
+    if (!serverMap?.song_id || downloadingMapId) return;
+    setDownloadingMapId(serverMap.song_id);
+    try {
+      const response = await apiClient.getMap(serverMap.song_id);
+      const map = response?.map;
+      if (!map) throw new Error('The server did not return this map.');
+
+      const existing = await dbManager.getBeatmap(map.song_id);
+      const mapEntry = buildSongEntryFromServerMap(map, {}, existing);
+      const [audio, background, video] = await Promise.all([
+        map.audio_url ? apiClient.fetchAssetBlob(map.audio_url) : null,
+        map.cover_url ? apiClient.fetchAssetBlob(map.cover_url) : null,
+        map.video_url ? apiClient.fetchAssetBlob(map.video_url) : null
+      ]);
+      const entry = buildSongEntryFromServerMap(map, { audio, background, video }, mapEntry);
+      await dbManager.saveBeatmap(entry);
+      if (onReloadBeatmaps) await onReloadBeatmaps();
+      toast.success(`Downloaded "${entry.title}" to this device.`);
+    } catch (error) {
+      toast.error(`Could not download "${serverMap.title || 'map'}": ${error.message}`);
+    } finally {
+      setDownloadingMapId(null);
+    }
+  };
+
+  const handleUploadServerMap = async (beatmap) => {
+    if (uploadingMapId) return;
+    if (!beatmap?.id) {
+      toast.error('This beatmap is missing its ID and cannot be uploaded.');
+      return;
+    }
+    if (!currentUser) {
+      toast.error('Sign in before uploading a map to the online library.');
+      onOpenAuth?.();
+      return;
+    }
+
+    setUploadingMapId(beatmap.id);
+    try {
+      const response = await apiClient.saveMap(songEntryToMapPayload(beatmap));
+      if (!response?.success) {
+        throw new Error(response?.message || 'The server did not confirm the map upload.');
+      }
+
+      const assets = {
+        audio: beatmap.audioBlob,
+        background: beatmap.backgroundBlob,
+        video: beatmap.videoBlob
+      };
+      if (assets.audio || assets.background || assets.video) {
+        try {
+          await apiClient.uploadMapAssets(beatmap.id, assets);
+        } catch (error) {
+          toast.error(`Map chart uploaded, but its media files could not be uploaded: ${error.message}`);
+          return;
+        }
+      }
+
+      toast.success(`Uploaded "${beatmap.title || 'Map'}" to the online library. It can now be downloaded on other devices.`);
+    } catch (error) {
+      toast.error(`Could not upload "${beatmap.title || 'map'}": ${error.message}`);
+    } finally {
+      setUploadingMapId(null);
     }
   };
 
@@ -918,6 +1055,16 @@ export default function AstroSongSelect({
             <span>Collections ({collections.length})</span>
           </button>
 
+          <button
+            type="button"
+            onClick={handleOpenServerMapLibrary}
+            className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full bg-white hover:bg-[#fff0f4] text-[#5b2a47] hover:text-[#ff4d80] text-xs font-bold transition-all border border-[#f3dbe4] hover:border-[#ff85a2] cursor-pointer hover:scale-105 shadow-sm"
+            title="Download maps published to the project"
+          >
+            <span>⬇️</span>
+            <span>Download Maps</span>
+          </button>
+
           <label className="flex items-center gap-1 px-3 sm:px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] hover:from-[#ffaec9] hover:to-[#ff6b93] text-white text-xs font-bold cursor-pointer transition-all shadow-[0_2px_12px_rgba(255,77,128,0.25)] hover:scale-105">
             <span>{isImporting ? '⏳' : '🎀'}</span>
             <span className="hidden sm:inline">{isImporting ? 'Importing...' : 'Add Song (+)'}</span>
@@ -1131,19 +1278,31 @@ export default function AstroSongSelect({
                 >
                   Local
                 </button>
+                {currentUser && (
+                  <button
+                    onClick={() => { playHover(); setLeaderboardTab('online'); }}
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                      leaderboardTab === 'online' ? 'bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] text-white shadow-[0_2px_8px_rgba(255,77,128,0.25)]' : 'text-[#5b2a47] hover:text-[#ff4d80]'
+                    }`}
+                  >
+                    My Online
+                  </button>
+                )}
               </div>
             </div>
 
             {/* Scores List */}
             <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-1">
-              {isLoadingScores ? (
+              {isLoadingDisplayedScores ? (
                 <div className="text-center py-8 text-xs text-[#a8556f]">Loading leaderboard...</div>
-              ) : (leaderboardTab === 'global' ? leaderboardScores : localScores).length === 0 ? (
+              ) : displayedLeaderboardScores.length === 0 ? (
                 <div className="text-center py-8 text-xs text-[#a8556f]">
-                  No scores recorded for this difficulty yet. Be the first!
+                  {leaderboardTab === 'online'
+                    ? 'No online scores found for this map and difficulty on your account.'
+                    : 'No scores recorded for this difficulty yet. Be the first!'}
                 </div>
               ) : (
-                (leaderboardTab === 'global' ? leaderboardScores : localScores).map((s, idx) => (
+                displayedLeaderboardScores.map((s, idx) => (
                   <div
                     key={s.id || idx}
                     className="p-2.5 rounded-2xl bg-[#fff8fa] hover:bg-[#fff0f4] border border-[#f3dbe4] flex items-center justify-between gap-3 text-xs transition-colors"
@@ -1414,6 +1573,13 @@ export default function AstroSongSelect({
             icon: '⬇',
             onClick: () => handleExportBeatmap(contextMenu.beatmap)
           },
+          {
+            label: uploadingMapId === contextMenu.beatmap?.id
+              ? 'Uploading to online library...'
+              : 'Upload / update online library',
+            icon: '☁',
+            onClick: () => handleUploadServerMap(contextMenu.beatmap)
+          },
           { divider: true },
           {
             label: 'Delete from device (IndexedDB)',
@@ -1463,6 +1629,70 @@ export default function AstroSongSelect({
         confirmText={bulkDeleteConfirm.deleteFromServer ? `Delete ${bulkDeleteConfirm.count} from Server & Device` : `Delete ${bulkDeleteConfirm.count} beatmaps`}
         confirmVariant="danger"
       />
+
+      <Modal
+        isOpen={isDownloadMapsOpen}
+        onClose={() => setIsDownloadMapsOpen(false)}
+        title="Download Maps"
+        description="Download a published map and its available audio, cover, and video assets to this device."
+        maxWidth="max-w-3xl"
+      >
+        <div className="flex flex-col gap-3">
+          <input
+            type="search"
+            value={serverMapSearch}
+            onChange={(event) => setServerMapSearch(event.target.value)}
+            placeholder="Search online maps..."
+            aria-label="Search online maps"
+            className="w-full px-4 py-2 rounded-full bg-white border border-[#f3dbe4] focus:border-[#ff4d80] outline-none text-sm text-[#5b2a47] placeholder-[#a8556f]"
+          />
+
+          <div className="max-h-[55vh] min-h-32 overflow-y-auto custom-scrollbar flex flex-col gap-2">
+            {isLoadingServerMaps ? (
+              <p className="p-8 text-center text-xs text-[#a8556f]">Loading published maps...</p>
+            ) : filteredServerMaps.length > 0 ? (
+              filteredServerMaps.map((map) => {
+                const isDownloaded = beatmaps.some((beatmap) => beatmap.id === map.song_id);
+                return (
+                  <div
+                    key={map.song_id}
+                    className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-[#fff8fa] border border-[#f3dbe4]"
+                  >
+                    <div className="min-w-0">
+                      <div className="font-black text-[#5b2a47] truncate">{map.title || 'Untitled Map'}</div>
+                      <div className="text-[11px] text-[#a8556f] truncate">
+                        {map.artist || 'Unknown Artist'} · {map.creator || 'Mapper'}
+                      </div>
+                      <div className="mt-1 text-[10px] text-[#a8556f]">
+                        {map.difficulties?.length || 0} difficulties · {map.source || 'beatmap'}
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant={isDownloaded ? 'ghost' : 'primary'}
+                      disabled={downloadingMapId !== null}
+                      onClick={() => handleDownloadServerMap(map)}
+                      className="shrink-0"
+                    >
+                      {downloadingMapId === map.song_id
+                        ? 'Downloading...'
+                        : isDownloaded
+                          ? 'Download Again'
+                          : 'Download'}
+                    </Button>
+                  </div>
+                );
+              })
+            ) : (
+              <p className="p-8 text-center text-xs text-[#a8556f]">
+                {serverMaps.length === 0
+                  ? 'No published maps are available yet.'
+                  : 'No maps match your search.'}
+              </p>
+            )}
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         isOpen={isAddToCollectionOpen}

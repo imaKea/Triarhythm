@@ -7,6 +7,8 @@ import {
   inferDifficultyLevel,
   buildSongId,
   buildSongEntry,
+  songEntryToMapPayload,
+  buildSongEntryFromServerMap,
   parseFiles,
   importFiles
 } from '../src/core/parser/importService.js';
@@ -125,6 +127,52 @@ describe('buildSongEntry', () => {
 
   it('ném lỗi khi không có beatmap', () => {
     expect(() => buildSongEntry({ charts: [] })).toThrow(/beatmap/i);
+  });
+});
+
+describe('server map serialization', () => {
+  it('includes complete difficulty charts in map upload payloads', () => {
+    const chart = {
+      metadata: { title: 'Shared Song', difficultyName: 'Expert' },
+      notes: [{ type: 'tap', time: 100, lane: 2 }]
+    };
+    const entry = {
+      id: 'maimai_shared_song',
+      title: 'Shared Song',
+      artist: 'Artist',
+      creator: 'Mapper',
+      difficulties: [{ difficultyName: 'Expert', difficultyLevel: '10', noteCount: 1, beatmap: chart }],
+      beatmap: chart
+    };
+
+    expect(songEntryToMapPayload(entry).difficulties[0].beatmap).toEqual(chart);
+  });
+
+  it('rebuilds playable local map data from a server response and downloaded assets', () => {
+    const audio = new Blob(['audio']);
+    const chart = {
+      metadata: { difficultyName: 'Expert' },
+      notes: [{ type: 'tap', time: 100, lane: 2 }]
+    };
+    const entry = buildSongEntryFromServerMap({
+      song_id: 'maimai_shared_song',
+      title: 'Shared Song',
+      artist: 'Artist',
+      creator: 'Mapper',
+      source: 'maimai',
+      difficulties: [{ difficultyName: 'Expert', difficultyLevel: '10', beatmap: chart }]
+    }, { audio });
+
+    expect(entry.id).toBe('maimai_shared_song');
+    expect(entry.difficulties[0].beatmap.notes).toEqual(chart.notes);
+    expect(entry.audioBlob).toBe(audio);
+  });
+
+  it('explains that metadata-only legacy server maps cannot be downloaded for play', () => {
+    expect(() => buildSongEntryFromServerMap({
+      song_id: 'legacy-map',
+      difficulties: [{ difficultyName: 'Expert' }]
+    })).toThrow(/no chart data/i);
   });
 });
 

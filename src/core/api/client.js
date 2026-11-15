@@ -6,6 +6,35 @@
 const API_BASE =
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) || '/api';
 
+const ASSET_EXTENSIONS_BY_MIME = {
+  'audio/aac': 'aac',
+  'audio/flac': 'flac',
+  'audio/mpeg': 'mp3',
+  'audio/mp4': 'm4a',
+  'audio/ogg': 'ogg',
+  'audio/wav': 'wav',
+  'audio/x-flac': 'flac',
+  'audio/x-wav': 'wav',
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'video/mp4': 'mp4',
+  'video/quicktime': 'mov',
+  'video/webm': 'webm',
+  'video/x-matroska': 'mkv',
+};
+
+function assetFilename(asset, field) {
+  const name = typeof asset.name === 'string' ? asset.name : '';
+  if (/\.[a-z0-9]+$/i.test(name)) return name;
+
+  const extension = ASSET_EXTENSIONS_BY_MIME[asset.type];
+  if (!extension) {
+    throw new Error(`Could not determine a supported file extension for ${field}.`);
+  }
+  return `${name || field}.${extension}`;
+}
+
 class ApiClient {
   constructor() {
     this.token = typeof localStorage !== 'undefined' ? localStorage.getItem('triarhythm_api_token') : null;
@@ -99,6 +128,38 @@ class ApiClient {
     return await this.request(`/maps/${encodeURIComponent(songId)}`);
   }
 
+  resolveAssetUrl(assetUrl) {
+    if (!assetUrl) return null;
+    const appOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+    const apiOrigin = new URL(API_BASE, appOrigin).origin;
+    const url = new URL(assetUrl, apiOrigin);
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      throw new Error('Map asset URL must use HTTP or HTTPS.');
+    }
+    return url.toString();
+  }
+
+  async fetchAssetBlob(assetUrl) {
+    const resolvedUrl = this.resolveAssetUrl(assetUrl);
+    if (!resolvedUrl) return null;
+    const url = new URL(resolvedUrl);
+
+    const headers = {};
+    const token = this.getToken();
+    const appOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+    const apiOrigin = new URL(API_BASE, appOrigin).origin;
+    if (url.origin !== apiOrigin) {
+      throw new Error('Map asset is hosted outside the configured game server.');
+    }
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const response = await fetch(url, { headers });
+    if (!response.ok) {
+      throw new Error(`Could not download map asset (HTTP ${response.status}).`);
+    }
+    return response.blob();
+  }
+
   async saveMap(mapData) {
     return await this.request('/maps', {
       method: 'POST',
@@ -112,9 +173,9 @@ class ApiClient {
    */
   async uploadMapAssets(songId, { audio, background, video } = {}) {
     const form = new FormData();
-    if (audio) form.append('audio', audio, audio.name || 'audio');
-    if (background) form.append('background', background, background.name || 'background');
-    if (video) form.append('video', video, video.name || 'video');
+    if (audio) form.append('audio', audio, assetFilename(audio, 'audio'));
+    if (background) form.append('background', background, assetFilename(background, 'background'));
+    if (video) form.append('video', video, assetFilename(video, 'video'));
 
     const headers = { Accept: 'application/json' };
     const token = this.getToken();
@@ -163,8 +224,10 @@ class ApiClient {
     });
   }
 
-  async getUserScores(userId) {
-    return await this.request(`/scores/user/${userId}`);
+  async getUserScores(userId, filters = {}) {
+    const params = new URLSearchParams(filters);
+    const query = params.toString();
+    return await this.request(`/scores/user/${encodeURIComponent(userId)}${query ? `?${query}` : ''}`);
   }
 
   // --- LEADERBOARDS ---
@@ -256,4 +319,16 @@ class ApiClient {
 }
 
 export const apiClient = new ApiClient();
+
+if (!apiClient.resolveAssetUrl) {
+  apiClient.resolveAssetUrl = function (assetUrl) {
+    return ApiClient.prototype.resolveAssetUrl.call(this, assetUrl);
+  };
+}
+if (!apiClient.fetchAssetBlob) {
+  apiClient.fetchAssetBlob = function (assetUrl) {
+    return ApiClient.prototype.fetchAssetBlob.call(this, assetUrl);
+  };
+}
+
 export default apiClient;

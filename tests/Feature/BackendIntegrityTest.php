@@ -98,6 +98,65 @@ class BackendIntegrityTest extends TestCase
         $this->assertSame(1, (int)$map->fresh()->play_count);
     }
 
+    public function test_user_scores_can_be_filtered_to_a_map_and_difficulty(): void
+    {
+        [$user] = $this->createUser();
+        $map = $this->createMap($user);
+
+        foreach ([
+            [$map->song_id, 'Expert'],
+            [$map->song_id, 'Master'],
+            ['another_map', 'Expert'],
+        ] as [$songId, $difficulty]) {
+            Score::create([
+                'user_id' => $user->id,
+                'song_id' => $songId,
+                'difficulty_name' => $difficulty,
+                'score' => 950000,
+                'accuracy' => 95,
+                'max_combo' => 100,
+                'rank' => 'S',
+            ]);
+        }
+
+        $this->getJson("/api/scores/user/{$user->id}?song_id={$map->song_id}&difficulty_name=Expert")
+            ->assertOk()
+            ->assertJsonCount(1, 'scores')
+            ->assertJsonPath('scores.0.song_id', $map->song_id)
+            ->assertJsonPath('scores.0.difficulty_name', 'Expert');
+    }
+
+    public function test_map_upload_keeps_charts_for_download_but_omits_them_from_library_listing(): void
+    {
+        [, $token] = $this->createUser();
+        $songId = 'shared_map_' . Str::random(8);
+        $chart = [
+            'metadata' => ['difficultyName' => 'Expert'],
+            'notes' => [['type' => 'tap', 'time' => 100, 'lane' => 2]],
+        ];
+
+        $this->withHeader('Authorization', "Bearer {$token}")
+            ->postJson('/api/maps', [
+                'song_id' => $songId,
+                'title' => 'Shared Map',
+                'difficulties' => [[
+                    'difficultyName' => 'Expert',
+                    'difficultyLevel' => '10',
+                    'noteCount' => 1,
+                    'beatmap' => $chart,
+                ]],
+            ])
+            ->assertCreated();
+
+        $this->getJson("/api/maps/{$songId}")
+            ->assertOk()
+            ->assertJsonPath('map.difficulties.0.beatmap.notes.0.type', 'tap');
+
+        $this->getJson('/api/maps')
+            ->assertOk()
+            ->assertJsonMissingPath('maps.0.difficulties.0.beatmap');
+    }
+
     public function test_non_owner_cannot_replace_map_metadata_or_assets(): void
     {
         [$owner, $ownerToken] = $this->createUser();
