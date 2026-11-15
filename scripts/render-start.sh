@@ -3,9 +3,10 @@ set -e
 
 echo "=== Starting Triarhythm Backend on Render ==="
 
-# Run database migrations against TiDB Cloud
+# Run database migrations against TiDB Cloud and seed default data
 echo "Running database migrations..."
 php artisan migrate --force || true
+php artisan db:seed --force || true
 
 # Cache configs and routes
 php artisan config:cache || true

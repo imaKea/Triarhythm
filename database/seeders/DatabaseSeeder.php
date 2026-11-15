@@ -16,22 +16,24 @@ class DatabaseSeeder extends Seeder
         // 1. Tạo các tài khoản mẫu
         $adminToken = env('ADMIN_API_TOKEN', Str::random(40));
 
+        // Tài khoản Admin mặc định theo yêu cầu: Admin / 123456
         $admin = User::firstOrCreate(
-            ['username' => 'admin'],
+            ['username' => 'Admin'],
             [
                 'name' => 'Triarhythm Admin',
                 'email' => 'admin@triarhythm.com',
-                'password' => Hash::make('password123'),
+                'password' => Hash::make('123456'),
                 'role' => 'admin',
-                'avatar' => 'https://api.dicebear.com/7.x/bottts/svg?seed=admin',
-                'rating' => 14.85,
-                'total_pp' => 780.20,
-                'total_score' => 12450000,
-                'play_count' => 142,
+                'avatar' => 'https://api.dicebear.com/7.x/bottts/svg?seed=Admin',
+                'rating' => 16.00,
+                'total_pp' => 1200.00,
+                'total_score' => 20000000,
+                'play_count' => 500,
                 'api_token' => hash('sha256', $adminToken),
             ]
         );
         $admin->role = 'admin';
+        $admin->password = Hash::make('123456');
         $admin->save();
 
         $pro = User::firstOrCreate(
