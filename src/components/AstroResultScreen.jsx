@@ -160,6 +160,8 @@ export default function AstroResultScreen({
   initialChart,
   currentUser,
   isAutoplay = false,
+  onOpenAuth,
+  onRetryScoreSubmit,
   onRetry,
   onReplay,
   onBack
@@ -262,6 +264,8 @@ export default function AstroResultScreen({
   const diffName = initialChart?.difficultyName || beatmap?.metadata?.difficultyName || 'Normal';
   const creator = beatmap?.metadata?.creator || initialChart?.creator || 'Triarhythm Mapper';
   const coverUrl = initialChart?.backgroundSource || initialChart?.serverAssets?.coverUrl || initialChart?.coverUrl;
+  const syncReason = String(result?.sync?.reason || '');
+  const needsLogin = !currentUser || /401|unauthor|sign.?in|log.?in|đăng nhập|phiên/i.test(syncReason);
 
   const counts = result?.counts || {
     criticalPerfect: 0,
@@ -447,15 +451,6 @@ export default function AstroResultScreen({
                       {pbComparison.ppDiff >= 0 ? `+${pbComparison.ppDiff.toFixed(0)}pp` : `${pbComparison.ppDiff.toFixed(0)}pp`}
                     </div>
                   )}
-                  {result?.sync && (
-                    <div className={`mt-3 text-[10px] font-mono ${result.sync.synced ? 'text-emerald-700' : 'text-amber-700'}`}>
-                      {result.sync.localSaved
-                        ? result.sync.synced
-                          ? 'Saved on this device and synced to leaderboard.'
-                          : `Saved on this device; leaderboard sync failed: ${result.sync.reason || 'unknown error'}`
-                        : `Score could not be saved: ${result.sync.reason || 'unknown error'}`}
-                    </div>
-                  )}
                 </div>
               </div>
             ) : (
@@ -466,6 +461,42 @@ export default function AstroResultScreen({
               </div>
             )}
           </div>
+
+          {!isAutoplay && result?.sync && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="w-full bg-white/95 border border-[#f3dbe4] rounded-3xl p-4 shadow-sm"
+            >
+              <p className={`text-xs font-bold ${
+                result.sync.synced ? 'text-emerald-700' : result.sync.syncing ? 'text-[#5b2a47]' : 'text-amber-700'
+              }`}>
+                {result.sync.syncing
+                  ? 'Saving score and submitting it to the leaderboard...'
+                  : result.sync.synced
+                    ? `Score synced to the leaderboard${result.sync.rankPosition ? ` (rank #${result.sync.rankPosition})` : ''}.`
+                    : result.sync.reason === 'login-required'
+                      ? 'Sign in to submit this score to the online leaderboard.'
+                      : result.sync.localSaved
+                        ? `Saved on this device, but leaderboard sync failed: ${result.sync.reason || 'unknown error'}`
+                        : `Score could not be saved: ${result.sync.reason || 'unknown error'}`}
+              </p>
+              {!result.sync.synced && !result.sync.syncing && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {needsLogin && onOpenAuth && (
+                    <Button size="sm" variant="primary" onClick={onOpenAuth}>
+                      Sign in to submit
+                    </Button>
+                  )}
+                  {onRetryScoreSubmit && (
+                    <Button size="sm" variant="ghost" onClick={onRetryScoreSubmit}>
+                      Retry upload
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Right Column (7 Cols): PP Breakdown, Judgements Grid, UR Histogram */}

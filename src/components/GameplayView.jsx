@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { GameEngine, gameEvents, audioEngine } from '../core/engine/index.js';
 import { SAMPLE_BEATMAP } from '../core/beatmap/sampleChart.js';
 import { parseOsu } from '../core/parser/index.js';
-import { buildScoreRecord, persistScoreResult } from '../core/storage/scoreService.js';
+import { buildScoreRecord, persistScoreResult, syncScoreResult } from '../core/storage/scoreService.js';
 import { calculateStars, calculatePP } from '../core/pp/ppCalculator.js';
 import { normalizeMaimaiCategory, calculateMaimaiRating } from '../core/beatmap/maimaiDifficulty.js';
 import { Button, StarRating, DifficultyBadge, RankBadge, playHover, playClick, playBack } from '../ui/index.js';
@@ -14,6 +14,7 @@ export default function GameplayView({
   currentUser = null,
   onBackToSelect = null,
   onOpenSettings = null,
+  onOpenAuth = null,
   onUploadFiles = null
 }) {
   const containerRef = useRef(null);
@@ -22,6 +23,8 @@ export default function GameplayView({
   const videoObjectUrlRef = useRef(null);
   const engineRef = useRef(null);
   const currentUserRef = useRef(currentUser);
+  const pendingScoreRecordRef = useRef(null);
+  const scoreSyncInProgressRef = useRef(false);
 
   useEffect(() => {
     currentUserRef.current = currentUser;
@@ -217,22 +220,30 @@ export default function GameplayView({
           stars,
           pp
         });
+        pendingScoreRecordRef.current = record;
 
-        setGameResult({ ...summary, score: record.score, stars, pp });
+        setGameResult({
+          ...summary,
+          score: record.score,
+          stars,
+          pp,
+          sync: { synced: false, localSaved: false, syncing: true }
+        });
 
         const persisted = await persistScoreResult(record);
         setGameResult((prev) => (prev ? {
           ...prev,
           sync: {
             ...persisted.mysql,
-            localSaved: persisted.localId !== null && persisted.localId !== undefined
+            localSaved: persisted.localId !== null && persisted.localId !== undefined,
+            syncing: false
           }
         } : prev));
       } catch (err) {
         console.warn('Lỗi lưu điểm số:', err);
         setGameResult((prev) => (prev ? {
           ...prev,
-          sync: { synced: false, localSaved: false, reason: err.message }
+          sync: { synced: false, localSaved: false, syncing: false, reason: err.message }
         } : prev));
       }
     });
@@ -457,6 +468,7 @@ export default function GameplayView({
 
   const handleStartGame = async () => {
     if (!engineRef.current) return;
+    pendingScoreRecordRef.current = null;
     setGameResult(null);
     setIsPaused(false);
     setIsPlaying(true);
@@ -472,6 +484,40 @@ export default function GameplayView({
 
     const withCountdown = (settings?.enableStartCountdown ?? settings?.countdownBeforeStart) !== false;
     await engineRef.current.start(0, withCountdown);
+  };
+
+  const handleRetryScoreSubmit = async () => {
+    const record = pendingScoreRecordRef.current;
+    if (!record || scoreSyncInProgressRef.current) return;
+
+    scoreSyncInProgressRef.current = true;
+    setGameResult((prev) => prev ? {
+      ...prev,
+      sync: { ...prev.sync, syncing: true }
+    } : prev);
+    try {
+      const mysql = await syncScoreResult(record);
+      setGameResult((prev) => prev ? {
+        ...prev,
+        sync: {
+          ...mysql,
+          localSaved: prev.sync?.localSaved ?? false,
+          syncing: false
+        }
+      } : prev);
+    } catch (error) {
+      setGameResult((prev) => prev ? {
+        ...prev,
+        sync: {
+          synced: false,
+          localSaved: prev.sync?.localSaved ?? false,
+          syncing: false,
+          reason: error.message || 'score-sync-failed'
+        }
+      } : prev);
+    } finally {
+      scoreSyncInProgressRef.current = false;
+    }
   };
 
   const handlePauseToggle = () => {
@@ -544,7 +590,7 @@ export default function GameplayView({
         />
       </div>
 
-      {/* 2. TOP HUD: Left Song Info + Right Score & Accuracy */}
+      {/* 2. TOP HUD: Header cố định phía trên, không che các nút bấm của canvas */}
       <div className="h-12 sm:h-14 px-2.5 sm:px-5 flex items-center justify-between z-20 shrink-0 bg-gradient-to-b from-[#090912]/95 to-transparent">
         {/* Left: Back + Pause + Settings + Fullscreen + Map Info */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
@@ -840,6 +886,8 @@ export default function GameplayView({
             initialChart={initialChart}
             currentUser={currentUser}
             isAutoplay={isAutoplay}
+            onOpenAuth={onOpenAuth}
+            onRetryScoreSubmit={handleRetryScoreSubmit}
             onRetry={handleRetry}
             onReplay={handleReplay}
             onBack={() => {

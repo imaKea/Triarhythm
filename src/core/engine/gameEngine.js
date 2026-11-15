@@ -1222,9 +1222,9 @@ export class GameEngine {
 
   /**
    * Xác định Lane gần nhất theo tọa độ pixel canvas với Hitbox mở rộng cho mobile chuẩn AstroDX / Maimai:
-   * 1. Ưu tiên điểm chạm trực tiếp vào nút hoặc gần nút.
-   * 2. Mở rộng vùng cảm ứng theo cánh quạt (Radial Sector) từ vòng trong kéo dài ra tới tận mép màn hình.
-   * 3. Vùng tâm (Center Touch / Ring zone) bán kính < 0.38 * scale không nhận lane để kích hoạt nốt Ring.
+   * 1. Hitbox trực tiếp quanh mỗi nút bấm mở rộng thoải mái (>= 90px hoặc 2.8x bán kính nút).
+   * 2. Phân vùng cánh quạt (Radial Sector) mở rộng từ 0.32 * scale ra đến tận mép màn hình.
+   * 3. Vùng tâm (Center Touch / Ring zone) bán kính < 0.32 * scale dành riêng cho nốt Ring / Center Touch.
    */
   getLaneAtPos(px, py, width, height) {
     const originPix = layoutToPixels(TRI_RING_LAYOUT.origin.x, TRI_RING_LAYOUT.origin.y, width, height);
@@ -1244,8 +1244,9 @@ export class GameEngine {
       }
     }
 
-    // Nếu bấm rất gần tâm nút (<= laneRadiusPx * 2.2 hoặc <= 75px), kích hoạt ngay lane đó
-    if (closestDirectLane !== -1 && minDirectDist <= Math.max(laneRadiusPx * 2.2, 75)) {
+    // Nếu bấm trong phạm vi mở rộng quanh nút (<= 90px hoặc 2.8x bán kính nút), kích hoạt ngay lane đó
+    const directHitRadius = Math.max(laneRadiusPx * 2.8, 90);
+    if (closestDirectLane !== -1 && minDirectDist <= directHitRadius) {
       return closestDirectLane;
     }
 
@@ -1254,9 +1255,9 @@ export class GameEngine {
     const dy = py - originPix.y;
     const distFromOrigin = Math.hypot(dx, dy);
 
-    // Vùng tâm (Center Touch / Ring zone): bán kính nhỏ hơn 0.38 * scale
-    // Không nhận diện là lane để nhường cho nốt Ring / Center Touch
-    const innerRingRadius = 0.38 * scale;
+    // Vùng tâm (Center Touch / Ring zone nhỏ ở giữa): < 0.32 * scale
+    // Đảm bảo không nhận nhầm lane để nhường cho nốt Ring / Center Touch
+    const innerRingRadius = 0.32 * scale;
     if (distFromOrigin < innerRingRadius) {
       return null;
     }

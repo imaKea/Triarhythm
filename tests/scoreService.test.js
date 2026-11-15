@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
   buildScoreRecord,
-  persistScoreResult
+  persistScoreResult,
+  syncScoreResult
 } from '../src/core/storage/scoreService.js';
 
 const summary = {
@@ -163,5 +164,32 @@ describe('persistScoreResult', () => {
 
   it('ném lỗi khi record không hợp lệ', async () => {
     await expect(persistScoreResult(null)).rejects.toThrow(/Record/i);
+  });
+
+  it('requires an authenticated token before submitting to the online leaderboard', async () => {
+    const api = {
+      getToken: vi.fn(() => null),
+      submitScore: vi.fn()
+    };
+
+    await expect(syncScoreResult(buildScoreRecord({ summary, chart }), { api })).resolves.toEqual({
+      synced: false,
+      reason: 'login-required'
+    });
+    expect(api.submitScore).not.toHaveBeenCalled();
+  });
+
+  it('retries online submission without saving a duplicate local record', async () => {
+    const api = {
+      getToken: vi.fn(() => 'valid-token'),
+      submitScore: vi.fn(async () => ({ rank_position: 2 }))
+    };
+
+    await expect(syncScoreResult(buildScoreRecord({ summary, chart }), { api })).resolves.toEqual({
+      synced: true,
+      rankPosition: 2,
+      user: null
+    });
+    expect(api.submitScore).toHaveBeenCalledOnce();
   });
 });

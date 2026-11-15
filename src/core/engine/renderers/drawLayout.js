@@ -81,7 +81,7 @@ export function drawPlayfield(renderer, gameState, width, height, scale, travelT
   // 3b. Vùng Hitbox cánh quạt (Radial Sector Hitbox) chuẩn AstroDX / Maimai Mobile
   const sectors = TRI_RING_LAYOUT.sectors;
   if (sectors) {
-    const innerSectorR = 0.38 * scale;
+    const innerSectorR = 0.35 * scale;
     const outerSectorR = Math.max(width, height) * 0.95;
 
     ctx.save();

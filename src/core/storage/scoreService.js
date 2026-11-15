@@ -75,6 +75,35 @@ function toMysqlPayload(record) {
   };
 }
 
+export async function syncScoreResult(record, deps = {}) {
+  const api = deps.api || apiClient;
+
+  if (!record || typeof record !== 'object') {
+    throw new Error('Invalid score record.');
+  }
+
+  if (record.isAutoplay) {
+    return { synced: false, reason: 'autoplay-disabled' };
+  }
+
+  const canSync = deps.sync !== false && (typeof window !== 'undefined' || Boolean(deps.api));
+  if (!canSync) return { synced: false, reason: 'not-attempted' };
+  if (typeof api.getToken === 'function' && !api.getToken()) {
+    return { synced: false, reason: 'login-required' };
+  }
+
+  try {
+    const res = await api.submitScore(toMysqlPayload(record));
+    return {
+      synced: true,
+      rankPosition: res?.rank_position ?? null,
+      user: res?.user ?? null
+    };
+  } catch (err) {
+    return { synced: false, reason: err?.message || 'mysql-sync-failed' };
+  }
+}
+
 /**
  * Lưu điểm vào IndexedDB rồi đồng bộ lên MySQL.
  * `deps` cho phép inject fake DB / fake API trong unit test.
@@ -83,7 +112,6 @@ function toMysqlPayload(record) {
  */
 export async function persistScoreResult(record, deps = {}) {
   const db = deps.db || dbManager;
-  const api = deps.api || apiClient;
 
   if (!record || typeof record !== 'object') {
     throw new Error('Invalid score record.');
@@ -97,23 +125,6 @@ export async function persistScoreResult(record, deps = {}) {
   }
 
   const localId = await db.saveScore(record);
-
-  // Chỉ gọi API khi ở trình duyệt, hoặc khi test inject API giả.
-  const canSync = deps.sync !== false && (typeof window !== 'undefined' || Boolean(deps.api));
-  let mysql = { synced: false, reason: 'not-attempted' };
-
-  if (canSync) {
-    try {
-      const res = await api.submitScore(toMysqlPayload(record));
-      mysql = {
-        synced: true,
-        rankPosition: res?.rank_position ?? null,
-        user: res?.user ?? null
-      };
-    } catch (err) {
-      mysql = { synced: false, reason: err?.message || 'mysql-sync-failed' };
-    }
-  }
-
+  const mysql = await syncScoreResult(record, deps);
   return { localId, mysql };
 }

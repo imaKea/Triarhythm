@@ -51,6 +51,14 @@ export default function AstroSongSelect({
   // Context menu & Confirm dialog state
   const [contextMenu, setContextMenu] = useState({ isOpen: false, x: 0, y: 0, beatmap: null });
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, beatmap: null, deleteFromServer: false });
+  const [collections, setCollections] = useState([]);
+  const [activeCollectionId, setActiveCollectionId] = useState(null);
+  const [isCollectionsOpen, setIsCollectionsOpen] = useState(false);
+  const [isAddToCollectionOpen, setIsAddToCollectionOpen] = useState(false);
+  const [collectionTargetBeatmap, setCollectionTargetBeatmap] = useState(null);
+  const [newCollectionName, setNewCollectionName] = useState('');
+  const [isSavingCollection, setIsSavingCollection] = useState(false);
+  const [collectionDeleteConfirm, setCollectionDeleteConfirm] = useState(null);
 
   // Chế độ chọn hàng loạt & Bulk Delete
   const [isSelectMode, setIsSelectMode] = useState(false);
@@ -66,10 +74,15 @@ export default function AstroSongSelect({
 
   const audioRef = useRef(null);
   const carouselRef = useRef(null);
+  const activeCollection = collections.find((collection) => collection.id === activeCollectionId) || null;
 
   // Parse advanced search query: free text + 'stars>5', 'bpm<200', 'artist=xyz', 'creator=xyz'
   const filteredBeatmaps = useMemo(() => {
     let list = [...beatmaps];
+    if (activeCollectionId) {
+      const activeIds = collections.find((collection) => collection.id === activeCollectionId)?.beatmapIds || [];
+      list = list.filter((beatmap) => activeIds.includes(beatmap.id));
+    }
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -141,9 +154,11 @@ export default function AstroSongSelect({
     });
 
     return list;
-  }, [beatmaps, searchQuery, sortBy]);
+  }, [beatmaps, searchQuery, sortBy, collections, activeCollectionId]);
 
-  const current = selectedBeatmap || filteredBeatmaps[0] || null;
+  const current = activeCollectionId
+    ? filteredBeatmaps.find((beatmap) => beatmap.id === selectedBeatmap?.id) || filteredBeatmaps[0] || null
+    : selectedBeatmap || filteredBeatmaps[0] || null;
 
   // Extract difficulty list from current beatmap set (excluding Utage per Maimai rules)
   const diffList = useMemo(() => {
@@ -421,6 +436,106 @@ export default function AstroSongSelect({
     } finally {
       setIsImporting(false);
       e.target.value = '';
+    }
+  };
+
+  const refreshCollections = async () => {
+    const savedCollections = await dbManager.getAllCollections();
+    setCollections(savedCollections);
+    return savedCollections;
+  };
+
+  const handleOpenCollections = async () => {
+    try {
+      await refreshCollections();
+      setIsCollectionsOpen(true);
+    } catch (error) {
+      toast.error(`Could not load collections: ${error.message}`);
+    }
+  };
+
+  const handleOpenAddToCollection = async (bm) => {
+    try {
+      await refreshCollections();
+      setCollectionTargetBeatmap(bm);
+      setNewCollectionName('');
+      setIsAddToCollectionOpen(true);
+    } catch (error) {
+      toast.error(`Could not load collections: ${error.message}`);
+    }
+  };
+
+  const handleAddToCollection = async (collectionId) => {
+    if (!collectionTargetBeatmap) return;
+    setIsSavingCollection(true);
+    try {
+      const result = await dbManager.addBeatmapToCollection(collectionId, collectionTargetBeatmap.id);
+      if (!result) {
+        toast.error('That collection no longer exists.');
+        await refreshCollections();
+        return;
+      }
+      await refreshCollections();
+      setIsAddToCollectionOpen(false);
+      toast[result.added ? 'success' : 'info'](
+        result.added
+          ? `Added "${collectionTargetBeatmap.title || 'Beatmap'}" to "${result.collection.name}".`
+          : `That beatmap is already in "${result.collection.name}".`
+      );
+    } catch (error) {
+      toast.error(`Could not add beatmap to collection: ${error.message}`);
+    } finally {
+      setIsSavingCollection(false);
+    }
+  };
+
+  const handleCreateCollection = async () => {
+    if (!collectionTargetBeatmap) return;
+    const name = newCollectionName.trim();
+    if (!name) {
+      toast.info('Enter a name for the new collection.');
+      return;
+    }
+    if (collections.some((collection) => collection.name.trim().toLowerCase() === name.toLowerCase())) {
+      toast.info('A collection with that name already exists. Choose it from the list instead.');
+      return;
+    }
+
+    setIsSavingCollection(true);
+    try {
+      const collection = await dbManager.createCollection(name, collectionTargetBeatmap.id);
+      await refreshCollections();
+      setIsAddToCollectionOpen(false);
+      toast.success(`Created "${collection.name}" and added the beatmap.`);
+    } catch (error) {
+      toast.error(`Could not create collection: ${error.message}`);
+    } finally {
+      setIsSavingCollection(false);
+    }
+  };
+
+  const handleRemoveFromCollection = async (bm) => {
+    if (!activeCollection || !bm) return;
+    try {
+      const removed = await dbManager.removeBeatmapFromCollection(activeCollection.id, bm.id);
+      await refreshCollections();
+      if (removed) toast.success(`Removed "${bm.title || 'Beatmap'}" from "${activeCollection.name}".`);
+    } catch (error) {
+      toast.error(`Could not remove beatmap from collection: ${error.message}`);
+    }
+  };
+
+  const handleDeleteCollection = async () => {
+    if (!collectionDeleteConfirm) return;
+    try {
+      await dbManager.deleteCollection(collectionDeleteConfirm.id);
+      if (activeCollectionId === collectionDeleteConfirm.id) setActiveCollectionId(null);
+      await refreshCollections();
+      toast.success(`Deleted collection "${collectionDeleteConfirm.name}".`);
+    } catch (error) {
+      toast.error(`Could not delete collection: ${error.message}`);
+    } finally {
+      setCollectionDeleteConfirm(null);
     }
   };
 
@@ -718,6 +833,16 @@ export default function AstroSongSelect({
 
       {/* TOP BAR: Search + Filters + Sort */}
       <div className="min-h-12 py-2 px-3 sm:px-6 bg-[#fffafc]/85 backdrop-blur-md border-b border-[#f3dbe4] flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 sm:gap-4 shrink-0 z-20 shadow-sm">
+        {activeCollection && (
+          <button
+            type="button"
+            onClick={() => setActiveCollectionId(null)}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-[#fff0f5] text-[#5b2a47] hover:text-[#ff4d80] border border-[#f3dbe4] text-xs font-bold cursor-pointer shrink-0"
+            title="Return to all beatmaps"
+          >
+            ← <span className="max-w-32 truncate">{activeCollection.name}</span>
+          </button>
+        )}
         {/* Search with syntax hints */}
         <div className="relative flex-1 min-w-[180px] max-w-md">
           <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#ff4d80] text-xs">🐰</span>
@@ -781,6 +906,16 @@ export default function AstroSongSelect({
           >
             <span>🗑️</span>
             <span className="hidden sm:inline">Trash 🐰</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleOpenCollections}
+            className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full bg-white hover:bg-[#fff0f4] text-[#5b2a47] hover:text-[#ff4d80] text-xs font-bold transition-all border border-[#f3dbe4] hover:border-[#ff85a2] cursor-pointer hover:scale-105 shadow-sm"
+            title="View your beatmap collections"
+          >
+            <span>📚</span>
+            <span>Collections ({collections.length})</span>
           </button>
 
           <label className="flex items-center gap-1 px-3 sm:px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] hover:from-[#ffaec9] hover:to-[#ff6b93] text-white text-xs font-bold cursor-pointer transition-all shadow-[0_2px_12px_rgba(255,77,128,0.25)] hover:scale-105">
@@ -1190,6 +1325,13 @@ export default function AstroSongSelect({
               </div>
             );
           })}
+          {filteredBeatmaps.length === 0 && (
+            <div className="p-8 text-center rounded-3xl bg-white/90 border border-[#f3dbe4] text-sm font-bold text-[#a8556f]">
+              {activeCollection
+                ? `No available beatmaps in "${activeCollection.name}". Add maps by right-clicking them from All Songs.`
+                : 'No beatmaps match your search.'}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1253,6 +1395,16 @@ export default function AstroSongSelect({
               }
             }
           },
+          {
+            label: 'Add to collection...',
+            icon: '📚',
+            onClick: () => handleOpenAddToCollection(contextMenu.beatmap)
+          },
+          ...(activeCollection ? [{
+            label: `Remove from "${activeCollection.name}"`,
+            icon: '➖',
+            onClick: () => handleRemoveFromCollection(contextMenu.beatmap)
+          }] : []),
           { divider: true },
           {
             label: contextMenu.beatmap?.source === 'maimai'
@@ -1309,6 +1461,135 @@ export default function AstroSongSelect({
         title="Confirm Bulk Delete?"
         message={`Are you sure you want to delete ${bulkDeleteConfirm.count} beatmaps? They will be moved to temporary Trash and can be undone immediately (Ctrl+Z).`}
         confirmText={bulkDeleteConfirm.deleteFromServer ? `Delete ${bulkDeleteConfirm.count} from Server & Device` : `Delete ${bulkDeleteConfirm.count} beatmaps`}
+        confirmVariant="danger"
+      />
+
+      <Modal
+        isOpen={isAddToCollectionOpen}
+        onClose={() => setIsAddToCollectionOpen(false)}
+        title="Add to Collection"
+        description={`Choose a collection for "${collectionTargetBeatmap?.title || 'this beatmap'}", or create a new one.`}
+        maxWidth="max-w-xl"
+      >
+        <div className="flex flex-col gap-5">
+          <section>
+            <h3 className="text-xs font-black uppercase tracking-wide text-[#a8556f] mb-2">
+              Add to an existing collection
+            </h3>
+            {collections.length > 0 ? (
+              <div className="max-h-48 overflow-y-auto custom-scrollbar flex flex-col gap-2">
+                {collections.map((collection) => (
+                  <button
+                    key={collection.id}
+                    type="button"
+                    disabled={isSavingCollection}
+                    onClick={() => handleAddToCollection(collection.id)}
+                    className="w-full flex items-center justify-between gap-3 p-3 rounded-2xl bg-[#fff8fa] border border-[#f3dbe4] hover:border-[#ff85a2] hover:bg-[#fff0f4] text-left transition-colors disabled:opacity-50"
+                  >
+                    <span className="font-bold text-[#5b2a47] truncate">{collection.name}</span>
+                    <span className="text-[11px] text-[#a8556f] shrink-0">
+                      {collection.beatmapIds?.length || 0} maps
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="p-3 rounded-2xl bg-[#fff8fa] text-xs text-[#a8556f]">
+                You don't have any collections yet.
+              </p>
+            )}
+          </section>
+
+          <section className="pt-4 border-t border-[#f3dbe4]">
+            <h3 className="text-xs font-black uppercase tracking-wide text-[#a8556f] mb-2">
+              Or create a new collection
+            </h3>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                handleCreateCollection();
+              }}
+              className="flex flex-col sm:flex-row gap-2"
+            >
+              <input
+                type="text"
+                value={newCollectionName}
+                onChange={(event) => setNewCollectionName(event.target.value)}
+                maxLength={60}
+                placeholder="Collection name"
+                aria-label="New collection name"
+                className="flex-1 min-w-0 px-4 py-2 rounded-full bg-white border border-[#f3dbe4] focus:border-[#ff4d80] outline-none text-sm text-[#5b2a47] placeholder-[#a8556f]"
+              />
+              <Button type="submit" variant="primary" disabled={isSavingCollection || !newCollectionName.trim()}>
+                {isSavingCollection ? 'Saving...' : 'Create & Add'}
+              </Button>
+            </form>
+          </section>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={isCollectionsOpen}
+        onClose={() => setIsCollectionsOpen(false)}
+        title="My Collections"
+        description="Open a collection to browse and play only the beatmaps you added."
+        maxWidth="max-w-2xl"
+      >
+        <div className="flex flex-col gap-2">
+          {collections.length > 0 ? (
+            collections.map((collection) => {
+              const mapCount = (collection.beatmapIds || []).filter((id) =>
+                beatmaps.some((beatmap) => beatmap.id === id)
+              ).length;
+              return (
+                <div
+                  key={collection.id}
+                  className="flex items-center gap-2 p-3 rounded-2xl bg-[#fff8fa] border border-[#f3dbe4]"
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playSelect();
+                      setSearchQuery('');
+                      setActiveCollectionId(collection.id);
+                      const firstMap = beatmaps.find((beatmap) => collection.beatmapIds?.includes(beatmap.id));
+                      if (firstMap) onSelectBeatmap(firstMap);
+                      setIsCollectionsOpen(false);
+                    }}
+                    className="flex-1 min-w-0 text-left cursor-pointer"
+                  >
+                    <span className="block font-black text-[#5b2a47] truncate">{collection.name}</span>
+                    <span className="block mt-0.5 text-[11px] text-[#a8556f]">
+                      {mapCount} {mapCount === 1 ? 'beatmap' : 'beatmaps'}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCollectionDeleteConfirm(collection)}
+                    aria-label={`Delete collection ${collection.name}`}
+                    title="Delete collection"
+                    className="w-9 h-9 rounded-full border border-[#f3dbe4] text-[#e94267] hover:bg-[#ffeef2] cursor-pointer shrink-0"
+                  >
+                    🗑
+                  </button>
+                </div>
+              );
+            })
+          ) : (
+            <div className="p-8 text-center rounded-2xl bg-[#fff8fa] text-xs text-[#a8556f]">
+              No collections yet. Right-click a beatmap and choose “Add to collection...” to create one.
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      <ConfirmDialog
+        isOpen={Boolean(collectionDeleteConfirm)}
+        onClose={() => setCollectionDeleteConfirm(null)}
+        onConfirm={handleDeleteCollection}
+        title="Delete Collection?"
+        message={`Delete "${collectionDeleteConfirm?.name || ''}"? The beatmaps themselves will not be deleted.`}
+        confirmText="Delete Collection"
         confirmVariant="danger"
       />
 

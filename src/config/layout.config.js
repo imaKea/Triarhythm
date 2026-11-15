@@ -140,7 +140,7 @@ export function normalizeAngle(angle) {
 
 /**
  * Tính toán ma trận biến đổi fit vào vùng bao [-1.2, 1.2] x [-0.8, 1.35]
- * Giữ nguyên tỉ lệ khung hình (aspect ratio)
+ * Giữ nguyên tỉ lệ khung hình (aspect ratio) chuẩn, đảm bảo layout vừa vặn mọi màn hình mobile
  */
 export function getLayoutMetrics(width, height) {
   const b = TRI_RING_LAYOUT.bounds;

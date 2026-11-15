@@ -289,6 +289,7 @@ export default function App() {
             currentUser={currentUser}
             onBackToSelect={() => setCurrentScreen('SONG_SELECT')}
             onOpenSettings={() => setIsSettingsOpen(true)}
+            onOpenAuth={() => setIsAuthOpen(true)}
             onUploadFiles={processFiles}
           />
         )}

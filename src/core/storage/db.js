@@ -4,7 +4,7 @@
  */
 
 const DB_NAME = 'TriarhythmDB';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 function waitForTransaction(tx) {
   return new Promise((resolve, reject) => {
@@ -15,6 +15,19 @@ function waitForTransaction(tx) {
     };
     tx.onabort = () => reject(tx.error || requestError || new Error('IndexedDB transaction was aborted.'));
   });
+}
+
+async function getCollectionsDB(manager) {
+  let db = await manager.getDB();
+  if (!db.objectStoreNames || typeof db.objectStoreNames.contains !== 'function' || db.objectStoreNames.contains('collections')) {
+    return db;
+  }
+
+  db.close();
+  manager.db = null;
+  manager.initPromise = null;
+  db = await DatabaseManager.prototype.getDB.call(manager);
+  return db;
 }
 
 class DatabaseManager {
@@ -64,6 +77,10 @@ class DatabaseManager {
         // Bảng 4: Settings (cấu hình AstroDX)
         if (!db.objectStoreNames.contains('settings')) {
           db.createObjectStore('settings', { keyPath: 'key' });
+        }
+
+        if (!db.objectStoreNames.contains('collections')) {
+          db.createObjectStore('collections', { keyPath: 'id' });
         }
       };
 
@@ -398,6 +415,101 @@ class DatabaseManager {
     return req.result;
   }
 
+  async getAllCollections() {
+    const db = await getCollectionsDB(this);
+    const tx = db.transaction('collections', 'readonly');
+    const transaction = waitForTransaction(tx);
+    const req = tx.objectStore('collections').getAll();
+    let collections = [];
+    req.onsuccess = () => {
+      collections = req.result || [];
+    };
+    await transaction;
+    return collections;
+  }
+
+  async createCollection(name, beatmapId) {
+    const cleanName = typeof name === 'string' ? name.trim() : '';
+    if (!cleanName) throw new Error('Collection name is required.');
+    if (beatmapId === undefined || beatmapId === null) {
+      throw new Error('A beatmap is required to create a collection.');
+    }
+
+    const db = await getCollectionsDB(this);
+    const collection = {
+      id: `collection_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      name: cleanName,
+      beatmapIds: [beatmapId],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    const tx = db.transaction('collections', 'readwrite');
+    const transaction = waitForTransaction(tx);
+    tx.objectStore('collections').add(collection);
+    await transaction;
+    return collection;
+  }
+
+  async addBeatmapToCollection(collectionId, beatmapId) {
+    if (beatmapId === undefined || beatmapId === null) {
+      throw new Error('A beatmap is required.');
+    }
+
+    const db = await getCollectionsDB(this);
+    const tx = db.transaction('collections', 'readwrite');
+    const transaction = waitForTransaction(tx);
+    const store = tx.objectStore('collections');
+    const req = store.get(collectionId);
+    let result = null;
+    req.onsuccess = () => {
+      const collection = req.result;
+      if (!collection) return;
+
+      collection.beatmapIds = Array.isArray(collection.beatmapIds) ? collection.beatmapIds : [];
+      const added = !collection.beatmapIds.includes(beatmapId);
+      if (added) {
+        collection.beatmapIds.push(beatmapId);
+        collection.updatedAt = Date.now();
+        store.put(collection);
+      }
+      result = { collection, added };
+    };
+    await transaction;
+    return result;
+  }
+
+  async removeBeatmapFromCollection(collectionId, beatmapId) {
+    const db = await getCollectionsDB(this);
+    const tx = db.transaction('collections', 'readwrite');
+    const transaction = waitForTransaction(tx);
+    const store = tx.objectStore('collections');
+    const req = store.get(collectionId);
+    let removed = false;
+    req.onsuccess = () => {
+      const collection = req.result;
+      if (!collection || !Array.isArray(collection.beatmapIds)) return;
+
+      const nextIds = collection.beatmapIds.filter((id) => id !== beatmapId);
+      removed = nextIds.length !== collection.beatmapIds.length;
+      if (removed) {
+        collection.beatmapIds = nextIds;
+        collection.updatedAt = Date.now();
+        store.put(collection);
+      }
+    };
+    await transaction;
+    return removed;
+  }
+
+  async deleteCollection(collectionId) {
+    const db = await getCollectionsDB(this);
+    const tx = db.transaction('collections', 'readwrite');
+    const transaction = waitForTransaction(tx);
+    tx.objectStore('collections').delete(collectionId);
+    await transaction;
+    return true;
+  }
+
   async getScoresByBeatmap(beatmapId) {
     const db = await this.getDB();
     const tx = db.transaction('scores', 'readonly');
@@ -471,4 +583,17 @@ if (!dbManager.permanentlyDeleteBeatmaps) {
     const list = Array.isArray(ids) ? ids : [ids];
     return (await Promise.all(list.map((id) => this.permanentlyDeleteBeatmap(id)))).length;
   };
+}
+for (const method of [
+  'getAllCollections',
+  'createCollection',
+  'addBeatmapToCollection',
+  'removeBeatmapFromCollection',
+  'deleteCollection'
+]) {
+  if (!dbManager[method]) {
+    dbManager[method] = function (...args) {
+      return DatabaseManager.prototype[method].apply(this, args);
+    };
+  }
 }
