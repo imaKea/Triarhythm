@@ -5,7 +5,7 @@ echo "=== Starting Triarhythm Backend on Render ==="
 
 # Run database migrations against TiDB Cloud and seed default data
 echo "Running database migrations..."
-php artisan migrate --force || true
+php artisan migrate --force
 php artisan db:seed --force || true
 if [ ! -L public/storage ]; then
     php artisan storage:link
