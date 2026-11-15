@@ -1238,8 +1238,8 @@ export class GameEngine {
 
     const { scale } = getLayoutMetrics(width, height);
     const laneRadiusPx = TRI_RING_LAYOUT.tapDimensions.radius * scale;
-    // Bán kính chạm ngón tay công thái học cho mobile (tối thiểu 52px)
-    const hitRadius = Math.max(laneRadiusPx * 1.6, 52);
+    // Bán kính chạm ngón tay mở rộng cho mobile (vùng xám mờ xung quanh nút)
+    const hitRadius = Math.max(laneRadiusPx * 2.6, 85);
 
     return (closestLane !== -1 && minDist <= hitRadius) ? closestLane : null;
   }
