@@ -81,6 +81,9 @@
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
+    /* GPU acceleration for smooth rendering */
+    will-change: transform;
+    transform: translateZ(0);
   }
 }
 

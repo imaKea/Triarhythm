@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { StarRating } from '../ui/index.js';
+import { DifficultyBadge, StarRating } from '../ui/index.js';
+import { normalizeMaimaiCategory, calculateMaimaiRating } from '../core/beatmap/maimaiDifficulty.js';
 
 export default function PlayerLoader({ chart, onReady, durationMs = 1200 }) {
   const metadata = chart?.metadata || chart?.beatmap?.metadata || {};
@@ -9,6 +10,8 @@ export default function PlayerLoader({ chart, onReady, durationMs = 1200 }) {
   const stars = parseFloat(chart?.stars || metadata.stars || chart?.difficultyLevel || 5);
   const creator = chart?.creator || metadata.creator || 'Triarhythm';
   const coverUrl = chart?.backgroundSource || chart?.serverAssets?.coverUrl || null;
+  const isOsu = Boolean(chart?.source === 'osu' || chart?.keys || chart?.rawOsu || metadata?.source === 'osu');
+  const maimaiLevel = chart?.difficultyLevel || metadata.difficultyLevel || calculateMaimaiRating(chart?.beatmap || chart).levelString;
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -52,11 +55,14 @@ export default function PlayerLoader({ chart, onReady, durationMs = 1200 }) {
         </p>
 
         {/* Diff badge & Creator */}
-        <div className="flex items-center gap-2 mb-8">
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#ff85a2]/20 text-[#e94270] border border-[#ff85a2]/40">
-            {diffName}
-          </span>
-          <StarRating stars={stars} size="sm" />
+        <div className="flex items-center gap-2 mb-8 flex-wrap justify-center">
+          <DifficultyBadge
+            category={normalizeMaimaiCategory(diffName)}
+            level={maimaiLevel}
+            osuStars={stars}
+            showOsuStars={isOsu}
+            size="sm"
+          />
           <span className="text-xs text-[#a8556f]">
             mapped by <strong className="text-[#5b2a47]">{creator}</strong>
           </span>
@@ -68,7 +74,7 @@ export default function PlayerLoader({ chart, onReady, durationMs = 1200 }) {
             <div className="h-full bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] animate-[pulse_1s_ease-in-out_infinite] w-full" />
           </div>
           <span className="text-[11px] font-mono font-bold text-[#a8556f] tracking-widest uppercase flex items-center gap-1.5">
-            <span>Đang chuẩn bị màn chơi...</span>
+            <span>Preparing stage...</span>
             <span>🐰</span>
           </span>
         </div>

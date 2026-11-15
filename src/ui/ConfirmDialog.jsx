@@ -7,10 +7,10 @@ export default function ConfirmDialog({
   isOpen = false,
   onClose,
   onConfirm,
-  title = 'Xác nhận hành động',
-  message = 'Bạn có chắc chắn muốn thực hiện hành động này không?',
-  confirmText = 'Xác nhận',
-  cancelText = 'Huỷ bỏ',
+  title = 'Confirm Action',
+  message = 'Are you sure you want to proceed?',
+  confirmText = 'Confirm',
+  cancelText = 'Cancel',
   confirmVariant = 'danger', // 'danger' | 'primary'
   loading = false,
   ...props
@@ -34,7 +34,7 @@ export default function ConfirmDialog({
           {cancelText}
         </Button>
         <Button variant={confirmVariant} size="sm" onClick={handleConfirm} disabled={loading}>
-          {loading ? 'Đang xử lý...' : confirmText}
+          {loading ? 'Processing...' : confirmText}
         </Button>
       </div>
     </Modal>

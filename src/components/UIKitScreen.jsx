@@ -152,7 +152,7 @@ export default function UIKitScreen({ onBack }) {
             </Button>
           </div>
 
-          <div className="flex items-center gap-3 pt-2">
+          <div className="flex flex-wrap items-center gap-3 pt-2">
             <span className="text-xs text-[#a8556f]">Kích thước:</span>
             <Button variant="primary" size="sm">Small</Button>
             <Button variant="primary" size="md">Medium</Button>
@@ -160,7 +160,7 @@ export default function UIKitScreen({ onBack }) {
             <Button variant="primary" size="sm" disabled>Disabled</Button>
           </div>
 
-          <div className="flex items-center gap-3 pt-2">
+          <div className="flex flex-wrap items-center gap-3 pt-2">
             <span className="text-xs text-[#a8556f]">Icon Buttons:</span>
             <Tooltip content="Phát nhạc">
               <IconButton icon="▶" variant="primary" size="md" />
@@ -238,6 +238,7 @@ export default function UIKitScreen({ onBack }) {
           <Tabs
             activeTab={activeTab}
             onChange={setActiveTab}
+            className="flex-wrap"
             tabs={[
               { id: 'general', label: 'Chung (General)', badge: 4 },
               { id: 'audio', label: 'Âm thanh' },
@@ -253,7 +254,7 @@ export default function UIKitScreen({ onBack }) {
             <ProgressBar value={45} max={100} color="purple" />
           </div>
 
-          <div className="flex items-center gap-4 pt-2">
+          <div className="flex flex-wrap items-center gap-4 pt-2">
             <span className="text-xs text-[#a8556f]">Avatars:</span>
             <Avatar size="sm" name="Astro" status="online" />
             <Avatar size="md" name="Player" status="online" />

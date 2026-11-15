@@ -15,22 +15,17 @@ export function drawNotes(renderer, notes, songTime, travelTime, scale, width, h
   const baseNoteRadius = TRI_RING_LAYOUT.noteRadius * scale * renderer.noteRadiusScale;
 
   // 1. Dựng hình các nốt Ring có kích thước bằng cả outline game (từ nhỏ thành lớn, bấm phím SPACE)
-  for (const note of notes) {
+  const ringTravelTime = renderer?.getRingTravelTime ? renderer.getRingTravelTime() : travelTime;
+  for (let i = 0; i < notes.length; i++) {
+    const note = notes[i];
     if (note.type === 'ring' || note.type === 'slide') {
-      drawRingNote(ctx, note, songTime, travelTime, scale, width, height);
+      drawRingNote(ctx, note, songTime, ringTravelTime, scale, width, height);
     }
   }
 
-  // Sắp xếp thứ tự vẽ: note xa vẽ trước, note gần đích (p lớn hơn) đè lên; time sớm hơn nằm trên
-  const sorted = [...notes].sort((a, b) => {
-    const pa = (songTime - (a.time - travelTime)) / travelTime;
-    const pb = (songTime - (b.time - travelTime)) / travelTime;
-    if (Math.abs(pa - pb) > 0.001) return pa - pb;
-    return b.time - a.time;
-  });
-
-  // 2. Dựng hình chi tiết các nốt Tap, Hold, Break (Không vẽ đường ray nối giữa các note)
-  for (const note of sorted) {
+  // 2. Dựng hình chi tiết các nốt Tap, Hold, Break
+  for (let i = 0; i < notes.length; i++) {
+    const note = notes[i];
     if (note.type === 'typing' || note.type === 'slide' || note.type === 'ring') continue;
 
     const targetLane = getTapLane(note.lane);
@@ -307,8 +302,8 @@ function drawRingNote(ctx, note, songTime, travelTime, scale, width, height) {
 
     if (isEnding && (songTime - note.endTime) > 150) return;
 
-    const greenColor = '#8fd0f5';
-    const greenAura = 'rgba(143, 208, 245, 0.35)';
+    const greenColor = '#00e676';
+    const greenAura = 'rgba(0, 230, 118, 0.35)';
 
     if (isApproaching) {
       // Giai đoạn bay tới (Phóng to dần từ tâm ra viền outline, thuần màu xanh lá neon #00e676, rỗng lòng)
@@ -367,7 +362,7 @@ function drawRingNote(ctx, note, songTime, travelTime, scale, width, height) {
         ctx.beginPath();
         tracePoints(outerPts); // Subpath 1: Viền đầu ngoài
         tracePoints(innerPts); // Subpath 2: Viền đuôi trong
-        ctx.fillStyle = 'rgba(143, 208, 245, 0.25)';
+        ctx.fillStyle = 'rgba(0, 230, 118, 0.25)';
         ctx.fill('evenodd');
         ctx.restore();
       }

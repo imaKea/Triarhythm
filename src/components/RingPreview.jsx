@@ -279,7 +279,7 @@ export default function RingPreview() {
                 Slide Node S{hoveredInfo.id} ({TRI_RING_LAYOUT.slideNodes[hoveredInfo.id].name})
               </span>
             )}
-            {!hoveredInfo.type && <span className="text-slate-500">Rê chuột hoặc bấm 7 8 9 Y H N O K M</span>}
+            {!hoveredInfo.type && <span className="text-slate-500">Hover or press keys to test layout</span>}
           </div>
         </div>
       </div>

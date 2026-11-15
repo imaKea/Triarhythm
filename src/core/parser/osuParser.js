@@ -242,9 +242,16 @@ export function parseOsu(text, options = {}) {
 
   // Tính số lượng hold đồng thời tối đa
   let maxSimultaneousHolds = 0;
-  for (const h of holdActiveRanges) {
-    const count = holdActiveRanges.filter(other => other.start <= h.start && other.end > h.start).length;
-    if (count > maxSimultaneousHolds) maxSimultaneousHolds = count;
+  const holdEvents = [];
+  for (const hold of holdActiveRanges) {
+    if (hold.end <= hold.start) continue;
+    holdEvents.push({ time: hold.start, delta: 1 }, { time: hold.end, delta: -1 });
+  }
+  holdEvents.sort((a, b) => a.time - b.time || a.delta - b.delta);
+  let activeHolds = 0;
+  for (const event of holdEvents) {
+    activeHolds += event.delta;
+    maxSimultaneousHolds = Math.max(maxSimultaneousHolds, activeHolds);
   }
 
   // 7. Làm gọn mật độ (Density Reduction) - Mặc định luôn là chuẩn 2 ngón tay (twoFingers)

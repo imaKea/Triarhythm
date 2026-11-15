@@ -4,7 +4,8 @@ import { SAMPLE_BEATMAP } from '../core/beatmap/sampleChart.js';
 import { parseOsu } from '../core/parser/index.js';
 import { buildScoreRecord, persistScoreResult } from '../core/storage/scoreService.js';
 import { calculateStars, calculatePP } from '../core/pp/ppCalculator.js';
-import { Button, StarRating, RankBadge, playHover, playClick, playBack } from '../ui/index.js';
+import { normalizeMaimaiCategory, calculateMaimaiRating } from '../core/beatmap/maimaiDifficulty.js';
+import { Button, StarRating, DifficultyBadge, RankBadge, playHover, playClick, playBack } from '../ui/index.js';
 import AstroResultScreen from './AstroResultScreen.jsx';
 
 export default function GameplayView({
@@ -17,6 +18,7 @@ export default function GameplayView({
 }) {
   const canvasRef = useRef(null);
   const videoRef = useRef(null);
+  const videoObjectUrlRef = useRef(null);
   const engineRef = useRef(null);
   const currentUserRef = useRef(currentUser);
 
@@ -50,7 +52,6 @@ export default function GameplayView({
   const [liveScore, setLiveScore] = useState(0);
   const [liveAccuracy, setLiveAccuracy] = useState(100.0);
   const [liveCombo, setLiveCombo] = useState(0);
-  const [songProgress, setSongProgress] = useState(0);
 
   // Key Overlay State: lane 0..8 + ring
   const [keyPressCounts, setKeyPressCounts] = useState({
@@ -69,6 +70,7 @@ export default function GameplayView({
   const [coverUrl, setCoverUrl] = useState(null);
 
   const [noteSpeed, setNoteSpeed] = useState(settings?.noteSpeed ?? 10.0);
+  const [ringNoteSpeed, setRingNoteSpeed] = useState(settings?.ringNoteSpeed ?? settings?.noteSpeed ?? 10.0);
   const [userOffset, setUserOffset] = useState(settings?.userOffset ?? 0);
   const [musicVol, setMusicVol] = useState(settings?.musicVol ?? 85);
   const [hitVol, setHitVol] = useState(settings?.hitVol ?? 95);
@@ -85,8 +87,13 @@ export default function GameplayView({
   useEffect(() => {
     if (!canvasRef.current) return;
 
+    let cancelled = false;
     const engine = new GameEngine(canvasRef.current);
     engineRef.current = engine;
+
+    engine.renderer.noteSpeed = settings?.noteSpeed ?? 10.0;
+    engine.renderer.ringNoteSpeed = settings?.ringNoteSpeed ?? settings?.noteSpeed ?? 10.0;
+    engine.maimaiSpinAssist = settings?.maimaiSpinAssist !== false;
 
     if (settings?.customKeybinds) {
       engine.inputManager.setKeybinds(settings.customKeybinds);
@@ -121,6 +128,10 @@ export default function GameplayView({
       setIsPaused(true);
       setPauseMenuIndex(0);
     });
+    const handleVisibilityChange = () => {
+      engine.handleVisibilityChange(document.hidden);
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     const offSkip = gameEvents.on('canSkipBreak', ({ canSkip }) => setCanSkip(Boolean(canSkip)));
 
@@ -214,6 +225,18 @@ export default function GameplayView({
         parsedBeatmap = res.beatmap;
       }
 
+      // Xác định chính xác nguồn gốc bản đồ (maimai vs osu)
+      const isOsu = Boolean(
+        chartToLoad.source === 'osu' ||
+        chartToLoad.rawOsu ||
+        chartToLoad.keys ||
+        parsedBeatmap.source === 'osu' ||
+        parsedBeatmap.metadata?.source === 'osu'
+      );
+      parsedBeatmap.source = isOsu ? 'osu' : 'maimai';
+      if (!parsedBeatmap.metadata) parsedBeatmap.metadata = {};
+      parsedBeatmap.metadata.source = isOsu ? 'osu' : 'maimai';
+
       const meta = chartToLoad.metadata || parsedBeatmap.metadata || {};
       const title = chartToLoad.title || meta.title || 'Beyond The Æxis';
       const artist = chartToLoad.artist || meta.artist || '';
@@ -231,13 +254,25 @@ export default function GameplayView({
       let vidBlob = chartToLoad.videoBlob || chartToLoad.videoSource || chartToLoad.serverAssets?.videoUrl || parsedBeatmap.assets?.video || null;
 
       if (vidBlob) {
+        if (videoObjectUrlRef.current) {
+          URL.revokeObjectURL(videoObjectUrlRef.current);
+          videoObjectUrlRef.current = null;
+        }
         const vidUrl = typeof vidBlob === 'string' ? vidBlob : URL.createObjectURL(vidBlob);
+        if (typeof vidBlob !== 'string') videoObjectUrlRef.current = vidUrl;
         setVideoSrc(vidUrl);
       } else {
+        if (videoObjectUrlRef.current) {
+          URL.revokeObjectURL(videoObjectUrlRef.current);
+          videoObjectUrlRef.current = null;
+        }
         setVideoSrc(null);
       }
 
       await engine.loadChart(parsedBeatmap, audioBlob, hitsounds);
+      if (cancelled) return;
+      engine.isMaimaiChart = !isOsu;
+      engine.maimaiSpinAssist = settings?.maimaiSpinAssist !== false;
       engine.renderer.backgroundDim = backgroundDim;
       engine.enableStartCountdown = (settings?.enableStartCountdown ?? settings?.countdownBeforeStart) !== false;
 
@@ -248,7 +283,7 @@ export default function GameplayView({
       setLiveScore(0);
       setLiveAccuracy(100.0);
       setLiveCombo(0);
-      setSongProgress(0);
+      if (progressBarRef.current) progressBarRef.current.style.width = '0%';
 
       if (videoRef.current) {
         videoRef.current.currentTime = 0;
@@ -261,11 +296,17 @@ export default function GameplayView({
     setupChart();
 
     return () => {
+      cancelled = true;
       offPause();
       offSkip();
       offTouch();
       offJudgement();
       offEnd();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (videoObjectUrlRef.current) {
+        URL.revokeObjectURL(videoObjectUrlRef.current);
+        videoObjectUrlRef.current = null;
+      }
       engine.stop();
     };
   }, [initialChart]);
@@ -274,10 +315,13 @@ export default function GameplayView({
   useEffect(() => {
     if (engineRef.current) {
       engineRef.current.renderer.noteSpeed = noteSpeed;
+      engineRef.current.renderer.ringNoteSpeed = settings?.ringNoteSpeed ?? ringNoteSpeed ?? noteSpeed;
+      engineRef.current.maimaiSpinAssist = settings?.maimaiSpinAssist !== false;
       engineRef.current.renderer.backgroundDim = backgroundDim;
       engineRef.current.renderer.showURBar = settings?.showURBar !== false;
       engineRef.current.hasBackgroundVideo = Boolean(videoSrc && showVideo);
       engineRef.current.setAutoplay(isAutoplay);
+
       if (settings?.customKeybinds) {
         engineRef.current.inputManager.setKeybinds(settings.customKeybinds);
         engineRef.current.renderer.customKeybinds = settings.customKeybinds;
@@ -287,15 +331,18 @@ export default function GameplayView({
     }
   }, [noteSpeed, userOffset, musicVol, hitVol, backgroundDim, videoSrc, showVideo, isAutoplay, settings]);
 
-  // Track live song progress & Key Overlay listeners
+  // Track live song progress directly to DOM bar (avoid 60fps React re-renders)
+  const progressBarRef = useRef(null);
+
   useEffect(() => {
     let animId;
     const updateProgress = () => {
       if (isPlaying && !isPaused && engineRef.current) {
         const currentMs = engineRef.current.audioEngine.getSongTimeMs();
         const totalMs = engineRef.current.beatmap?.totalDuration || (engineRef.current.beatmap?.notes?.slice(-1)[0]?.time || 1);
-        if (totalMs > 0) {
-          setSongProgress(Math.min(1, Math.max(0, currentMs / totalMs)));
+        if (totalMs > 0 && progressBarRef.current) {
+          const ratio = Math.min(1, Math.max(0, currentMs / totalMs));
+          progressBarRef.current.style.width = `${ratio * 100}%`;
         }
       }
       animId = requestAnimationFrame(updateProgress);
@@ -391,7 +438,7 @@ export default function GameplayView({
     setLiveScore(0);
     setLiveAccuracy(100.0);
     setLiveCombo(0);
-    setSongProgress(0);
+    if (progressBarRef.current) progressBarRef.current.style.width = '0%';
 
     if (videoRef.current) {
       videoRef.current.currentTime = 0;
@@ -414,6 +461,7 @@ export default function GameplayView({
   const handleRetry = async () => {
     if (!engineRef.current) return;
     engineRef.current.stop();
+    engineRef.current.resetRun();
     const initialAutoplay = settings?.isAutoplay ?? false;
     engineRef.current.setAutoplay(initialAutoplay);
     setIsAutoplay(initialAutoplay);
@@ -427,6 +475,7 @@ export default function GameplayView({
   const handleReplay = async () => {
     if (!engineRef.current) return;
     engineRef.current.stop();
+    engineRef.current.resetRun();
     engineRef.current.setAutoplay(true);
     setIsAutoplay(true);
     if (videoRef.current) {
@@ -464,8 +513,9 @@ export default function GameplayView({
       {/* 1. TOP PROGRESS BAR (Thin 3px line across entire top) */}
       <div className="absolute top-0 left-0 right-0 h-[3px] bg-white/[0.08] z-30 pointer-events-none">
         <div
-          className="h-full bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] shadow-[0_0_8px_#ff4d80] transition-all duration-75"
-          style={{ width: `${songProgress * 100}%` }}
+          ref={progressBarRef}
+          className="h-full bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] shadow-[0_0_8px_#ff4d80]"
+          style={{ width: '0%' }}
         />
       </div>
 
@@ -478,21 +528,21 @@ export default function GameplayView({
             size="sm"
             onClick={handleBack}
             icon="←"
-            className="text-[#b8c0d4] hover:text-white shrink-0 px-2 sm:px-3 text-xs"
+            className="shrink-0 px-2 sm:px-3 text-xs"
           >
             <span className="hidden sm:inline">Back</span>
           </Button>
 
-          {/* Nút Pause / Resume cảm ứng tiện lợi cho Mobile */}
+          {/* Pause / Resume Button for Mobile */}
           <Button
             variant="ghost"
             size="sm"
             onClick={handlePauseToggle}
             icon={isPaused ? '▶' : '⏸'}
-            className="text-[#ffaec9] hover:text-white shrink-0 px-2 sm:px-3 text-xs"
-            title="Tạm dừng / Tiếp tục"
+            className="shrink-0 px-2 sm:px-3 text-xs"
+            title="Pause / Resume"
           >
-            <span className="hidden sm:inline">{isPaused ? 'Tiếp tục' : 'Tạm dừng'}</span>
+            <span className="hidden sm:inline">{isPaused ? 'Resume' : 'Pause'}</span>
           </Button>
 
           <Button
@@ -503,12 +553,12 @@ export default function GameplayView({
               if (onOpenSettings) onOpenSettings();
             }}
             icon="⚙"
-            className="text-[#b8c0d4] hover:text-white shrink-0 px-2 sm:px-3 text-xs"
+            className="shrink-0 px-2 sm:px-3 text-xs"
           >
             <span className="hidden sm:inline">Settings</span>
           </Button>
 
-          {/* Fullscreen Button cho Mobile */}
+          {/* Fullscreen Button for Mobile */}
           <button
             onClick={() => {
               if (!document.fullscreenElement) {
@@ -518,7 +568,7 @@ export default function GameplayView({
               }
             }}
             className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-[#ffaec9] hover:text-white flex items-center justify-center text-xs shrink-0 cursor-pointer transition-colors"
-            title="Toàn màn hình"
+            title="Fullscreen"
           >
             ⛶
           </button>
@@ -536,16 +586,17 @@ export default function GameplayView({
             </div>
 
             <div className="flex flex-col min-w-0">
-              <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                 <span className="text-white font-torus font-black text-xs sm:text-sm truncate max-w-[110px] xs:max-w-[160px] sm:max-w-[280px]">
                   {activeChartName}
                 </span>
-                <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-[#ff85a2]/20 text-[#ffaec9] border border-[#ff85a2]/30 text-[9px] sm:text-[10px] font-bold shrink-0">
-                  {activeDiffName}
-                </span>
-                <div className="hidden sm:block">
-                  <StarRating stars={activeStars} size="sm" showIcon={true} />
-                </div>
+                <DifficultyBadge
+                  category={normalizeMaimaiCategory(activeDiffName)}
+                  level={initialChart?.difficultyLevel || calculateMaimaiRating(engineRef.current?.beatmap || initialChart?.beatmap || initialChart).levelString}
+                  osuStars={activeStars}
+                  showOsuStars={Boolean(initialChart?.source === 'osu' || initialChart?.keys || initialChart?.rawOsu || initialChart?.metadata?.source === 'osu')}
+                  size="sm"
+                />
                 {isAutoplay && (
                   <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-[#ffdd57]/20 text-[#ffdd57] text-[9px] sm:text-[10px] font-black animate-pulse shrink-0">
                     AUTO
@@ -624,10 +675,10 @@ export default function GameplayView({
           <div
             onClick={() => setShowRotateHint(false)}
             className="absolute top-2 left-1/2 -translate-x-1/2 z-30 px-3.5 py-1.5 rounded-full bg-[#ff85a2]/95 text-white text-[11px] font-bold shadow-[0_4px_20px_rgba(255,133,162,0.6)] flex items-center gap-2 backdrop-blur-md animate-pulse cursor-pointer border border-white/30"
-            title="Chạm để đóng"
+            title="Tap to close"
           >
             <span>📱</span>
-            <span>Xoay ngang màn hình để chơi 2 tay tốt nhất 🐰 🎀</span>
+            <span>Rotate to landscape for optimal 2-hand play 🐰 🎀</span>
             <span className="text-[10px] opacity-75">✕</span>
           </div>
         )}
@@ -689,7 +740,7 @@ export default function GameplayView({
           </div>
         )}
 
-        {/* 6. SKIP BUTTON (osu! style) */}
+        {/* 6. SKIP BUTTON */}
         {canSkip && isPlaying && !isPaused && (
           <button
             onClick={() => {
@@ -697,19 +748,17 @@ export default function GameplayView({
             }}
             className="absolute bottom-4 right-4 sm:bottom-8 sm:right-8 z-20 flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2 sm:py-2.5 rounded-full bg-[#111122]/90 hover:bg-[#ff4d80] text-white border border-[#ff85a2]/40 text-xs font-bold transition-all cursor-pointer shadow-[0_4px_20px_rgba(255,77,128,0.3)] hover:scale-105 active:scale-95"
           >
-            <span>Skip (Chạm / Space)</span>
+            <span>Skip (Tap / Space)</span>
             <span>⏩</span>
           </button>
         )}
 
-
-
-        {/* 8. PAUSE MENU (Cute bunny & ribbon style with keyboard navigation) */}
+        {/* 8. PAUSE MENU */}
         {isPaused && (
           <div className="absolute inset-0 z-30 bg-[#140b17]/90 backdrop-blur-md flex flex-col items-center justify-center text-center animate-fadeIn select-none">
             <div className="text-4xl font-black text-white mb-1 tracking-widest font-torus drop-shadow-[0_0_25px_rgba(255,133,162,0.7)] flex items-center gap-2">
               <span className="text-3xl animate-kawaii-bounce inline-block">🐰</span>
-              <span>TẠM DỪNG</span>
+              <span>PAUSED</span>
               <span className="text-3xl animate-kawaii-wiggle inline-block">🎀</span>
             </div>
             <div className="text-xs text-[#ffaec9] mb-6 font-mono">
@@ -718,15 +767,15 @@ export default function GameplayView({
 
             <div className="flex flex-col gap-2.5 w-72">
               {[
-                { label: '▶ Tiếp tục 🎀', action: handlePauseToggle },
-                { label: '↺ Chơi lại 🐰', action: handleRetry },
+                { label: '▶ Resume 🎀', action: handlePauseToggle },
+                { label: '↺ Retry 🐰', action: handleRetry },
                 {
-                  label: '⚙ Cài đặt (Settings)',
+                  label: '⚙ Settings',
                   action: () => {
                     if (onOpenSettings) onOpenSettings();
                   }
                 },
-                { label: '✕ Chọn bài khác 🐰', action: handleBack }
+                { label: '✕ Change Song 🐰', action: handleBack }
               ].map((item, idx) => {
                 const isSelected = pauseMenuIndex === idx;
                 return (
@@ -753,7 +802,7 @@ export default function GameplayView({
             </div>
 
             <div className="mt-6 text-[11px] text-[#b89cb9] font-mono">
-              [↑ / ↓] Di chuyển • [Enter] Chọn • [Esc] Tiếp tục 🐰
+              [↑ / ↓] Navigate • [Enter] Select • [Esc] Resume 🐰
             </div>
           </div>
         )}

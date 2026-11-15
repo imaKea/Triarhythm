@@ -4,6 +4,8 @@ import { ParticleSystem } from '../src/core/engine/particleSystem.js';
 import { InputManager } from '../src/core/engine/inputManager.js';
 import { GameplayRenderer } from '../src/core/engine/gameplayRenderer.js';
 import { GameEngine } from '../src/core/engine/gameEngine.js';
+import { AudioEngine } from '../src/core/engine/audioEngine.js';
+import { gameEvents } from '../src/core/engine/eventBus.js';
 import { getJudgement } from '../src/config/judgement.config.js';
 import { formatKeyCode, getLaneDisplayLabel, TRI_RING_LAYOUT, layoutToPixels } from '../src/config/layout.config.js';
 
@@ -247,10 +249,11 @@ describe('GĐ3 Unit Tests - Core Engine & Scoring', () => {
     expect(n.type).toBe('ring');
     expect(n.state).not.toBe('JUDGED');
 
-    // Nhấn phím SPACE đúng nhịp tại 2005ms (lệch 5ms <= 25ms -> CRITICAL_PERFECT)
-    engine.handleSpaceDown(2005, 2005);
+    // Nhấn phím SPACE trễ 120ms vẫn nhận tối đa với Ring Tap
+    engine.handleSpaceDown(2120, 2120);
     expect(n.state).toBe('JUDGED');
     expect(engine.scoreManager.counts.criticalPerfect).toBe(1);
+    expect(engine.scoreManager.counts.perfect).toBe(0);
     expect(engine.scoreManager.combo).toBe(1);
   });
 
@@ -387,7 +390,7 @@ describe('GĐ3 Unit Tests - Core Engine & Scoring', () => {
     expect(engine.notes.filter(n => n.type === 'tap').length).toBe(2);
   });
 
-  it('Hỗ trợ Hold Ring Note: giữ Space từ time tới endTime (chỉ phát hitsound ở đầu, không phát ở kết thúc)', async () => {
+  it('Ring Hold chỉ nhận tối đa một lần khi giữ đủ tới endTime', async () => {
     const dummyCanvas = { getContext: () => ({}) };
     const engine = new GameEngine(dummyCanvas);
     const playedSounds = [];
@@ -412,18 +415,79 @@ describe('GĐ3 Unit Tests - Core Engine & Scoring', () => {
 
     expect(ringNote.headJudged).toBe(true);
     expect(ringNote.isHolding).toBe(true);
+    expect(engine.scoreManager.combo).toBe(0);
     expect(playedSounds).toContain('ring-hold');
     const hitsoundCountAtStart = playedSounds.filter(s => s === 'ring-hold').length;
     expect(hitsoundCountAtStart).toBe(1);
 
-    // Tiếp tục giữ Space tới gần cuối nốt
-    engine.updateNotes(2450);
+    // Tiếp tục giữ Space cho tới hết nốt
+    engine.updateNotes(2500);
     expect(ringNote.tailJudged).toBe(true);
     expect(ringNote.state).toBe('JUDGED');
+    expect(engine.scoreManager.counts.criticalPerfect).toBe(1);
+    expect(engine.scoreManager.counts.perfect).toBe(0);
+    expect(engine.scoreManager.counts.miss).toBe(0);
+    expect(engine.scoreManager.combo).toBe(1);
 
     // Nốt hold kết thúc KHÔNG được phát thêm sound effect 'ring-hold'
     const hitsoundCountAtEnd = playedSounds.filter(s => s === 'ring-hold').length;
     expect(hitsoundCountAtEnd).toBe(1);
+  });
+
+  it('Ring Hold released before its tail is a single MISS', async () => {
+    const dummyCanvas = { width: 800, height: 600, getContext: () => ({}) };
+    const engine = new GameEngine(dummyCanvas);
+    await engine.loadChart({
+      notes: [{ type: 'ring', isHold: true, time: 1000, endTime: 2500 }]
+    });
+
+    engine.inputManager.isSpaceDown = true;
+    engine.updateNotes(1000);
+    engine.inputManager.isSpaceDown = false;
+    engine.updateNotes(1200);
+
+    expect(engine.notes[0].state).toBe('MISSED');
+    expect(engine.scoreManager.counts.criticalPerfect).toBe(0);
+    expect(engine.scoreManager.counts.miss).toBe(1);
+    expect(engine.scoreManager.combo).toBe(0);
+  });
+
+  it('Ring Hold released at its tail receives one CRITICAL_PERFECT', async () => {
+    const dummyCanvas = { width: 800, height: 600, getContext: () => ({}) };
+    const engine = new GameEngine(dummyCanvas);
+    await engine.loadChart({
+      notes: [{ type: 'ring', isHold: true, time: 1000, endTime: 2500 }]
+    });
+
+    engine.inputManager.isSpaceDown = true;
+    engine.updateNotes(1000);
+    engine.inputManager.isSpaceDown = false;
+    engine.handleSpaceUp(2500);
+
+    expect(engine.notes[0].state).toBe('JUDGED');
+    expect(engine.scoreManager.counts.criticalPerfect).toBe(1);
+    expect(engine.scoreManager.counts.miss).toBe(0);
+  });
+
+  it('does not start a stopped engine after asynchronous audio initialization', async () => {
+    const engine = new GameEngine({ getContext: () => ({}) });
+    const originalInit = engine.audioEngine.init;
+    let resolveInit;
+    let attached = false;
+    engine.audioEngine.init = () => new Promise((resolve) => {
+      resolveInit = resolve;
+    });
+    engine.inputManager.attach = () => { attached = true; };
+
+    const startPromise = engine.start(0, false);
+    engine.stop();
+    resolveInit();
+    await startPromise;
+    engine.audioEngine.init = originalInit;
+
+    expect(engine.isRunning).toBe(false);
+    expect(attached).toBe(false);
+    expect(engine.animFrameId).toBe(null);
   });
 
   it('InputManager hỗ trợ tùy biến phím Ring và kích hoạt onSpaceDown với phím tùy chọn', () => {
@@ -614,6 +678,174 @@ describe('GĐ3 Unit Tests - Core Engine & Scoring', () => {
     expect(engine.isPaused).toBe(true);
     expect(engine.resumeCountdown).toBe(0);
 
+    engine.stop();
+  });
+
+  it('Tiếp tục đúng START countdown sau khi pause giữa countdown', async () => {
+    const dummyCanvas = { width: 800, height: 600, getContext: () => ({}) };
+    const engine = new GameEngine(dummyCanvas);
+    await engine.loadChart({ notes: [{ type: 'tap', lane: 4, time: 2000 }] });
+    await engine.start(0, true);
+
+    engine.togglePause();
+    expect(engine.isPaused).toBe(true);
+    engine.togglePause();
+    expect(engine.countdownType).toBe('START');
+    expect(engine.isCountdown).toBe(true);
+
+    engine.finishCountdown();
+    expect(engine.audioEngine.isPlaying).toBe(true);
+    expect(engine.isPaused).toBe(false);
+    engine.stop();
+  });
+
+  it('Không phán MISS Hold khi phím hoặc pointer được nhả trong lúc pause', () => {
+    const dummyCanvas = { width: 800, height: 600, getContext: () => ({}) };
+    const engine = new GameEngine(dummyCanvas);
+    const keyboardHold = { lane: 4, endTime: 3000, state: 'ACTIVE', isHolding: true };
+    const pointerHold = { lane: 5, endTime: 3000, state: 'ACTIVE', isHolding: true };
+    const ringHold = {
+      type: 'ring',
+      isHold: true,
+      time: 1000,
+      endTime: 3000,
+      state: 'ACTIVE',
+      headJudged: true,
+      isHolding: true,
+      resumeHoldThroughPause: false
+    };
+    engine.isRunning = true;
+    engine.notes = [ringHold];
+    engine.holdingNotes.set(4, keyboardHold);
+    engine.holdingNotes.set(5, pointerHold);
+    engine.inputManager.isSpaceDown = true;
+    engine.inputManager.activeHeldCodes.add('KeyF');
+    engine.inputManager.isKeyDown[4] = true;
+    engine.activeTouchPointers.set(12, { lane: 5, px: 0, py: 0, startTime: 1000 });
+
+    engine.togglePause();
+    engine.inputManager.handleKeyUp({
+      code: 'KeyF',
+      key: 'f',
+      timeStamp: 1100,
+      preventDefault() {}
+    });
+    engine.inputManager.handleKeyUp({
+      code: 'Space',
+      key: ' ',
+      timeStamp: 1100,
+      preventDefault() {}
+    });
+    engine.handlePointerUp({ pointerId: 12, timeStamp: 1100 });
+    engine.togglePause();
+    engine.finishCountdown();
+    engine.updateNotes(1500);
+
+    expect(keyboardHold.state).toBe('ACTIVE');
+    expect(pointerHold.state).toBe('ACTIVE');
+    expect(ringHold.state).toBe('ACTIVE');
+    expect(engine.scoreManager.counts.miss).toBe(0);
+
+    engine.inputManager.handleKeyDown({
+      code: 'Space',
+      key: ' ',
+      timeStamp: 1200,
+      repeat: false,
+      preventDefault() {}
+    });
+    engine.inputManager.handleKeyUp({
+      code: 'Space',
+      key: ' ',
+      timeStamp: 1300,
+      preventDefault() {}
+    });
+    engine.updateNotes(1600);
+    expect(ringHold.state).toBe('MISSED');
+    engine.stop();
+  });
+
+  it('Visibility loss pauses gameplay before a throttled frame can update notes', () => {
+    const dummyCanvas = { width: 800, height: 600, getContext: () => ({}) };
+    const engine = new GameEngine(dummyCanvas);
+    engine.isRunning = true;
+    let updateCount = 0;
+    engine.updateNotes = () => { updateCount++; };
+
+    engine.handleVisibilityChange(true);
+    engine.loop();
+
+    expect(engine.isPaused).toBe(true);
+    expect(updateCount).toBe(0);
+    engine.stop();
+  });
+
+  it('AudioEngine giữ nguyên song time khi pause/resume có user offset và output latency', () => {
+    const audio = new AudioEngine();
+    const audioCtx = {
+      currentTime: 12,
+      baseLatency: 0.02,
+      outputLatency: 0.03,
+      destination: {},
+      createBufferSource: () => ({
+        connect() {},
+        start() {},
+        stop() {},
+        disconnect() {}
+      })
+    };
+    audio.audioCtx = audioCtx;
+    audio.musicBuffer = { duration: 30 };
+    audio.musicGain = {};
+    audio.userOffsetMs = 120;
+    audio.startTime = 8;
+    audio.isPlaying = true;
+
+    const songTimeBeforePause = audio.getSongTimeMs();
+    audio.pauseMusic();
+    audioCtx.currentTime += 2;
+    audio.resumeMusic();
+
+    expect(audio.getSongTimeMs()).toBeCloseTo(songTimeBeforePause, 5);
+
+    audio.stopMusic();
+    audio.pausedAt = -0.5;
+    audio.isPaused = true;
+    audio.resumeMusic();
+    expect(audio.getSongTimeMs()).toBeCloseTo(-500, 5);
+  });
+
+  it('Retry reset lại note states và toàn bộ điểm đã hoàn thành', async () => {
+    const dummyCanvas = { width: 800, height: 600, getContext: () => ({}) };
+    const engine = new GameEngine(dummyCanvas);
+    await engine.loadChart({
+      notes: [{ type: 'tap', lane: 4, time: 1000 }]
+    });
+    engine.triggerJudgement(engine.notes[0], 'MISS', 150);
+    expect(engine.notes[0].state).toBe('MISSED');
+
+    engine.stop();
+    engine.resetRun();
+
+    expect(engine.notes[0].state).toBe('PENDING');
+    expect(engine.scoreManager.counts.miss).toBe(0);
+    expect(engine.scoreManager.achievement).toBe(0);
+    expect(engine.scoreManager.combo).toBe(0);
+    engine.stop();
+  });
+
+  it('Ring MISS phát judgement event để cập nhật live HUD', async () => {
+    const dummyCanvas = { width: 800, height: 600, getContext: () => ({}) };
+    const engine = new GameEngine(dummyCanvas);
+    await engine.loadChart({ notes: [{ type: 'ring', time: 1000 }] });
+    const judgements = [];
+    const off = gameEvents.on('judgement', event => judgements.push(event));
+
+    engine.updateNotes(1151);
+
+    expect(judgements).toHaveLength(1);
+    expect(judgements[0].judgement).toBe('MISS');
+    expect(judgements[0].achievement).toBe(0);
+    off();
     engine.stop();
   });
 

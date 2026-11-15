@@ -30,6 +30,7 @@ export class GameplayRenderer {
 
     // Cài đặt hiển thị mặc định
     this.noteSpeed = 10.0;
+    this.ringNoteSpeed = 10.0;
     this.backgroundDim = 0.75;
     this.showRayGuides = true;
     this.showURBar = true;
@@ -49,8 +50,8 @@ export class GameplayRenderer {
   /**
    * Tính travelTime (ms) từ Note Speed (NS 1.0 - 15.0, mặc định 10.0)
    */
-  getTravelTime() {
-    const ns = Math.max(1.0, Math.min(15.0, this.noteSpeed || 10.0));
+  getTravelTime(speed = this.noteSpeed) {
+    const ns = Math.max(1.0, Math.min(15.0, speed || 10.0));
     if (ns < 5.0) {
       // NS 1.0 = 1800ms -> NS 5.0 = 1200ms
       return 1200 + (600 * (5.0 - ns)) / 4.0;
@@ -61,6 +62,13 @@ export class GameplayRenderer {
       // NS 10.0 = 450ms -> NS 15.0 = 200ms (tốc độ cao arcade)
       return 450 - (250 * (ns - 10.0)) / 5.0;
     }
+  }
+
+  /**
+   * Tính travelTime (ms) cho nốt Ring từ Ring Note Speed
+   */
+  getRingTravelTime() {
+    return this.getTravelTime(this.ringNoteSpeed ?? this.noteSpeed ?? 10.0);
   }
 
   /**

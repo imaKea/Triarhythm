@@ -6,6 +6,17 @@
 const DB_NAME = 'TriarhythmDB';
 const DB_VERSION = 2;
 
+function waitForTransaction(tx) {
+  return new Promise((resolve, reject) => {
+    let requestError;
+    tx.oncomplete = resolve;
+    tx.onerror = (event) => {
+      requestError = event.target?.error || tx.error || requestError;
+    };
+    tx.onabort = () => reject(tx.error || requestError || new Error('IndexedDB transaction was aborted.'));
+  });
+}
+
 class DatabaseManager {
   constructor() {
     this.db = null;
@@ -58,6 +69,11 @@ class DatabaseManager {
 
       request.onsuccess = (e) => {
         this.db = e.target.result;
+        this.db.onversionchange = () => {
+          this.db.close();
+          this.db = null;
+          this.initPromise = null;
+        };
         resolve(this.db);
       };
 
@@ -66,7 +82,10 @@ class DatabaseManager {
         reject(e.target.error);
       };
     });
-
+    this.initPromise = this.initPromise.catch((error) => {
+      this.initPromise = null;
+      throw error;
+    });
     return this.initPromise;
   }
 
@@ -77,64 +96,58 @@ class DatabaseManager {
   async getAllBeatmaps(options = {}) {
     const { includeDeleted = false } = options;
     const db = await this.getDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('beatmaps', 'readonly');
-      const store = tx.objectStore('beatmaps');
-      const req = store.getAll();
-      req.onsuccess = () => {
-        const list = req.result || [];
-        if (includeDeleted) {
-          resolve(list);
-        } else {
-          resolve(list.filter((b) => !b.deletedAt));
-        }
-      };
-      req.onerror = () => reject(req.error);
-    });
+    const tx = db.transaction('beatmaps', 'readonly');
+    const transaction = waitForTransaction(tx);
+    const req = tx.objectStore('beatmaps').getAll();
+    let list = [];
+    req.onsuccess = () => {
+      list = req.result || [];
+    };
+    await transaction;
+    return includeDeleted ? list : list.filter((b) => !b.deletedAt);
   }
 
   async getDeletedBeatmaps() {
     const db = await this.getDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('beatmaps', 'readonly');
-      const store = tx.objectStore('beatmaps');
-      const req = store.getAll();
-      req.onsuccess = () => {
-        const list = req.result || [];
-        resolve(list.filter((b) => Boolean(b.deletedAt)));
-      };
-      req.onerror = () => reject(req.error);
-    });
+    const tx = db.transaction('beatmaps', 'readonly');
+    const transaction = waitForTransaction(tx);
+    const req = tx.objectStore('beatmaps').getAll();
+    let list = [];
+    req.onsuccess = () => {
+      list = req.result || [];
+    };
+    await transaction;
+    return list.filter((b) => Boolean(b.deletedAt));
   }
 
   async getBeatmap(id) {
     const db = await this.getDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('beatmaps', 'readonly');
-      const store = tx.objectStore('beatmaps');
-      const req = store.get(id);
-      req.onsuccess = () => resolve(req.result || null);
-      req.onerror = () => reject(req.error);
-    });
+    const tx = db.transaction('beatmaps', 'readonly');
+    const transaction = waitForTransaction(tx);
+    const req = tx.objectStore('beatmaps').get(id);
+    let item = null;
+    req.onsuccess = () => {
+      item = req.result || null;
+    };
+    await transaction;
+    return item;
   }
 
   async saveBeatmap(beatmapData) {
     const db = await this.getDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('beatmaps', 'readwrite');
-      const store = tx.objectStore('beatmaps');
-      const item = {
-        ...beatmapData,
-        id: beatmapData.id || beatmapData.metadata?.id || `map_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-        title: beatmapData.metadata?.title || beatmapData.title || 'Untitled Track',
-        artist: beatmapData.metadata?.artist || beatmapData.artist || 'Unknown Artist',
-        difficultyName: beatmapData.metadata?.difficultyName || beatmapData.difficultyName || 'Normal',
-        updatedAt: Date.now()
-      };
-      const req = store.put(item);
-      req.onsuccess = () => resolve(item);
-      req.onerror = () => reject(req.error);
-    });
+    const tx = db.transaction('beatmaps', 'readwrite');
+    const item = {
+      ...beatmapData,
+      id: beatmapData.id || beatmapData.metadata?.id || `map_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      title: beatmapData.metadata?.title || beatmapData.title || 'Untitled Track',
+      artist: beatmapData.metadata?.artist || beatmapData.artist || 'Unknown Artist',
+      difficultyName: beatmapData.metadata?.difficultyName || beatmapData.difficultyName || 'Normal',
+      updatedAt: Date.now()
+    };
+    const transaction = waitForTransaction(tx);
+    tx.objectStore('beatmaps').put(item);
+    await transaction;
+    return item;
   }
 
   /**
@@ -143,23 +156,47 @@ class DatabaseManager {
    */
   async softDeleteBeatmap(id) {
     const db = await this.getDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('beatmaps', 'readwrite');
-      const store = tx.objectStore('beatmaps');
+    const tx = db.transaction('beatmaps', 'readwrite');
+    const transaction = waitForTransaction(tx);
+    const store = tx.objectStore('beatmaps');
+    const getReq = store.get(id);
+    let result = false;
+    getReq.onsuccess = () => {
+      const item = getReq.result;
+      if (!item) return;
+      item.deletedAt = Date.now();
+      store.put(item);
+      result = item;
+    };
+    await transaction;
+    return result;
+  }
+
+  /**
+   * Xóa tạm nhiều beatmap cùng lúc (Bulk Soft Delete)
+   */
+  async softDeleteBeatmaps(ids) {
+    const list = Array.isArray(ids) ? ids : [ids];
+    if (list.length === 0) return 0;
+    const db = await this.getDB();
+    const tx = db.transaction('beatmaps', 'readwrite');
+    const transaction = waitForTransaction(tx);
+    const store = tx.objectStore('beatmaps');
+    let count = 0;
+    for (const id of list) {
       const getReq = store.get(id);
       getReq.onsuccess = () => {
         const item = getReq.result;
-        if (!item) {
-          resolve(false);
-          return;
+        if (item) {
+          item.isDeleted = 1;
+          item.deletedAt = Date.now();
+          store.put(item);
+          count++;
         }
-        item.deletedAt = Date.now();
-        const putReq = store.put(item);
-        putReq.onsuccess = () => resolve(item);
-        putReq.onerror = () => reject(putReq.error);
       };
-      getReq.onerror = () => reject(getReq.error);
-    });
+    }
+    await transaction;
+    return count;
   }
 
   /**
@@ -167,24 +204,50 @@ class DatabaseManager {
    */
   async restoreBeatmap(id) {
     const db = await this.getDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('beatmaps', 'readwrite');
-      const store = tx.objectStore('beatmaps');
+    const tx = db.transaction('beatmaps', 'readwrite');
+    const transaction = waitForTransaction(tx);
+    const store = tx.objectStore('beatmaps');
+    const getReq = store.get(id);
+    let result = false;
+    getReq.onsuccess = () => {
+      const item = getReq.result;
+      if (!item) return;
+      delete item.deletedAt;
+      item.isDeleted = 0;
+      item.updatedAt = Date.now();
+      store.put(item);
+      result = item;
+    };
+    await transaction;
+    return result;
+  }
+
+  /**
+   * Khôi phục nhiều beatmap cùng lúc từ Thùng rác (Bulk Restore)
+   */
+  async restoreBeatmaps(ids) {
+    const list = Array.isArray(ids) ? ids : [ids];
+    if (list.length === 0) return 0;
+    const db = await this.getDB();
+    const tx = db.transaction('beatmaps', 'readwrite');
+    const transaction = waitForTransaction(tx);
+    const store = tx.objectStore('beatmaps');
+    let count = 0;
+    for (const id of list) {
       const getReq = store.get(id);
       getReq.onsuccess = () => {
         const item = getReq.result;
-        if (!item) {
-          resolve(false);
-          return;
+        if (item) {
+          delete item.deletedAt;
+          item.isDeleted = 0;
+          item.updatedAt = Date.now();
+          store.put(item);
+          count++;
         }
-        delete item.deletedAt;
-        item.updatedAt = Date.now();
-        const putReq = store.put(item);
-        putReq.onsuccess = () => resolve(item);
-        putReq.onerror = () => reject(putReq.error);
       };
-      getReq.onerror = () => reject(getReq.error);
-    });
+    }
+    await transaction;
+    return count;
   }
 
   /**
@@ -192,13 +255,28 @@ class DatabaseManager {
    */
   async permanentlyDeleteBeatmap(id) {
     const db = await this.getDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('beatmaps', 'readwrite');
-      const store = tx.objectStore('beatmaps');
-      const req = store.delete(id);
-      req.onsuccess = () => resolve(true);
-      req.onerror = () => reject(req.error);
-    });
+    const tx = db.transaction('beatmaps', 'readwrite');
+    const transaction = waitForTransaction(tx);
+    tx.objectStore('beatmaps').delete(id);
+    await transaction;
+    return true;
+  }
+
+  /**
+   * Xóa vĩnh viễn nhiều Beatmap cùng lúc (Bulk Permanent Delete)
+   */
+  async permanentlyDeleteBeatmaps(ids) {
+    const list = Array.isArray(ids) ? ids : [ids];
+    if (list.length === 0) return 0;
+    const db = await this.getDB();
+    const tx = db.transaction('beatmaps', 'readwrite');
+    const transaction = waitForTransaction(tx);
+    const store = tx.objectStore('beatmaps');
+    for (const id of list) {
+      store.delete(id);
+    }
+    await transaction;
+    return list.length;
   }
 
   /**
@@ -207,15 +285,14 @@ class DatabaseManager {
   async clearTrash() {
     const trashed = await this.getDeletedBeatmaps();
     const db = await this.getDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('beatmaps', 'readwrite');
-      const store = tx.objectStore('beatmaps');
-      for (const m of trashed) {
-        store.delete(m.id);
-      }
-      tx.oncomplete = () => resolve(trashed.length);
-      tx.onerror = () => reject(tx.error);
-    });
+    const tx = db.transaction('beatmaps', 'readwrite');
+    const transaction = waitForTransaction(tx);
+    const store = tx.objectStore('beatmaps');
+    for (const m of trashed) {
+      store.delete(m.id);
+    }
+    await transaction;
+    return trashed.length;
   }
 
   /**
@@ -244,10 +321,10 @@ class DatabaseManager {
   async registerUser(username, password, displayName = '') {
     const db = await this.getDB();
     const cleanUser = username.trim().toLowerCase();
-    if (!cleanUser || !password) throw new Error('Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.');
+    if (!cleanUser || !password) throw new Error('Please enter both username and password.');
 
     const existing = await this.getUser(cleanUser);
-    if (existing) throw new Error('Tên tài khoản này đã tồn tại!');
+    if (existing) throw new Error('This username already exists!');
 
     const userObj = {
       username: cleanUser,
@@ -259,22 +336,20 @@ class DatabaseManager {
       createdAt: Date.now()
     };
 
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('users', 'readwrite');
-      const store = tx.objectStore('users');
-      const req = store.add(userObj);
-      req.onsuccess = () => resolve(userObj);
-      req.onerror = () => reject(req.error);
-    });
+    const tx = db.transaction('users', 'readwrite');
+    const transaction = waitForTransaction(tx);
+    tx.objectStore('users').add(userObj);
+    await transaction;
+    return userObj;
   }
 
   async loginUser(username, password) {
     const cleanUser = username.trim().toLowerCase();
     const user = await this.getUser(cleanUser);
-    if (!user) throw new Error('Tài khoản không tồn tại!');
+    if (!user) throw new Error('Account does not exist!');
 
     if (user.passwordHash !== this.hashPassword(password)) {
-      throw new Error('Mật khẩu không chính xác!');
+      throw new Error('Incorrect password!');
     }
 
     return user;
@@ -282,24 +357,28 @@ class DatabaseManager {
 
   async getUser(username) {
     const db = await this.getDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('users', 'readonly');
-      const store = tx.objectStore('users');
-      const req = store.get(username.trim().toLowerCase());
-      req.onsuccess = () => resolve(req.result || null);
-      req.onerror = () => reject(req.error);
-    });
+    const tx = db.transaction('users', 'readonly');
+    const transaction = waitForTransaction(tx);
+    const req = tx.objectStore('users').get(username.trim().toLowerCase());
+    let user = null;
+    req.onsuccess = () => {
+      user = req.result || null;
+    };
+    await transaction;
+    return user;
   }
 
   async getAllUsers() {
     const db = await this.getDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('users', 'readonly');
-      const store = tx.objectStore('users');
-      const req = store.getAll();
-      req.onsuccess = () => resolve(req.result || []);
-      req.onerror = () => reject(req.error);
-    });
+    const tx = db.transaction('users', 'readonly');
+    const transaction = waitForTransaction(tx);
+    const req = tx.objectStore('users').getAll();
+    let users = [];
+    req.onsuccess = () => {
+      users = req.result || [];
+    };
+    await transaction;
+    return users;
   }
 
   // =========================================================================
@@ -308,32 +387,28 @@ class DatabaseManager {
 
   async saveScore(scoreRecord) {
     const db = await this.getDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('scores', 'readwrite');
-      const store = tx.objectStore('scores');
-      const record = {
-        ...scoreRecord,
-        playedAt: Date.now()
-      };
-      const req = store.add(record);
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
+    const tx = db.transaction('scores', 'readwrite');
+    const transaction = waitForTransaction(tx);
+    const record = {
+      ...scoreRecord,
+      playedAt: Date.now()
+    };
+    const req = tx.objectStore('scores').add(record);
+    await transaction;
+    return req.result;
   }
 
   async getScoresByBeatmap(beatmapId) {
     const db = await this.getDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('scores', 'readonly');
-      const store = tx.objectStore('scores');
-      const idx = store.index('beatmapId');
-      const req = idx.getAll(beatmapId);
-      req.onsuccess = () => {
-        const sorted = (req.result || []).sort((a, b) => b.achievement - a.achievement);
-        resolve(sorted);
-      };
-      req.onerror = () => reject(req.error);
-    });
+    const tx = db.transaction('scores', 'readonly');
+    const transaction = waitForTransaction(tx);
+    const req = tx.objectStore('scores').index('beatmapId').getAll(beatmapId);
+    let scores = [];
+    req.onsuccess = () => {
+      scores = req.result || [];
+    };
+    await transaction;
+    return scores.sort((a, b) => (b.score || 0) - (a.score || 0));
   }
 
   // Bí danh tương thích
@@ -347,24 +422,24 @@ class DatabaseManager {
 
   async getSetting(key, defaultValue = null) {
     const db = await this.getDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('settings', 'readonly');
-      const store = tx.objectStore('settings');
-      const req = store.get(key);
-      req.onsuccess = () => resolve(req.result !== undefined ? req.result.value : defaultValue);
-      req.onerror = () => reject(req.error);
-    });
+    const tx = db.transaction('settings', 'readonly');
+    const transaction = waitForTransaction(tx);
+    const req = tx.objectStore('settings').get(key);
+    let value = defaultValue;
+    req.onsuccess = () => {
+      value = req.result !== undefined ? req.result.value : defaultValue;
+    };
+    await transaction;
+    return value;
   }
 
   async setSetting(key, value) {
     const db = await this.getDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('settings', 'readwrite');
-      const store = tx.objectStore('settings');
-      const req = store.put({ key, value });
-      req.onsuccess = () => resolve(value);
-      req.onerror = () => reject(req.error);
-    });
+    const tx = db.transaction('settings', 'readwrite');
+    const transaction = waitForTransaction(tx);
+    tx.objectStore('settings').put({ key, value });
+    await transaction;
+    return value;
   }
 
   async getSettings() {
@@ -377,3 +452,23 @@ class DatabaseManager {
 }
 
 export const dbManager = new DatabaseManager();
+
+// Đảm bảo tương thích tuyệt đối cho HMR nóng và mọi trường hợp runtime
+if (!dbManager.softDeleteBeatmaps) {
+  dbManager.softDeleteBeatmaps = async function (ids) {
+    const list = Array.isArray(ids) ? ids : [ids];
+    return (await Promise.all(list.map((id) => this.softDeleteBeatmap(id)))).length;
+  };
+}
+if (!dbManager.restoreBeatmaps) {
+  dbManager.restoreBeatmaps = async function (ids) {
+    const list = Array.isArray(ids) ? ids : [ids];
+    return (await Promise.all(list.map((id) => this.restoreBeatmap(id)))).length;
+  };
+}
+if (!dbManager.permanentlyDeleteBeatmaps) {
+  dbManager.permanentlyDeleteBeatmaps = async function (ids) {
+    const list = Array.isArray(ids) ? ids : [ids];
+    return (await Promise.all(list.map((id) => this.permanentlyDeleteBeatmap(id)))).length;
+  };
+}

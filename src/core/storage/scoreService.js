@@ -23,14 +23,14 @@ export function buildScoreRecord({
   playedAt = Date.now()
 } = {}) {
   if (!summary || typeof summary !== 'object') {
-    throw new Error('Thiếu summary kết quả để lưu điểm.');
+    throw new Error('Missing score summary to save record.');
   }
 
   const beatmap = chart?.beatmap || chart || {};
-  const beatmapId = chart?.id || beatmap.metadata?.id || chart?.metadata?.id || 'unknown';
-  const beatmapTitle = beatmap.metadata?.title || chart?.title || 'Unknown Track';
+  const beatmapId = chart?.id || beatmap.id || beatmap.metadata?.id || chart?.metadata?.id || 'unknown';
+  const beatmapTitle = chart?.title || beatmap.metadata?.title || 'Unknown Track';
   const difficultyName =
-    beatmap.metadata?.difficultyName || chart?.difficultyName || 'Normal';
+    chart?.difficultyName || beatmap.metadata?.difficultyName || 'Normal';
 
   const achievement = Number(summary.achievement) || 0;
   const score = Number.isFinite(summary.score)
@@ -45,6 +45,7 @@ export function buildScoreRecord({
     difficultyName,
     score,
     accuracy: achievement,
+    achievement: achievement,
     maxCombo: Number(summary.maxCombo) || 0,
     rank: summary.rank || 'C',
     counts: summary.counts ? { ...summary.counts } : {},
@@ -85,7 +86,7 @@ export async function persistScoreResult(record, deps = {}) {
   const api = deps.api || apiClient;
 
   if (!record || typeof record !== 'object') {
-    throw new Error('Record điểm không hợp lệ.');
+    throw new Error('Invalid score record.');
   }
 
   if (record.isAutoplay) {

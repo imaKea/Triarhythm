@@ -35,10 +35,10 @@ export default class ErrorBoundary extends React.Component {
               ⚠
             </div>
             <h2 className="text-xl font-torus font-black tracking-wide text-white mb-2">
-              ĐÃ XẢY RA LỖI GIAO DIỆN
+              AN INTERFACE ERROR OCCURRED
             </h2>
             <p className="text-xs text-[#b8c0d4] mb-4 leading-relaxed font-sans">
-              Hệ thống đã tự động bảo vệ dữ liệu beatmap và điểm số của bạn. Bạn có thể thử tải lại trang hoặc khôi phục về trạng thái an toàn.
+              The system has protected your beatmaps and scores. You can try reloading the page or resetting to safe state.
             </p>
 
             {this.state.error && (
@@ -54,13 +54,13 @@ export default class ErrorBoundary extends React.Component {
                 onClick={this.handleReload}
                 className="flex-1 py-2 rounded-xl bg-gradient-to-r from-[#ff66ab] to-[#cc5289] text-white font-bold text-xs shadow-[0_0_15px_rgba(255,102,171,0.4)] hover:brightness-110 transition-all cursor-pointer"
               >
-                Tải lại trang (F5)
+                Reload Page (F5)
               </button>
               <button
                 onClick={this.handleResetState}
                 className="px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-[#8890a4] hover:text-white border border-white/[0.08] text-xs font-semibold transition-all cursor-pointer"
               >
-                Khôi phục
+                Reset
               </button>
             </div>
           </div>

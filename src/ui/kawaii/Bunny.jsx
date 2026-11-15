@@ -5,7 +5,7 @@ import React from 'react';
  */
 export default function Bunny({ mood = 'happy', className = '' }) {
   return (
-    <svg className={`bunny ${className}`} viewBox="0 0 180 190" aria-label="Linh vật thỏ">
+    <svg className={`bunny ${className}`} viewBox="0 0 180 190" aria-label="Bunny mascot">
       <path className="ear" d="M55 72C38 48 39 10 54 9c16-1 20 37 21 58" />
       <path className="ear" d="M108 66c4-36 15-59 29-54 14 6 5 42-9 65" />
       <path

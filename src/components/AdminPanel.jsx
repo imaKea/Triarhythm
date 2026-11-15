@@ -50,7 +50,7 @@ export default function AdminPanel({ currentUser, onBack }) {
     isOpen: false,
     title: '',
     message: '',
-    confirmText: 'Xác nhận',
+    confirmText: 'Confirm',
     danger: true,
     onConfirm: () => {},
   });
@@ -119,7 +119,7 @@ export default function AdminPanel({ currentUser, onBack }) {
         }
       }
     } catch (err) {
-      toast.error('Lỗi tải dữ liệu quản trị: ' + err.message);
+      toast.error('Error loading admin data: ' + err.message);
     } finally {
       setIsLoading(false);
     }
@@ -148,14 +148,14 @@ export default function AdminPanel({ currentUser, onBack }) {
     const nextRole = user.role === 'admin' ? 'user' : 'admin';
     setConfirmState({
       isOpen: true,
-      title: `Chuyển vai trò người dùng`,
-      message: `Bạn có chắc muốn chuyển '${user.username}' thành vai trò [${nextRole.toUpperCase()}]?`,
-      confirmText: 'Chuyển vai trò',
+      title: `Change User Role`,
+      message: `Are you sure you want to change '${user.username}' to role [${nextRole.toUpperCase()}]?`,
+      confirmText: 'Change Role',
       danger: nextRole === 'admin',
       onConfirm: async () => {
         try {
           await apiClient.adminUpdateUserRole(user.id, nextRole);
-          toast.success(`Đã đổi vai trò '${user.username}' thành ${nextRole}!`);
+          toast.success(`Updated role for '${user.username}' to ${nextRole}!`);
           loadTabContent();
         } catch (err) {
           toast.error(err.message);
@@ -168,16 +168,16 @@ export default function AdminPanel({ currentUser, onBack }) {
     const isBanning = !user.is_banned;
     setConfirmState({
       isOpen: true,
-      title: isBanning ? `Khóa tài khoản` : `Mở khóa tài khoản`,
+      title: isBanning ? `Ban User Account` : `Unban User Account`,
       message: isBanning
-        ? `Tài khoản '${user.username}' sẽ bị ngắt kết nối và không thể nộp điểm.`
-        : `Cho phép tài khoản '${user.username}' tiếp tục hoạt động trở lại.`,
-      confirmText: isBanning ? 'Khóa ngay' : 'Mở khóa',
+        ? `Account '${user.username}' will be disconnected and unable to submit scores.`
+        : `Allow account '${user.username}' to resume activity.`,
+      confirmText: isBanning ? 'Ban Now' : 'Unban',
       danger: isBanning,
       onConfirm: async () => {
         try {
           await apiClient.adminToggleUserBan(user.id);
-          toast.success(`Đã ${isBanning ? 'khóa' : 'mở khóa'} tài khoản '${user.username}'!`);
+          toast.success(`${isBanning ? 'Banned' : 'Unbanned'} account '${user.username}'!`);
           loadTabContent();
         } catch (err) {
           toast.error(err.message);
@@ -189,14 +189,14 @@ export default function AdminPanel({ currentUser, onBack }) {
   const handleDeleteUser = (user) => {
     setConfirmState({
       isOpen: true,
-      title: `Xóa vĩnh viễn tài khoản`,
-      message: `CẢNH BÁO: Thao tác này sẽ xóa vĩnh viễn người dùng '${user.username}' cùng toàn bộ điểm số của họ. Hành động này không thể hoàn tác!`,
-      confirmText: 'Xóa vĩnh viễn',
+      title: `Permanently Delete User`,
+      message: `WARNING: This action will permanently delete user '${user.username}' and all their scores. This cannot be undone!`,
+      confirmText: 'Delete Permanently',
       danger: true,
       onConfirm: async () => {
         try {
           await apiClient.adminDeleteUser(user.id);
-          toast.success(`Đã xóa tài khoản '${user.username}'!`);
+          toast.success(`Deleted user '${user.username}'!`);
           loadTabContent();
         } catch (err) {
           toast.error(err.message);
@@ -224,9 +224,9 @@ export default function AdminPanel({ currentUser, onBack }) {
       );
       if (res?.temporary_password) {
         setPasswordModal((prev) => ({ ...prev, temporaryPassword: res.temporary_password }));
-        toast.info(`Mật khẩu tạm thời mới: ${res.temporary_password}`);
+        toast.info(`New temporary password: ${res.temporary_password}`);
       } else {
-        toast.success(`Đã đặt lại mật khẩu cho '${passwordModal.username}'!`);
+        toast.success(`Reset password for '${passwordModal.username}'!`);
         setPasswordModal({ isOpen: false, userId: null, username: '', newPassword: '', temporaryPassword: null });
       }
     } catch (err) {
@@ -258,7 +258,7 @@ export default function AdminPanel({ currentUser, onBack }) {
         bpm: editMapModal.bpm ? parseFloat(editMapModal.bpm) : null,
         status: editMapModal.status,
       });
-      toast.success(`Đã cập nhật bài hát '${editMapModal.title}'!`);
+      toast.success(`Updated track '${editMapModal.title}'!`);
       setEditMapModal({ isOpen: false, map: null, title: '', artist: '', creator: '', bpm: '', status: 'published' });
       loadTabContent();
     } catch (err) {
@@ -269,14 +269,14 @@ export default function AdminPanel({ currentUser, onBack }) {
   const handleDeleteMap = (m) => {
     setConfirmState({
       isOpen: true,
-      title: `Xóa Beatmap khỏi Server`,
-      message: `Bạn có chắc muốn xóa bài hát '${m.title}' (${m.song_id})? Toàn bộ bảng điểm liên quan sẽ bị xóa sạch khỏi MySQL.`,
-      confirmText: 'Xóa bài hát',
+      title: `Delete Beatmap from Server`,
+      message: `Are you sure you want to delete track '${m.title}' (${m.song_id})? All associated scores will be cleared from MySQL.`,
+      confirmText: 'Delete Track',
       danger: true,
       onConfirm: async () => {
         try {
           await apiClient.adminDeleteMap(m.id);
-          toast.success(`Đã xóa bài hát '${m.title}' khỏi hệ thống!`);
+          toast.success(`Deleted track '${m.title}' from the system!`);
           loadTabContent();
         } catch (err) {
           toast.error(err.message);
@@ -289,14 +289,14 @@ export default function AdminPanel({ currentUser, onBack }) {
   const handleDeleteScore = (sc) => {
     setConfirmState({
       isOpen: true,
-      title: `Xóa điểm số gian lận/lỗi`,
-      message: `Xóa điểm ${Number(sc.score).toLocaleString()} của người chơi '${sc.user?.username || 'Khách'}' trên bài '${sc.song_id}'? Hệ thống sẽ tự động cập nhật lại tổng PP của người chơi này.`,
-      confirmText: 'Xóa điểm',
+      title: `Delete Score Record`,
+      message: `Delete score ${Number(sc.score).toLocaleString()} of player '${sc.user?.username || 'Guest'}' on track '${sc.song_id}'? Player total PP will be recalculated automatically.`,
+      confirmText: 'Delete Score',
       danger: true,
       onConfirm: async () => {
         try {
           await apiClient.adminDeleteScore(sc.id);
-          toast.success('Đã xóa điểm số và cập nhật lại PP người chơi!');
+          toast.success('Deleted score and updated player PP!');
           loadTabContent();
         } catch (err) {
           toast.error(err.message);
@@ -308,9 +308,9 @@ export default function AdminPanel({ currentUser, onBack }) {
   const handleRecalculateAllPP = () => {
     setConfirmState({
       isOpen: true,
-      title: `⚡ Batch Recalculate PP toàn server`,
-      message: `Hành động này sẽ duyệt qua toàn bộ điểm số trong MySQL, tính toán lại giá trị PP theo công thức chuẩn hiện tại và cập nhật lại total_pp cho từng người chơi.`,
-      confirmText: 'Bắt đầu tính lại',
+      title: `⚡ Batch Recalculate PP across Server`,
+      message: `This action will iterate through all scores in MySQL, recomputing PP values using the current standard formula and updating total_pp for each player.`,
+      confirmText: 'Start Recalculation',
       danger: false,
       onConfirm: async () => {
         setIsRecalculating(true);
@@ -337,8 +337,8 @@ export default function AdminPanel({ currentUser, onBack }) {
   return (
     <div className="w-full h-[calc(100vh-52px-24px)] mt-[52px] mb-6 flex flex-col select-none overflow-hidden bg-[#090914] text-white">
       {/* 1. TOP ADMIN HEADER */}
-      <header className="h-14 px-6 bg-[#111122]/90 border-b border-white/[0.08] flex items-center justify-between shrink-0 z-20 backdrop-blur-md">
-        <div className="flex items-center gap-3">
+      <header className="h-auto min-h-14 px-2 sm:px-6 py-2 bg-[#111122]/90 border-b border-white/[0.08] flex flex-wrap items-center justify-between gap-y-2 shrink-0 z-20 backdrop-blur-md">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <Button
             variant="ghost"
             size="sm"
@@ -349,13 +349,13 @@ export default function AdminPanel({ currentUser, onBack }) {
             icon="←"
             className="text-[#8890a4] hover:text-white"
           >
-            Quay lại
+            Back
           </Button>
           <div className="h-5 w-px bg-white/10" />
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             <span className="text-xl">🛡️</span>
-            <h1 className="font-torus font-black text-base tracking-wider uppercase bg-gradient-to-r from-white via-[#ff80bf] to-[#ff66ab] bg-clip-text text-transparent">
-              Quản Trị Viên Triarhythm (Admin Panel)
+            <h1 className="min-w-0 font-torus font-black text-sm sm:text-base tracking-wider uppercase bg-gradient-to-r from-white via-[#ff80bf] to-[#ff66ab] bg-clip-text text-transparent">
+              Triarhythm Administration Panel
             </h1>
           </div>
           <span className="px-2 py-0.5 rounded-full bg-[#ff66ab]/20 text-[#ff66ab] text-[10px] font-mono font-bold border border-[#ff66ab]/30">
@@ -364,7 +364,7 @@ export default function AdminPanel({ currentUser, onBack }) {
         </div>
 
         {/* Admin User Info */}
-        <div className="flex items-center gap-2.5">
+        <div className="ml-auto flex shrink-0 items-center gap-2.5">
           <Avatar
             src={currentUser?.avatar}
             name={currentUser?.name || currentUser?.username}
@@ -383,14 +383,14 @@ export default function AdminPanel({ currentUser, onBack }) {
       </header>
 
       {/* 2. ADMIN TABS NAVIGATION */}
-      <nav className="h-11 px-6 bg-[#0f0f1c] border-b border-white/[0.06] flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2">
+      <nav className="h-auto min-h-11 px-2 sm:px-6 py-1 bg-[#0f0f1c] border-b border-white/[0.06] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 shrink-0">
+        <div className="flex w-full sm:w-auto items-center gap-2 overflow-x-auto">
           {[
-            { id: 'dashboard', label: '📊 Tổng quan', badge: null },
-            { id: 'users', label: '👥 Người dùng', badge: dashboardData?.stats?.total_users },
+            { id: 'dashboard', label: '📊 Overview', badge: null },
+            { id: 'users', label: '👥 Users', badge: dashboardData?.stats?.total_users },
             { id: 'maps', label: '🎵 Beatmaps', badge: dashboardData?.stats?.total_maps },
-            { id: 'scores', label: '🏆 Điểm số & Moderation', badge: dashboardData?.stats?.total_scores },
-            { id: 'logs', label: '📜 Nhật ký hoạt động', badge: null },
+            { id: 'scores', label: '🏆 Scores & Moderation', badge: dashboardData?.stats?.total_scores },
+            { id: 'logs', label: '📜 Activity Logs', badge: null },
           ].map((tab) => {
             const isActive = activeTab === tab.id;
             return (
@@ -401,7 +401,7 @@ export default function AdminPanel({ currentUser, onBack }) {
                   setActiveTab(tab.id);
                 }}
                 onMouseEnter={() => !isActive && playHover()}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
                   isActive
                     ? 'bg-[#ff66ab] text-white shadow-[0_0_12px_rgba(255,102,171,0.4)]'
                     : 'text-[#8890a4] hover:text-white hover:bg-white/[0.04]'
@@ -423,7 +423,7 @@ export default function AdminPanel({ currentUser, onBack }) {
         </div>
 
         {/* Global Action for recalculating PP */}
-        <div className="flex items-center gap-2">
+        <div className="w-full sm:w-auto flex items-center justify-end gap-2">
           <Button
             variant="secondary"
             size="sm"
@@ -432,12 +432,12 @@ export default function AdminPanel({ currentUser, onBack }) {
             className="text-xs font-bold text-[#ffdd57] border-[#ffdd57]/40 hover:bg-[#ffdd57]/10"
             icon="⚡"
           >
-            {isRecalculating ? 'Đang tính toán...' : 'Recalculate All PP'}
+            {isRecalculating ? 'Recalculating...' : 'Recalculate All PP'}
           </Button>
           <IconButton
             icon="↻"
             size="sm"
-            tooltip="Làm mới dữ liệu tab hiện tại"
+            tooltip="Refresh current tab"
             onClick={() => {
               playClick();
               loadTabContent();
@@ -447,11 +447,11 @@ export default function AdminPanel({ currentUser, onBack }) {
       </nav>
 
       {/* 3. MAIN TAB CONTENT AREA */}
-      <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-gradient-to-b from-[#090914] to-[#0d0d1a]">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-6 custom-scrollbar bg-gradient-to-b from-[#090914] to-[#0d0d1a]">
         {isLoading && (
           <div className="flex items-center justify-center p-8 gap-3 text-xs text-[#ff66ab] font-bold">
             <div className="w-5 h-5 rounded-full border-2 border-[#ff66ab]/20 border-t-[#ff66ab] animate-spin" />
-            <span>Đang tải dữ liệu từ máy chủ...</span>
+            <span>Loading data from server...</span>
           </div>
         )}
 
@@ -459,46 +459,46 @@ export default function AdminPanel({ currentUser, onBack }) {
         {activeTab === 'dashboard' && dashboardData && (
           <div className="max-w-6xl mx-auto flex flex-col gap-6 animate-fadeIn">
             {/* Stat Cards Grid */}
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="p-5 rounded-2xl bg-[#141424] border border-white/[0.08] shadow-lg flex flex-col gap-1">
                 <span className="text-xs text-[#8890a4] font-medium flex items-center gap-1.5">
-                  <span>👥</span> Tổng người chơi
+                  <span>👥</span> Total Players
                 </span>
                 <span className="text-3xl font-mono font-black text-white">
                   {dashboardData.stats.total_users.toLocaleString()}
                 </span>
                 <div className="text-[11px] text-[#ff66ab] font-medium mt-1">
-                  {dashboardData.stats.total_admins} Quản trị viên • {dashboardData.stats.total_banned} Khóa
+                  {dashboardData.stats.total_admins} Admins • {dashboardData.stats.total_banned} Banned
                 </div>
               </div>
 
               <div className="p-5 rounded-2xl bg-[#141424] border border-white/[0.08] shadow-lg flex flex-col gap-1">
                 <span className="text-xs text-[#8890a4] font-medium flex items-center gap-1.5">
-                  <span>🎵</span> Tổng Beatmaps
+                  <span>🎵</span> Total Beatmaps
                 </span>
                 <span className="text-3xl font-mono font-black text-white">
                   {dashboardData.stats.total_maps.toLocaleString()}
                 </span>
                 <div className="text-[11px] text-[#00e5ff] font-medium mt-1">
-                  Đã duyệt và sẵn sàng thi đấu
+                  Verified & ready to play
                 </div>
               </div>
 
               <div className="p-5 rounded-2xl bg-[#141424] border border-white/[0.08] shadow-lg flex flex-col gap-1">
                 <span className="text-xs text-[#8890a4] font-medium flex items-center gap-1.5">
-                  <span>🎮</span> Lượt chơi (Plays)
+                  <span>🎮</span> Total Plays
                 </span>
                 <span className="text-3xl font-mono font-black text-white">
                   {dashboardData.stats.total_plays.toLocaleString()}
                 </span>
                 <div className="text-[11px] text-[#66bb6a] font-medium mt-1">
-                  {dashboardData.stats.total_scores.toLocaleString()} bản ghi điểm số
+                  {dashboardData.stats.total_scores.toLocaleString()} score records
                 </div>
               </div>
 
               <div className="p-5 rounded-2xl bg-[#141424] border border-white/[0.08] shadow-lg flex flex-col gap-1">
                 <span className="text-xs text-[#8890a4] font-medium flex items-center gap-1.5">
-                  <span>⭐</span> Tổng PP Toàn Server
+                  <span>⭐</span> Total Server PP
                 </span>
                 <span className="text-3xl font-mono font-black text-[#ff66ab]">
                   {Number(dashboardData.stats.total_server_pp).toLocaleString()}
@@ -510,12 +510,12 @@ export default function AdminPanel({ currentUser, onBack }) {
             </div>
 
             {/* Charts & Ranks Grid */}
-            <div className="grid grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Left 2 Cols: Activity Chart (7 Days) */}
-              <div className="col-span-2 p-5 rounded-2xl bg-[#141424] border border-white/[0.08] shadow-lg flex flex-col">
+              <div className="lg:col-span-2 p-5 rounded-2xl bg-[#141424] border border-white/[0.08] shadow-lg flex flex-col">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-torus font-black text-white flex items-center gap-2">
-                    <span>📈</span> Lượt chơi 7 ngày gần nhất
+                    <span>📈</span> Plays (Last 7 Days)
                   </h3>
                   <span className="text-xs text-[#8890a4] font-mono">Scores Submitted</span>
                 </div>
@@ -528,7 +528,7 @@ export default function AdminPanel({ currentUser, onBack }) {
                       <div key={i} className="flex-1 flex flex-col items-center gap-2 group relative">
                         {/* Tooltip */}
                         <div className="absolute -top-7 opacity-0 group-hover:opacity-100 transition-opacity px-2 py-0.5 rounded bg-[#ff66ab] text-white text-[10px] font-mono font-bold pointer-events-none whitespace-nowrap shadow-md z-10">
-                          {d.count} lượt
+                          {d.count} plays
                         </div>
                         {/* Bar */}
                         <div
@@ -547,7 +547,7 @@ export default function AdminPanel({ currentUser, onBack }) {
               {/* Right Col: Rank Distribution */}
               <div className="p-5 rounded-2xl bg-[#141424] border border-white/[0.08] shadow-lg flex flex-col">
                 <h3 className="text-sm font-torus font-black text-white mb-4 flex items-center gap-2">
-                  <span>🏅</span> Phân bố thứ hạng Rank
+                  <span>🏅</span> Rank Distribution
                 </h3>
                 <div className="flex flex-col gap-2.5 flex-1 justify-around">
                   {['SSS+', 'SSS', 'SS', 'S', 'A', 'B', 'C'].map((rk) => {
@@ -576,7 +576,7 @@ export default function AdminPanel({ currentUser, onBack }) {
             {/* Recent Admin Actions */}
             <div className="p-5 rounded-2xl bg-[#141424] border border-white/[0.08] shadow-lg flex flex-col">
               <h3 className="text-sm font-torus font-black text-white mb-3 flex items-center gap-2">
-                <span>⚡</span> Hoạt động Quản trị viên mới nhất
+                <span>⚡</span> Recent Admin Activity
               </h3>
               <div className="divide-y divide-white/[0.04]">
                 {dashboardData.recent_logs?.length > 0 ? (
@@ -604,7 +604,7 @@ export default function AdminPanel({ currentUser, onBack }) {
                     </div>
                   ))
                 ) : (
-                  <p className="text-xs text-[#7c849c] py-2">Chưa có nhật ký hoạt động nào.</p>
+                  <p className="text-xs text-[#7c849c] py-2">No activity logs recorded yet.</p>
                 )}
               </div>
             </div>
@@ -622,17 +622,17 @@ export default function AdminPanel({ currentUser, onBack }) {
                   value={userQuery}
                   onChange={(e) => setUserQuery(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && loadTabContent()}
-                  placeholder="Tìm theo tên, username hoặc email..."
+                  placeholder="Search by name, username or email..."
                   className="w-full bg-[#1a1a2e] border border-white/[0.08] focus:border-[#ff66ab] rounded-xl px-3.5 py-1.5 text-xs text-white outline-none"
                 />
                 <Button size="sm" variant="primary" onClick={loadTabContent}>
-                  Tìm
+                  Search
                 </Button>
               </div>
 
               <div className="flex items-center gap-3 text-xs">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[#8890a4]">Vai trò:</span>
+                  <span className="text-[#8890a4]">Role:</span>
                   <select
                     value={userRoleFilter}
                     onChange={(e) => {
@@ -641,14 +641,14 @@ export default function AdminPanel({ currentUser, onBack }) {
                     }}
                     className="bg-[#1a1a2e] border border-white/[0.08] rounded-lg px-2.5 py-1 text-white text-xs outline-none cursor-pointer"
                   >
-                    <option value="">Tất cả</option>
+                    <option value="">All</option>
                     <option value="admin">Admin</option>
                     <option value="user">User</option>
                   </select>
                 </div>
 
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[#8890a4]">Trạng thái:</span>
+                  <span className="text-[#8890a4]">Status:</span>
                   <select
                     value={userBanFilter}
                     onChange={(e) => {
@@ -657,9 +657,9 @@ export default function AdminPanel({ currentUser, onBack }) {
                     }}
                     className="bg-[#1a1a2e] border border-white/[0.08] rounded-lg px-2.5 py-1 text-white text-xs outline-none cursor-pointer"
                   >
-                    <option value="">Tất cả</option>
-                    <option value="false">Hoạt động</option>
-                    <option value="true">Bị khóa</option>
+                    <option value="">All</option>
+                    <option value="false">Active</option>
+                    <option value="true">Banned</option>
                   </select>
                 </div>
               </div>
@@ -670,13 +670,13 @@ export default function AdminPanel({ currentUser, onBack }) {
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-white/[0.02] border-b border-white/[0.08] text-[#8890a4] font-bold">
-                    <th className="py-3 px-4">Người chơi</th>
+                    <th className="py-3 px-4">Player</th>
                     <th className="py-3 px-4">Email</th>
-                    <th className="py-3 px-4">Vai trò</th>
-                    <th className="py-3 px-4 text-right">Tổng PP</th>
+                    <th className="py-3 px-4">Role</th>
+                    <th className="py-3 px-4 text-right">Total PP</th>
                     <th className="py-3 px-4 text-center">Plays / Maps</th>
-                    <th className="py-3 px-4 text-center">Trạng thái</th>
-                    <th className="py-3 px-4 text-right">Thao tác</th>
+                    <th className="py-3 px-4 text-center">Status</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.04]">
@@ -701,7 +701,7 @@ export default function AdminPanel({ currentUser, onBack }) {
                                 ? 'bg-[#ff66ab]/20 text-[#ff66ab] border border-[#ff66ab]/40 hover:bg-[#ff66ab]/30'
                                 : 'bg-white/[0.06] text-[#8890a4] border border-white/[0.08] hover:text-white'
                             }`}
-                            title="Bấm để đổi vai trò Admin / User"
+                            title="Click to toggle Admin / User role"
                           >
                             {u.role === 'admin' ? '🛡️ ADMIN' : '👤 USER'}
                           </button>
@@ -715,11 +715,11 @@ export default function AdminPanel({ currentUser, onBack }) {
                         <td className="py-3 px-4 text-center">
                           {u.is_banned ? (
                             <span className="px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 font-bold text-[10px] border border-red-500/30">
-                              ĐÃ KHÓA
+                              BANNED
                             </span>
                           ) : (
                             <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-[10px] border border-emerald-500/30">
-                              HOẠT ĐỘNG
+                              ACTIVE
                             </span>
                           )}
                         </td>
@@ -728,7 +728,7 @@ export default function AdminPanel({ currentUser, onBack }) {
                             <button
                               onClick={() => handleOpenPasswordModal(u)}
                               className="px-2 py-1 rounded bg-white/[0.04] hover:bg-white/[0.08] text-[#8890a4] hover:text-white transition-colors"
-                              title="Đặt lại mật khẩu"
+                              title="Reset password"
                             >
                               🔑 Reset Pass
                             </button>
@@ -739,16 +739,16 @@ export default function AdminPanel({ currentUser, onBack }) {
                                   ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400'
                                   : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400'
                               }`}
-                              title={u.is_banned ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
+                              title={u.is_banned ? 'Unban account' : 'Ban account'}
                             >
-                              {u.is_banned ? '🔓 Mở khóa' : '🔒 Khóa'}
+                              {u.is_banned ? '🔓 Unban' : '🔒 Ban'}
                             </button>
                             <button
                               onClick={() => handleDeleteUser(u)}
                               className="px-2 py-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors"
-                              title="Xóa tài khoản"
+                              title="Delete account"
                             >
-                              ✕ Xóa
+                              ✕ Delete
                             </button>
                           </div>
                         </td>
@@ -757,7 +757,7 @@ export default function AdminPanel({ currentUser, onBack }) {
                   ) : (
                     <tr>
                       <td colSpan="7" className="py-8 text-center text-[#7c849c]">
-                        Không tìm thấy người dùng phù hợp.
+                        No matching users found.
                       </td>
                     </tr>
                   )}
@@ -767,7 +767,7 @@ export default function AdminPanel({ currentUser, onBack }) {
               {/* Pagination */}
               {userPagination.last_page > 1 && (
                 <div className="p-3 bg-white/[0.02] border-t border-white/[0.06] flex items-center justify-between text-xs text-[#8890a4]">
-                  <span>Tổng cộng {userPagination.total} người dùng</span>
+                  <span>Total {userPagination.total} users</span>
                   <div className="flex items-center gap-2">
                     <Button
                       size="sm"
@@ -777,7 +777,7 @@ export default function AdminPanel({ currentUser, onBack }) {
                         setUserPagination((p) => ({ ...p, current_page: p.current_page - 1 }))
                       }
                     >
-                      ← Trang trước
+                      ← Previous
                     </Button>
                     <span className="font-mono text-white">
                       {userPagination.current_page} / {userPagination.last_page}
@@ -790,7 +790,7 @@ export default function AdminPanel({ currentUser, onBack }) {
                         setUserPagination((p) => ({ ...p, current_page: p.current_page + 1 }))
                       }
                     >
-                      Trang sau →
+                      Next →
                     </Button>
                   </div>
                 </div>
@@ -810,17 +810,17 @@ export default function AdminPanel({ currentUser, onBack }) {
                   value={mapQuery}
                   onChange={(e) => setMapQuery(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && loadTabContent()}
-                  placeholder="Tìm theo tiêu đề bài hát, ca sĩ, mapper..."
+                  placeholder="Search by title, artist, mapper..."
                   className="w-full bg-[#1a1a2e] border border-white/[0.08] focus:border-[#ff66ab] rounded-xl px-3.5 py-1.5 text-xs text-white outline-none"
                 />
                 <Button size="sm" variant="primary" onClick={loadTabContent}>
-                  Tìm
+                  Search
                 </Button>
               </div>
 
               <div className="flex items-center gap-3 text-xs">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[#8890a4]">Trạng thái:</span>
+                  <span className="text-[#8890a4]">Status:</span>
                   <select
                     value={mapStatusFilter}
                     onChange={(e) => {
@@ -829,14 +829,14 @@ export default function AdminPanel({ currentUser, onBack }) {
                     }}
                     className="bg-[#1a1a2e] border border-white/[0.08] rounded-lg px-2.5 py-1 text-white text-xs outline-none cursor-pointer"
                   >
-                    <option value="">Tất cả</option>
+                    <option value="">All</option>
                     <option value="published">Published</option>
                     <option value="draft">Draft</option>
                   </select>
                 </div>
 
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[#8890a4]">Nguồn:</span>
+                  <span className="text-[#8890a4]">Source:</span>
                   <select
                     value={mapSourceFilter}
                     onChange={(e) => {
@@ -845,7 +845,7 @@ export default function AdminPanel({ currentUser, onBack }) {
                     }}
                     className="bg-[#1a1a2e] border border-white/[0.08] rounded-lg px-2.5 py-1 text-white text-xs outline-none cursor-pointer"
                   >
-                    <option value="">Tất cả</option>
+                    <option value="">All</option>
                     <option value="maimai">Maimai</option>
                     <option value="osu">osu!</option>
                   </select>
@@ -858,13 +858,13 @@ export default function AdminPanel({ currentUser, onBack }) {
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-white/[0.02] border-b border-white/[0.08] text-[#8890a4] font-bold">
-                    <th className="py-3 px-4">Bài hát</th>
-                    <th className="py-3 px-4">Mapper / Tác giả</th>
-                    <th className="py-3 px-4 text-center">Nguồn</th>
+                    <th className="py-3 px-4">Song</th>
+                    <th className="py-3 px-4">Mapper / Author</th>
+                    <th className="py-3 px-4 text-center">Source</th>
                     <th className="py-3 px-4 text-right">BPM</th>
-                    <th className="py-3 px-4 text-center">Lượt chơi</th>
-                    <th className="py-3 px-4 text-center">Trạng thái</th>
-                    <th className="py-3 px-4 text-right">Thao tác</th>
+                    <th className="py-3 px-4 text-center">Plays</th>
+                    <th className="py-3 px-4 text-center">Status</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.04]">
@@ -916,16 +916,16 @@ export default function AdminPanel({ currentUser, onBack }) {
                             <button
                               onClick={() => handleOpenEditMap(m)}
                               className="px-2 py-1 rounded bg-white/[0.04] hover:bg-white/[0.08] text-[#8890a4] hover:text-white transition-colors"
-                              title="Sửa thông tin bài hát"
+                              title="Edit track info"
                             >
-                              ✎ Sửa
+                              ✎ Edit
                             </button>
                             <button
                               onClick={() => handleDeleteMap(m)}
                               className="px-2 py-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors"
-                              title="Xóa bài hát khỏi server"
+                              title="Delete track from server"
                             >
-                              ✕ Xóa
+                              ✕ Delete
                             </button>
                           </div>
                         </td>
@@ -934,7 +934,7 @@ export default function AdminPanel({ currentUser, onBack }) {
                   ) : (
                     <tr>
                       <td colSpan="7" className="py-8 text-center text-[#7c849c]">
-                        Không tìm thấy beatmap nào.
+                        No beatmaps found.
                       </td>
                     </tr>
                   )}
@@ -944,7 +944,7 @@ export default function AdminPanel({ currentUser, onBack }) {
               {/* Pagination */}
               {mapPagination.last_page > 1 && (
                 <div className="p-3 bg-white/[0.02] border-t border-white/[0.06] flex items-center justify-between text-xs text-[#8890a4]">
-                  <span>Tổng cộng {mapPagination.total} beatmaps</span>
+                  <span>Total {mapPagination.total} beatmaps</span>
                   <div className="flex items-center gap-2">
                     <Button
                       size="sm"
@@ -954,7 +954,7 @@ export default function AdminPanel({ currentUser, onBack }) {
                         setMapPagination((p) => ({ ...p, current_page: p.current_page - 1 }))
                       }
                     >
-                      ← Trang trước
+                      ← Previous
                     </Button>
                     <span className="font-mono text-white">
                       {mapPagination.current_page} / {mapPagination.last_page}
@@ -967,7 +967,7 @@ export default function AdminPanel({ currentUser, onBack }) {
                         setMapPagination((p) => ({ ...p, current_page: p.current_page + 1 }))
                       }
                     >
-                      Trang sau →
+                      Next →
                     </Button>
                   </div>
                 </div>
@@ -987,11 +987,11 @@ export default function AdminPanel({ currentUser, onBack }) {
                   value={scoreQuery}
                   onChange={(e) => setScoreQuery(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && loadTabContent()}
-                  placeholder="Tìm theo tên người chơi hoặc song ID..."
+                  placeholder="Search by player or song ID..."
                   className="w-full bg-[#1a1a2e] border border-white/[0.08] focus:border-[#ff66ab] rounded-xl px-3.5 py-1.5 text-xs text-white outline-none"
                 />
                 <Button size="sm" variant="primary" onClick={loadTabContent}>
-                  Tìm
+                  Search
                 </Button>
               </div>
 
@@ -1006,7 +1006,7 @@ export default function AdminPanel({ currentUser, onBack }) {
                     }}
                     className="bg-[#1a1a2e] border border-white/[0.08] rounded-lg px-2.5 py-1 text-white text-xs outline-none cursor-pointer"
                   >
-                    <option value="">Tất cả</option>
+                    <option value="">All</option>
                     {['SSS+', 'SSS', 'SS', 'S', 'A', 'B', 'C'].map((r) => (
                       <option key={r} value={r}>
                         {r}
@@ -1022,14 +1022,14 @@ export default function AdminPanel({ currentUser, onBack }) {
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-white/[0.02] border-b border-white/[0.08] text-[#8890a4] font-bold">
-                    <th className="py-3 px-4">Người chơi</th>
-                    <th className="py-3 px-4">Bài hát & Độ khó</th>
+                    <th className="py-3 px-4">Player</th>
+                    <th className="py-3 px-4">Song & Difficulty</th>
                     <th className="py-3 px-4 text-center">Rank</th>
-                    <th className="py-3 px-4 text-right">Điểm số</th>
-                    <th className="py-3 px-4 text-right">Độ chính xác</th>
+                    <th className="py-3 px-4 text-right">Score</th>
+                    <th className="py-3 px-4 text-right">Accuracy</th>
                     <th className="py-3 px-4 text-right">PP</th>
-                    <th className="py-3 px-4 text-center">Thời gian</th>
-                    <th className="py-3 px-4 text-right">Thao tác</th>
+                    <th className="py-3 px-4 text-center">Date</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.04]">
@@ -1040,7 +1040,7 @@ export default function AdminPanel({ currentUser, onBack }) {
                           <div className="flex items-center gap-2">
                             <Avatar
                               src={sc.user?.avatar}
-                              name={sc.user?.name || sc.user?.username || 'Khách'}
+                              name={sc.user?.name || sc.user?.username || 'Guest'}
                               size="xs"
                             />
                             <span className="font-bold text-white">
@@ -1077,9 +1077,9 @@ export default function AdminPanel({ currentUser, onBack }) {
                           <button
                             onClick={() => handleDeleteScore(sc)}
                             className="px-2 py-1 rounded bg-red-500/10 hover:bg-red-500/25 text-red-400 text-[11px] font-bold transition-colors cursor-pointer"
-                            title="Xóa điểm và trừ PP"
+                            title="Delete score and deduct PP"
                           >
-                            ✕ Xóa điểm
+                            ✕ Delete Score
                           </button>
                         </td>
                       </tr>
@@ -1087,7 +1087,7 @@ export default function AdminPanel({ currentUser, onBack }) {
                   ) : (
                     <tr>
                       <td colSpan="8" className="py-8 text-center text-[#7c849c]">
-                        Không tìm thấy bản ghi điểm nào.
+                        No score records found.
                       </td>
                     </tr>
                   )}
@@ -1097,7 +1097,7 @@ export default function AdminPanel({ currentUser, onBack }) {
               {/* Pagination */}
               {scorePagination.last_page > 1 && (
                 <div className="p-3 bg-white/[0.02] border-t border-white/[0.06] flex items-center justify-between text-xs text-[#8890a4]">
-                  <span>Tổng cộng {scorePagination.total} bản ghi</span>
+                  <span>Total {scorePagination.total} records</span>
                   <div className="flex items-center gap-2">
                     <Button
                       size="sm"
@@ -1107,7 +1107,7 @@ export default function AdminPanel({ currentUser, onBack }) {
                         setScorePagination((p) => ({ ...p, current_page: p.current_page - 1 }))
                       }
                     >
-                      ← Trang trước
+                      ← Previous
                     </Button>
                     <span className="font-mono text-white">
                       {scorePagination.current_page} / {scorePagination.last_page}
@@ -1120,7 +1120,7 @@ export default function AdminPanel({ currentUser, onBack }) {
                         setScorePagination((p) => ({ ...p, current_page: p.current_page + 1 }))
                       }
                     >
-                      Trang sau →
+                      Next →
                     </Button>
                   </div>
                 </div>
@@ -1135,9 +1135,9 @@ export default function AdminPanel({ currentUser, onBack }) {
             <div className="rounded-2xl bg-[#141424] border border-white/[0.08] overflow-hidden shadow-xl">
               <div className="p-4 bg-white/[0.02] border-b border-white/[0.08] flex items-center justify-between">
                 <h3 className="font-torus font-black text-sm text-white">
-                  📜 Nhật ký hoạt động Quản trị viên (Audit Log)
+                  📜 Administrator Activity Log (Audit Log)
                 </h3>
-                <span className="text-xs text-[#8890a4]">Ghi nhận toàn bộ thao tác nhạy cảm</span>
+                <span className="text-xs text-[#8890a4]">Logs all sensitive administrative actions</span>
               </div>
 
               <div className="divide-y divide-white/[0.04]">
@@ -1185,7 +1185,7 @@ export default function AdminPanel({ currentUser, onBack }) {
                     </div>
                   ))
                 ) : (
-                  <div className="p-8 text-center text-[#7c849c]">Chưa có bản ghi hoạt động nào.</div>
+                  <div className="p-8 text-center text-[#7c849c]">No activity logs recorded yet.</div>
                 )}
               </div>
             </div>
@@ -1197,12 +1197,12 @@ export default function AdminPanel({ currentUser, onBack }) {
       <Modal
         isOpen={editMapModal.isOpen}
         onClose={() => setEditMapModal((m) => ({ ...m, isOpen: false }))}
-        title="Chỉnh sửa Beatmap Metadata"
+        title="Edit Beatmap Metadata"
         size="md"
       >
         <form onSubmit={handleSaveEditMap} className="flex flex-col gap-4">
           <div>
-            <label className="block text-xs font-bold text-[#b8c0d4] mb-1">Tên bài hát (Title)</label>
+            <label className="block text-xs font-bold text-[#b8c0d4] mb-1">Song Title</label>
             <input
               type="text"
               value={editMapModal.title}
@@ -1213,7 +1213,7 @@ export default function AdminPanel({ currentUser, onBack }) {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-[#b8c0d4] mb-1">Ca sĩ / Tác giả (Artist)</label>
+            <label className="block text-xs font-bold text-[#b8c0d4] mb-1">Artist / Author</label>
             <input
               type="text"
               value={editMapModal.artist}
@@ -1225,7 +1225,7 @@ export default function AdminPanel({ currentUser, onBack }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-[#b8c0d4] mb-1">Mapper (Creator)</label>
+              <label className="block text-xs font-bold text-[#b8c0d4] mb-1">Mapper / Creator</label>
               <input
                 type="text"
                 value={editMapModal.creator}
@@ -1246,14 +1246,14 @@ export default function AdminPanel({ currentUser, onBack }) {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-[#b8c0d4] mb-1">Trạng thái phát hành</label>
+            <label className="block text-xs font-bold text-[#b8c0d4] mb-1">Release Status</label>
             <select
               value={editMapModal.status}
               onChange={(e) => setEditMapModal((m) => ({ ...m, status: e.target.value }))}
               className="w-full h-10 px-3.5 rounded-xl bg-[#1a1a2e] border border-white/[0.08] focus:border-[#ff66ab] text-sm text-white outline-none cursor-pointer"
             >
-              <option value="published">Published (Sẵn sàng chơi & đua top)</option>
-              <option value="draft">Draft (Bản nháp / Đang duyệt)</option>
+              <option value="published">Published (Ready to play & compete)</option>
+              <option value="draft">Draft (Draft / Under review)</option>
             </select>
           </div>
 
@@ -1263,10 +1263,10 @@ export default function AdminPanel({ currentUser, onBack }) {
               variant="ghost"
               onClick={() => setEditMapModal((m) => ({ ...m, isOpen: false }))}
             >
-              Hủy
+              Cancel
             </Button>
             <Button type="submit" variant="primary">
-              Lưu thay đổi
+              Save Changes
             </Button>
           </div>
         </form>
@@ -1276,27 +1276,27 @@ export default function AdminPanel({ currentUser, onBack }) {
       <Modal
         isOpen={passwordModal.isOpen}
         onClose={() => setPasswordModal((p) => ({ ...p, isOpen: false }))}
-        title={`Đặt lại mật khẩu cho '${passwordModal.username}'`}
+        title={`Reset Password for '${passwordModal.username}'`}
         size="sm"
       >
         <form onSubmit={handleSavePassword} className="flex flex-col gap-4">
           <p className="text-xs text-[#b8c0d4]">
-            Nhập mật khẩu mới cho tài khoản hoặc để trống để hệ thống tự động sinh mật khẩu ngẫu nhiên.
+            Enter a new password for the account or leave blank for a system-generated temporary password.
           </p>
           <div>
-            <label className="block text-xs font-bold text-[#b8c0d4] mb-1">Mật khẩu mới (tùy chọn)</label>
+            <label className="block text-xs font-bold text-[#b8c0d4] mb-1">New Password (Optional)</label>
             <input
               type="password"
               value={passwordModal.newPassword}
               onChange={(e) => setPasswordModal((p) => ({ ...p, newPassword: e.target.value }))}
-              placeholder="Tối thiểu 6 ký tự hoặc bỏ trống..."
+              placeholder="Min 6 characters or leave blank..."
               className="w-full h-10 px-3.5 rounded-xl bg-[#1a1a2e] border border-white/[0.08] focus:border-[#ff66ab] text-sm text-white outline-none"
             />
           </div>
 
           {passwordModal.temporaryPassword && (
             <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-mono">
-              Mật khẩu tạm thời: <strong>{passwordModal.temporaryPassword}</strong>
+              Temporary password: <strong>{passwordModal.temporaryPassword}</strong>
             </div>
           )}
 
@@ -1306,10 +1306,10 @@ export default function AdminPanel({ currentUser, onBack }) {
               variant="ghost"
               onClick={() => setPasswordModal((p) => ({ ...p, isOpen: false }))}
             >
-              Đóng
+              Close
             </Button>
             <Button type="submit" variant="primary">
-              Đặt lại mật khẩu
+              Reset Password
             </Button>
           </div>
         </form>

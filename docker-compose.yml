@@ -1,0 +1,38 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: triarhythm-backend
+    ports:
+      - "8000:10000"
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - APP_KEY=base64:fH7j2L/8E2tQ0H0qE5qG9w3x1r4t8y2u6i0o=
+      - DB_CONNECTION=mysql
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=triarhythm
+      - DB_USERNAME=root
+      - DB_PASSWORD=root
+    volumes:
+      - .:/var/www/html
+      - /var/www/html/vendor
+    depends_on:
+      - db
+
+  db:
+    image: mysql:8.0
+    container_name: triarhythm-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: triarhythm
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+
+volumes:
+  db_data:

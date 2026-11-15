@@ -26,34 +26,30 @@ describe('Maimai / Simai Chart Parser (maimaiParser.js)', () => {
     expect(result.metadata.offsetMs).toBe(500);
     expect(result.difficulties.length).toBe(2);
 
-    const adv = result.difficulties.find((d) => d.difficultyName === 'Advanced');
-    expect(adv).toBeDefined();
-    expect(adv.difficultyLevel).toBe('5');
-    expect(adv.beatmap.settings.noteSpeed).toBe(10.0);
+    const basic = result.difficulties.find((d) => d.difficultyName === 'Basic');
+    expect(basic).toBeDefined();
+    expect(basic.difficultyLevel).toBe('5');
+    expect(basic.beatmap.settings.noteSpeed).toBe(10.0);
 
-    const master = result.difficulties.find((d) => d.difficultyName === 'Master');
-    expect(master).toBeDefined();
-    expect(master.difficultyLevel).toBe('12+');
+    const expert = result.difficulties.find((d) => d.difficultyName === 'Expert');
+    expect(expert).toBeDefined();
+    expect(expert.difficultyLevel).toBe('12+');
   });
 
-  it('2. Convert slide sang Ring, touch tâm sang Ring, và nốt outer touch (B, A, D, E) sang Ring', () => {
+  it('2. Convert slide sang tap ở đầu và Ring ở cuối, touch tâm sang Ring, và nốt outer touch (B, A, D, E) sang Ring', () => {
     const result = parseMaimai(sampleMaidata);
-    const adv = result.difficulties.find((d) => d.difficultyName === 'Advanced');
-    const notes = adv.beatmap.notes;
+    const basic = result.difficulties.find((d) => d.difficultyName === 'Basic');
+    const notes = basic.beatmap.notes;
 
-    // Slide 1-4[4:1] convert sang nốt Ring (Spacebar) đồng thời giữ nốt gốc Button 1 (Lane 2)
-    const slideRing = notes.find((n) => n.time === 500 + 4 * 500 && n.type === 'ring');
-    expect(slideRing).toBeDefined();
-    expect(slideRing.lane).toBeUndefined();
-
+    // Slide 1-4[4:1] tại 2500ms bắt đầu bằng nốt Tap trên Button 1 (Lane 2), không có Ring ở đầu
     const slideButton = notes.find((n) => n.time === 500 + 4 * 500 && n.lane === MAIMAI_TO_LANE[1]);
     expect(slideButton).toBeDefined();
     expect(slideButton.type).toBe('tap');
 
-    // C1 là Center Touch -> convert sang nốt Ring (Spacebar)
-    const centerRingNote = notes.find((n) => n.time === 500 + 5 * 500 && n.type === 'ring');
-    expect(centerRingNote).toBeDefined();
-    expect(centerRingNote.lane).toBeUndefined();
+    // Cuối slider 1-4[4:1] tại 3000ms thêm 1 nốt Ring (trùng thời điểm C1 -> khử trùng lặp thành 1 nốt Ring)
+    const ringAt3000 = notes.find((n) => n.time === 500 + 5 * 500 && n.type === 'ring');
+    expect(ringAt3000).toBeDefined();
+    expect(ringAt3000.lane).toBeUndefined();
 
     // B2 là Outer Touch (vành trong quanh tâm) -> convert sang nốt Ring (Spacebar), không tạo nốt trên Lane 6
     const b2Note = notes.find((n) => n.time === 500 + 6 * 500 && n.type === 'ring');
@@ -75,8 +71,8 @@ describe('Maimai / Simai Chart Parser (maimaiParser.js)', () => {
 
   it('4. Phân tích chính xác nốt Break và nốt Hold với duration', () => {
     const result = parseMaimai(sampleMaidata);
-    const adv = result.difficulties.find((d) => d.difficultyName === 'Advanced');
-    const notes = adv.beatmap.notes;
+    const basic = result.difficulties.find((d) => d.difficultyName === 'Basic');
+    const notes = basic.beatmap.notes;
 
     const breakNote = notes.find((n) => n.type === 'break');
     expect(breakNote).toBeDefined();
@@ -109,13 +105,13 @@ describe('Maimai / Simai Chart Parser (maimaiParser.js)', () => {
     const pkg = await importPackage(buf);
 
     expect(pkg.charts).toBeDefined();
-    expect(pkg.charts.length).toBe(4); // Có 4 độ khó: Advanced, Expert, Master, Re:Master
+    expect(pkg.charts.length).toBe(4); // Có 4 độ khó: Basic, Advanced, Expert, Master
 
     const names = pkg.charts.map((c) => c.difficultyName);
+    expect(names).toContain('Basic');
     expect(names).toContain('Advanced');
     expect(names).toContain('Expert');
     expect(names).toContain('Master');
-    expect(names).toContain('Re:Master');
 
     // Kiểm tra asset trích xuất
     expect(pkg.assets.audio).toBeDefined();
@@ -125,13 +121,13 @@ describe('Maimai / Simai Chart Parser (maimaiParser.js)', () => {
     expect(pkg.assets.audio.type).toMatch(/^audio\//);
     expect(pkg.assets.background.type).toMatch(/^image\//);
 
-    // Kiểm tra độ khó Re:Master
-    const remaster = pkg.charts.find((c) => c.difficultyName === 'Re:Master');
-    expect(remaster.difficultyLevel).toBe('14');
-    expect(remaster.beatmap.notes.length).toBeGreaterThan(500);
+    // Kiểm tra độ khó Master (inote_5)
+    const master = pkg.charts.find((c) => c.difficultyName === 'Master');
+    expect(master.difficultyLevel).toBe('14');
+    expect(master.beatmap.notes.length).toBeGreaterThan(500);
 
-    // Kiểm tra có nốt Ring trong Re:Master (Slide + Touch Center)
-    const ringNotes = remaster.beatmap.notes.filter((n) => n.type === 'ring');
+    // Kiểm tra có nốt Ring trong Master (Slide + Touch Center)
+    const ringNotes = master.beatmap.notes.filter((n) => n.type === 'ring');
     expect(ringNotes.length).toBeGreaterThan(50);
   });
 
@@ -146,12 +142,12 @@ describe('Maimai / Simai Chart Parser (maimaiParser.js)', () => {
     const res = parseMaimai(maidataWithTouchHold);
     const notes = res.difficulties[0].beatmap.notes;
 
-    // Slide 1-4[4:1]: convert sang Ring Tap, KHÔNG phải Hold
-    const slideRing = notes.find((n) => n.time === 0 && n.type === 'ring');
-    expect(slideRing).toBeDefined();
-    expect(Boolean(slideRing.isHold)).toBe(false);
+    // Slide 1-4[4:1] tại 0: bắt đầu là Tap trên Lane 2, cuối slider tại 500ms là Ring Tap (trùng C1 -> 1 nốt Ring)
+    const slideTap = notes.find((n) => n.time === 0 && n.lane === MAIMAI_TO_LANE[1]);
+    expect(slideTap).toBeDefined();
+    expect(slideTap.type).toBe('tap');
 
-    // Touch Tap C1: convert sang Ring Tap, KHÔNG phải Hold
+    // Touch Tap C1 / Cuối slide tại 500ms: convert sang Ring Tap, KHÔNG phải Hold
     const touchTapRing = notes.find((n) => n.time === 500 && n.type === 'ring');
     expect(touchTapRing).toBeDefined();
     expect(Boolean(touchTapRing.isHold)).toBe(false);
@@ -330,12 +326,10 @@ describe('Maimai / Simai Chart Parser (maimaiParser.js)', () => {
     expect(ringE3).toBeDefined();
   });
 
-  it('14. Khi convert slider maimai, ở cuối slider tự động thêm 1 nốt ring đơn (trừ note ring hold)', () => {
+  it('14. Khi convert slider maimai, slider biến thành tap bình thường và KHÔNG tạo ring ở cuối (ring chỉ từ touch)', () => {
     // BPM = 120 (1 beat = 500ms).
     // Tại time = 0: Slide 1-5[2:1] (duration [2:1] = 2 beat = 1000ms).
-    // Điểm kết thúc của slider là time = 1000ms.
     // Tại time = 2000: Đồng thời 2 slider 1-4[4:1]/8-5[4:1] (duration [4:1] = 1 beat = 500ms).
-    // Điểm kết thúc của cả 2 slider là time = 2500ms.
     const sliderMaidata = `
 &title=Slider End Ring Test
 &artist=Triarhythm
@@ -347,25 +341,55 @@ describe('Maimai / Simai Chart Parser (maimaiParser.js)', () => {
     const notes = res.difficulties[0].beatmap.notes;
 
     // 1. Slider 1-5[2:1] tại time = 0:
-    // - Có nốt Ring tại time = 0 (bắt đầu slider)
-    const ringAtStart = notes.find((n) => n.time === 0 && n.type === 'ring');
-    expect(ringAtStart).toBeDefined();
+    // - Bắt đầu bằng nốt Tap trên Lane 2 (không có Ring ở đầu)
+    const tapAtStart = notes.find((n) => n.time === 0 && n.lane === MAIMAI_TO_LANE[1]);
+    expect(tapAtStart).toBeDefined();
+    expect(tapAtStart.type).toBe('tap');
 
-    // - Cuối slider (time = 1000ms): PHẢI có 1 nốt Ring đơn (không phải Ring Hold)
+    // - Cuối slider (time = 1000ms): KHÔNG có nốt Ring (nốt Ring chỉ từ Touch/Touch Center)
     const ringAtSliderEnd = notes.find((n) => n.time === 1000 && n.type === 'ring');
-    expect(ringAtSliderEnd).toBeDefined();
-    expect(Boolean(ringAtSliderEnd.isHold)).toBe(false);
-    expect(ringAtSliderEnd.endTime).toBeUndefined();
+    expect(ringAtSliderEnd).toBeUndefined();
 
     // 2. Hai slider đồng thời 1-4[4:1]/8-5[4:1] tại time = 2000ms:
-    // - Có nốt Ring tại time = 2000ms
-    const ringAtDoubleStart = notes.filter((n) => n.time === 2000 && n.type === 'ring');
-    expect(ringAtDoubleStart.length).toBe(1);
+    // - Bắt đầu bằng 2 nốt Tap trên Lane 2 và Lane 0
+    const tapAtDoubleStart1 = notes.find((n) => n.time === 2000 && n.lane === MAIMAI_TO_LANE[1]);
+    const tapAtDoubleStart8 = notes.find((n) => n.time === 2000 && n.lane === MAIMAI_TO_LANE[8]);
+    expect(tapAtDoubleStart1).toBeDefined();
+    expect(tapAtDoubleStart8).toBeDefined();
 
-    // - Cuối slider (time = 2500ms): chỉ có ĐÚNG 1 nốt Ring đơn duy nhất (khử trùng lặp)
+    // - Cuối slider (time = 2500ms): KHÔNG có nốt Ring
     const ringsAtDoubleEnd = notes.filter((n) => n.time === 2500 && n.type === 'ring');
-    expect(ringsAtDoubleEnd.length).toBe(1);
-    expect(Boolean(ringsAtDoubleEnd[0].isHold)).toBe(false);
-    expect(ringsAtDoubleEnd[0].endTime).toBeUndefined();
+    expect(ringsAtDoubleEnd.length).toBe(0);
+  });
+
+  it('15. Chuẩn 5 độ khó Maimai: Basic, Advanced, Expert, Master, Re:Master và loại bỏ Utage', () => {
+    const fullMaimai = `
+&title=Full Maimai 5 Diffs
+&artist=Sega
+&lv_2=3
+&lv_3=7
+&lv_4=11+
+&lv_5=13+
+&lv_6=14+
+&lv_7=15
+&inote_2=(120){4}1,2,3,4,E
+&inote_3=(120){4}1,2,3,4,E
+&inote_4=(120){4}1,2,3,4,E
+&inote_5=(120){4}1,2,3,4,E
+&inote_6=(120){4}1,2,3,4,E
+&inote_7=(120){4}1,2,3,4,E
+`;
+    const res = parseMaimai(fullMaimai);
+    expect(res.difficulties.length).toBe(5);
+    const names = res.difficulties.map((d) => d.difficultyName);
+    expect(names).toEqual(['Basic', 'Advanced', 'Expert', 'Master', 'Re:Master']);
+    expect(names).not.toContain('Utage');
+
+    // Thử thứ tự độ khó chuẩn Maimai
+    expect(names[0]).toBe('Basic');
+    expect(names[1]).toBe('Advanced');
+    expect(names[2]).toBe('Expert');
+    expect(names[3]).toBe('Master');
+    expect(names[4]).toBe('Re:Master');
   });
 });

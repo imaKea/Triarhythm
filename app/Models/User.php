@@ -70,17 +70,39 @@ class User extends Authenticatable
      */
     public function recalculateTotalPP(): float
     {
-        $bestScores = $this->scores()
+        return $this->recalculateStats()['total_pp'];
+    }
+
+    /**
+     * Rebuild score-derived statistics from the remaining score records.
+     *
+     * Call inside a transaction while this user's row is locked when writes may
+     * happen concurrently.
+     *
+     * @return array{total_pp: float, total_score: int, play_count: int}
+     */
+    public function recalculateStats(): array
+    {
+        $scores = $this->scores();
+        $totalScore = (int)(clone $scores)->sum('score');
+        $playCount = (int)(clone $scores)->count();
+        $bestScores = (clone $scores)
             ->orderByDesc('pp')
-            ->limit(100)
+            ->limit(PpCalculator::TOTAL_TOP_COUNT)
             ->pluck('pp')
             ->toArray();
 
         $newTotalPP = PpCalculator::calculateTotalPP($bestScores);
         $this->total_pp = $newTotalPP;
-        $this->rating = $newTotalPP; // Đồng bộ rating theo total_pp
+        $this->rating = $newTotalPP;
+        $this->total_score = $totalScore;
+        $this->play_count = $playCount;
         $this->save();
 
-        return $newTotalPP;
+        return [
+            'total_pp' => $newTotalPP,
+            'total_score' => $totalScore,
+            'play_count' => $playCount,
+        ];
     }
 }

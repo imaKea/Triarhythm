@@ -113,10 +113,32 @@ export function buildSongEntry({
   sourceFileName = ''
 }) {
   const normalizedCharts = (charts || []).map(chartToDifficulty);
-  const primaryBeatmap = primary || normalizedCharts[0]?.beatmap;
+  // Loại bỏ hoàn toàn Utage theo yêu cầu của hệ thống ("bỏ utage")
+  const filteredCharts = normalizedCharts.filter((c) => {
+    const name = (c.difficultyName || '').toLowerCase();
+    return !name.includes('utage') && !name.includes('宴');
+  });
+
+  // Sắp xếp các độ khó chuẩn Maimai: Basic -> Advanced -> Expert -> Master -> Re:Master
+  const MAIMAI_ORDER = { 'basic': 1, 'advanced': 2, 'expert': 3, 'master': 4, 're:master': 5 };
+  filteredCharts.sort((a, b) => {
+    const catA = (a.category || a.difficultyName || '').toLowerCase().replace(/[^a-z:]/g, '');
+    const catB = (b.category || b.difficultyName || '').toLowerCase().replace(/[^a-z:]/g, '');
+    const orderA = MAIMAI_ORDER[catA] || 99;
+    const orderB = MAIMAI_ORDER[catB] || 99;
+    if (orderA !== orderB) return orderA - orderB;
+    return (parseFloat(a.difficultyLevel) || 0) - (parseFloat(b.difficultyLevel) || 0);
+  });
+
+  // Mặc định ưu tiên chọn Master nếu có, nếu không thì Re:Master hoặc độ khó cao nhất / đầu tiên
+  const defaultChart = filteredCharts.find((c) => (c.difficultyName || '').toLowerCase() === 'master')
+    || filteredCharts.find((c) => (c.difficultyName || '').toLowerCase().includes('master'))
+    || filteredCharts[filteredCharts.length - 1]
+    || filteredCharts[0];
+
+  const primaryBeatmap = primary || defaultChart?.beatmap;
   if (!primaryBeatmap) throw new Error('Không có beatmap hợp lệ để lưu.');
 
-  const firstDiff = normalizedCharts[0];
   const source = isMaimaiBeatmap(primaryBeatmap) ? 'maimai' : 'osu';
   const id = buildSongId({ kind, primary: primaryBeatmap, difficultyName, fileName });
 
@@ -126,10 +148,10 @@ export function buildSongEntry({
     title: primaryBeatmap.metadata?.title || fileName.replace(/\.(osz|zip|osu|txt)$/i, '') || 'Untitled',
     artist: primaryBeatmap.metadata?.artist || 'Unknown Artist',
     creator: primaryBeatmap.metadata?.creator || (source === 'maimai' ? 'Maimai Mapper' : 'Unknown Mapper'),
-    difficultyName: firstDiff?.difficultyName || 'Normal',
-    difficultyLevel: firstDiff?.difficultyLevel || '10',
-    difficulties: normalizedCharts,
-    beatmap: firstDiff?.beatmap || primaryBeatmap,
+    difficultyName: defaultChart?.difficultyName || 'Master',
+    difficultyLevel: defaultChart?.difficultyLevel || '10',
+    difficulties: filteredCharts,
+    beatmap: defaultChart?.beatmap || primaryBeatmap,
     audioBlob: assets.audio || null,
     audioBuffer: assets.audioBuffer || null,
     audioSource: makeObjectUrl(assets.audio),
@@ -227,7 +249,7 @@ async function zipFiles(files) {
   for (const file of files) {
     zip.file(safeArchivePath(file), file);
   }
-  return zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+  return zip.generateAsync({ type: 'blob', compression: 'STORE' });
 }
 
 /**
@@ -310,20 +332,16 @@ export async function parseFiles(fileList, options = {}) {
  * @param {Function|null} [options.saveAssets] - inject fake uploader khi test
  * @returns {Promise<{status: 'saved'|'duplicate', songEntry: Object, kind: string, difficultyCount: number}>}
  */
-export async function importFiles(fileList, options = {}) {
+async function saveAndSyncSongEntry(parsed, options = {}) {
   const {
-    preset = 'twoFingers',
-    autoSlide = false,
     db = dbManager,
     syncMap = true,
     saveMap = defaultSaveMap,
     saveAssets = defaultSaveAssets
   } = options;
 
-  const parsed = await parseFiles(fileList, { preset, autoSlide });
-
   if (!parsed.charts || parsed.charts.length === 0) {
-    throw new Error('Không tìm thấy difficulty hợp lệ trong file map.');
+    throw new Error('No valid difficulty found in map file.');
   }
 
   const songEntry = buildSongEntry({
@@ -381,4 +399,65 @@ export async function importFiles(fileList, options = {}) {
     kind: parsed.kind,
     difficultyCount: parsed.charts.length
   };
+}
+
+/**
+ * Nhập và lưu map vào IndexedDB (và đồng bộ metadata lên MySQL).
+ * Hỗ trợ nhập hàng loạt (Bulk Import) khi chọn nhiều file gói (.osz, .zip).
+ *
+ * @param {FileList|File[]} fileList
+ * @param {Object} options
+ * @param {'twoFingers'|string} [options.preset]
+ * @param {boolean} [options.autoSlide]
+ * @param {Object} [options.db] - inject fake DB khi test
+ * @param {boolean} [options.syncMap=true] - đồng bộ metadata lên Laravel API
+ * @param {Function|null} [options.saveMap] - inject fake saver khi test
+ * @param {Function|null} [options.saveAssets] - inject fake uploader khi test
+ * @returns {Promise<{status: 'saved'|'duplicate'|'bulk', songEntry: Object, kind: string, difficultyCount: number, count?: number}>}
+ */
+export async function importFiles(fileList, options = {}) {
+  const {
+    preset = 'twoFingers',
+    autoSlide = false,
+  } = options;
+
+  const files = Array.from(fileList || []);
+  if (files.length === 0) throw new Error('No files selected.');
+
+  // Kiểm tra nếu có nhiều gói (.osz / .zip) -> Bulk Import
+  const packageFiles = files.filter((f) => /\.(osz|zip)$/i.test(f?.name || ''));
+  if (packageFiles.length > 1) {
+    const results = [];
+    for (const pkgFile of packageFiles) {
+      try {
+        const pkg = await importPackage(pkgFile, { preset, autoSlide });
+        const parsed = {
+          kind: 'package',
+          charts: pkg.charts,
+          primary: pkg.primaryBeatmap,
+          assets: pkg.assets || {},
+          fileName: pkgFile.name,
+          sourceFileName: pkgFile.name,
+          sourcePackageBlob: pkgFile
+        };
+        const res = await saveAndSyncSongEntry(parsed, options);
+        if (res) results.push(res);
+      } catch (err) {
+        console.warn(`[Bulk Import] Error importing "${pkgFile.name}":`, err.message);
+      }
+    }
+    return {
+      status: 'bulk',
+      count: results.length,
+      total: packageFiles.length,
+      results,
+      songEntry: results[results.length - 1]?.songEntry || null,
+      kind: 'bulk',
+      difficultyCount: results.reduce((acc, r) => acc + (r.difficultyCount || 0), 0)
+    };
+  }
+
+  // Nhập gói đơn lẻ hoặc nhóm file thông thường
+  const parsed = await parseFiles(fileList, { preset, autoSlide });
+  return await saveAndSyncSongEntry(parsed, options);
 }

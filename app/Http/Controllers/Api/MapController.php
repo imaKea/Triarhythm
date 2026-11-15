@@ -71,25 +71,32 @@ class MapController extends Controller
             }
         }
 
-        $creatorName = $validated['creator'] ?? ($user ? $user->name : 'Mapper');
+        $map = Map::where('song_id', $validated['song_id'])->first();
+        if ($map && (!$user || (!$user->isAdmin() && $map->user_id !== $user->id))) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn không có quyền cập nhật beatmap này.',
+            ], 403);
+        }
 
-        $map = Map::updateOrCreate(
-            ['song_id' => $validated['song_id']],
-            [
-                'user_id' => $user?->id,
-                'title' => $validated['title'],
-                'artist' => $validated['artist'] ?? 'Unknown Artist',
-                'creator' => $creatorName,
-                'source' => $validated['source'] ?? 'maimai',
-                'bpm' => $validated['bpm'] ?? 120,
-                'preview_time' => $validated['preview_time'] ?? 0,
-                'cover_url' => $this->cleanUrl($validated['cover_url'] ?? null),
-                'audio_url' => $this->cleanUrl($validated['audio_url'] ?? null),
-                'video_url' => $this->cleanUrl($validated['video_url'] ?? null),
-                'difficulties' => $validated['difficulties'],
-                'metadata' => $validated['metadata'] ?? [],
-            ]
-        );
+        $map ??= new Map([
+            'song_id' => $validated['song_id'],
+            'user_id' => $user?->id,
+        ]);
+        $map->fill([
+            'title' => $validated['title'],
+            'artist' => $validated['artist'] ?? 'Unknown Artist',
+            'creator' => $validated['creator'] ?? ($user ? $user->name : 'Mapper'),
+            'source' => $validated['source'] ?? 'maimai',
+            'bpm' => $validated['bpm'] ?? 120,
+            'preview_time' => $validated['preview_time'] ?? 0,
+            'cover_url' => $this->cleanUrl($validated['cover_url'] ?? null),
+            'audio_url' => $this->cleanUrl($validated['audio_url'] ?? null),
+            'video_url' => $this->cleanUrl($validated['video_url'] ?? null),
+            'difficulties' => $validated['difficulties'],
+            'metadata' => $validated['metadata'] ?? [],
+        ]);
+        $map->save();
 
         return response()->json([
             'success' => true,
@@ -108,6 +115,14 @@ class MapController extends Controller
 
         if (!$map) {
             return response()->json(['success' => false, 'message' => 'Không tìm thấy beatmap'], 404);
+        }
+
+        $user = $request->user();
+        if (!$user || (!$user->isAdmin() && $map->user_id !== $user->id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn không có quyền thay thế asset của beatmap này.',
+            ], 403);
         }
 
         $request->validate([

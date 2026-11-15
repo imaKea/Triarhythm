@@ -17,16 +17,43 @@ export const MAIMAI_TO_LANE = {
   8: 0  // Phím 8 (Top-Left)     -> Lane 0 (Phím 4·5)
 };
 
-// Tên độ khó chuẩn maimai DX
+// Tên độ khó chuẩn maimai DX (theo chuẩn Simai maidata.txt)
+// 1: Easy (maimai cũ trước DX), 2: Basic, 3: Advanced, 4: Expert, 5: Master, 6: Re:Master, 7+: Utage
 export const MAIMAI_DIFF_NAMES = {
-  1: 'Basic',
-  2: 'Advanced',
-  3: 'Expert',
-  4: 'Master',
-  5: 'Re:Master',
-  6: 'Utage',
-  7: 'Utage'
+  1: 'Easy',
+  2: 'Basic',
+  3: 'Advanced',
+  4: 'Expert',
+  5: 'Master',
+  6: 'Re:Master',
+  7: 'Utage',
+  8: 'Utage'
 };
+
+/**
+ * Xác định chính xác tên độ khó theo chuẩn Simai hoặc 1-based indexing
+ */
+export function getMaimaiDifficultyName(diffIdx, allKeys = []) {
+  const numKeys = allKeys.map((k) => parseInt(k, 10)).filter((n) => !isNaN(n));
+  const has6 = numKeys.includes(6);
+  const startsAt2 = !numKeys.includes(1);
+
+  // Chuẩn Simai Arcade / AstroDX (bắt đầu từ 2 hoặc có inote_6 hoặc diffIdx >= 2):
+  // 1: Easy (cũ), 2: Basic, 3: Advanced, 4: Expert, 5: Master, 6: Re:Master, 7+: Utage
+  if (has6 || startsAt2 || diffIdx >= 2) {
+    return MAIMAI_DIFF_NAMES[diffIdx] || (diffIdx > 6 ? 'Utage' : `Diff #${diffIdx}`);
+  }
+
+  // Trường hợp custom chart tự đánh số từ 1..5 mà không dùng chuẩn 2..6:
+  const ZERO_OR_ONE_BASED = {
+    1: 'Basic',
+    2: 'Advanced',
+    3: 'Expert',
+    4: 'Master',
+    5: 'Re:Master'
+  };
+  return ZERO_OR_ONE_BASED[diffIdx] || `Diff #${diffIdx}`;
+}
 
 /**
  * Tính thời lượng nốt Hold / Slide theo cú pháp [divisor:count] hoặc [seconds]
@@ -74,11 +101,14 @@ export function parseMaimai(maidataText, options = {}) {
     des_3: '',
     des_4: '',
     des_5: '',
+    des_6: '',
+    des_7: '',
     lv_1: '1',
     lv_2: '5',
     lv_3: '8',
     lv_4: '12+',
-    lv_5: '14'
+    lv_5: '14',
+    lv_6: '14+'
   };
 
   const inotes = {};
@@ -108,7 +138,13 @@ export function parseMaimai(maidataText, options = {}) {
     if (!inoteContent || !inoteContent.trim()) continue;
 
     const diffIdx = parseInt(diffKey, 10);
-    const diffName = MAIMAI_DIFF_NAMES[diffIdx] || `Diff #${diffIdx}`;
+    const diffName = getMaimaiDifficultyName(diffIdx, diffKeys);
+
+    // Loại bỏ hoàn toàn Utage theo yêu cầu của hệ thống Triarhythm ("bỏ utage")
+    if (diffName === 'Utage' || diffName.toLowerCase().includes('utage')) {
+      continue;
+    }
+
     const diffLevel = metadata[`lv_${diffKey}`] || '10';
     const creator = metadata[`des_${diffKey}`] || metadata.des || 'Maimai Mapper';
 
@@ -157,6 +193,19 @@ export function parseMaimai(maidataText, options = {}) {
     throw new Error('File maidata.txt không chứa độ khó (inote_*) hợp lệ nào.');
   }
 
+  // Sắp xếp các độ khó chuẩn Maimai: Basic -> Advanced -> Expert -> Master -> Re:Master
+  const DIFF_ORDER = { 'basic': 1, 'advanced': 2, 'expert': 3, 'master': 4, 're:master': 5 };
+  difficulties.sort((a, b) => {
+    const orderA = DIFF_ORDER[a.difficultyName.toLowerCase()] || 99;
+    const orderB = DIFF_ORDER[b.difficultyName.toLowerCase()] || 99;
+    if (orderA !== orderB) return orderA - orderB;
+    return (parseFloat(a.difficultyLevel) || 0) - (parseFloat(b.difficultyLevel) || 0);
+  });
+
+  const primaryDiff = difficulties.find((d) => d.difficultyName === 'Master')
+    || difficulties.find((d) => d.difficultyName === 'Re:Master')
+    || difficulties[difficulties.length - 1];
+
   return {
     metadata: {
       title: metadata.title || 'Untitled Track',
@@ -165,7 +214,7 @@ export function parseMaimai(maidataText, options = {}) {
       offsetMs
     },
     difficulties,
-    primaryBeatmap: difficulties[difficulties.length - 1].beatmap // Mặc định chọn Master/Re:Master
+    primaryBeatmap: primaryDiff?.beatmap || difficulties[0]?.beatmap // Mặc định chọn Master/Re:Master
   };
 }
 
@@ -341,36 +390,11 @@ function parseSimaiNoteGroup(groupStr, time, bpm, currentDivisor, notesOut) {
     if (!raw) continue;
 
     // 1. Kiểm tra Slide Note (chứa các ký tự đường dẫn slide: -, v, p, q, s, z, w, >, <, ^)
-    // Convert slide sang nốt Ring (phím Space) phát sound effect SE_GAME_BREAKSLIDE.
-    // Đồng thời giữ nốt gốc Button 1..8 trên lane tương ứng theo layout 8 nút cabinet.
+    // Slider của maimai đổi thành note tap/break bình thường tại điểm bắt đầu.
+    // Note ring CHỈ được convert từ touch / touch center, không tạo ring ở cuối slider.
     const isSlide = /[-vpqszw><\^]/.test(raw);
     if (isSlide) {
-      if (!hasRingAtThisTime) {
-        notesOut.push({
-          type: 'ring',
-          time: Math.round(time)
-        });
-        hasRingAtThisTime = true;
-      }
-
-      // Thêm 1 nốt ring đơn (tuyệt đối không phải ring hold) tại điểm kết thúc của slider maimai
-      const durMatch = raw.match(/\[(.*?)\]/);
-      const slideDuration = durMatch ? parseSimaiDuration(durMatch[1], bpm) : (60000 / bpm);
-      const slideEndTime = Math.round(time + slideDuration);
-      if (slideEndTime > Math.round(time)) {
-        const alreadyHasRingAtEnd = notesOut.some(
-          (n) => n.type === 'ring' && Math.abs(n.time - slideEndTime) <= 25
-        );
-        if (!alreadyHasRingAtEnd) {
-          notesOut.push({
-            type: 'ring',
-            time: slideEndTime
-            // Không có isHold và endTime (chỉ là nốt ring đơn, trừ nốt ring hold)
-          });
-        }
-      }
-
-      // Khởi tạo nốt Tap/Break tương ứng với nút gốc bắt đầu slide
+      // Khởi tạo nốt Tap/Break bình thường tương ứng với nút gốc bắt đầu slide
       const slideStartMatch = raw.match(/^([1-8])([bxf]?)/i);
       if (slideStartMatch) {
         const buttonNum = parseInt(slideStartMatch[1], 10);
@@ -393,8 +417,8 @@ function parseSimaiNoteGroup(groupStr, time, bpm, currentDivisor, notesOut) {
 
     // 2. Touch Notes: Center Touch (C, C1, C2...) và Outer Touch Zones (A1-A8, B1-B8, D1-D8, E1-E8)
     // Toàn bộ các nốt Touch cảm biến của Maimai (màu xanh dương ở xung quanh giữa màn hình và tâm)
-    // được chuyển đổi thành nốt Ring (phím Space / Ring Note), không tạo nốt trên các lane viền tam giác.
-    const touchMatch = raw.match(/^(?:[ABCD][1-8]?|E[1-8])/i);
+    // được chuyển đổi thành nốt Ring (phím Space / bất kì phím nào / Ring Note), không tạo nốt trên các lane viền tam giác.
+    const touchMatch = raw.match(/^(?:[ABCD][1-8]?|E[1-8]?)/i);
     if (touchMatch) {
       const isTouchHold = /h/i.test(raw);
       let durationMs = 0;

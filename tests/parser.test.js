@@ -184,6 +184,38 @@ SliderMultiplier: 1.4
     expect(validation.errors).toEqual([]);
   });
 
+  it('counts overlapping holds with end-exclusive timing', () => {
+    const text = `
+osu file format v14
+
+[General]
+AudioFilename: audio.ogg
+Mode: 3
+
+[Metadata]
+Title: Hold Boundary Test
+Artist: Composer
+Creator: Mapper
+Version: Test
+
+[Difficulty]
+CircleSize: 7
+
+[TimingPoints]
+0,500,4,1,0,100,1,0
+
+[HitObjects]
+36,192,0,128,0,1000:0:0:0:
+110,192,500,128,0,1500:0:0:0:
+183,192,1000,128,0,1400:0:0:0:
+256,192,1500,128,0,2000:0:0:0:
+`.trim();
+
+    const result = parseOsu(text, { preset: 'original' });
+
+    expect(result.rawStats.maxSimultaneousHolds).toBe(2);
+  });
+
   // =========================================================================
   // 4. Kiểm thử tính bền bỉ (Robustness / Error Handling)
   // =========================================================================

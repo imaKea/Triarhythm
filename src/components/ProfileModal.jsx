@@ -56,10 +56,10 @@ export default function ProfileModal({
       // In P5 we'll wire up user update API, for now update locally
       const updated = { ...user, name, avatar: avatarUrl };
       if (onUpdateUser) onUpdateUser(updated);
-      toast.success('Đã cập nhật thông tin hồ sơ!');
+      toast.success('Profile updated successfully!');
       setActiveTab('best');
     } catch (err) {
-      toast.error('Lỗi cập nhật: ' + err.message);
+      toast.error('Update failed: ' + err.message);
     } finally {
       setIsSaving(false);
     }
@@ -138,7 +138,7 @@ export default function ProfileModal({
           tabs={[
             { id: 'best', label: 'Top PP 🐰', badge: bestScores.length },
             { id: 'recent', label: 'Recent Plays 🎀', badge: scores.length },
-            { id: 'edit', label: 'Chỉnh sửa Profile' }
+            { id: 'edit', label: 'Edit Profile' }
           ]}
         />
       </div>
@@ -149,10 +149,10 @@ export default function ProfileModal({
         {activeTab === 'best' && (
           <div className="space-y-2">
             {isLoadingScores ? (
-              <div className="text-center py-12 text-xs text-[#a8556f]">Đang tải thành tích...</div>
+              <div className="text-center py-12 text-xs text-[#a8556f]">Loading records...</div>
             ) : bestScores.length === 0 ? (
               <div className="text-center py-12 text-xs text-[#a8556f]">
-                Chưa có điểm chơi trực tuyến nào được lưu trên máy chủ.
+                No online scores recorded yet.
               </div>
             ) : (
               bestScores.map((s, idx) => (
@@ -195,7 +195,7 @@ export default function ProfileModal({
           <div className="space-y-2">
             {scores.length === 0 ? (
               <div className="text-center py-12 text-xs text-[#a8556f]">
-                Chưa có lượt chơi gần đây nào.
+                No recent plays recorded.
               </div>
             ) : (
               scores.slice(0, 30).map((s, idx) => (
@@ -227,13 +227,13 @@ export default function ProfileModal({
         {activeTab === 'edit' && (
           <form onSubmit={handleSaveProfile} className="space-y-4 max-w-md mx-auto py-2">
             <div>
-              <label className="block text-xs font-bold text-[#5b2a47] mb-1">Tên hiển thị (Display Name)</label>
+              <label className="block text-xs font-bold text-[#5b2a47] mb-1">Display Name</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="w-full h-10 px-3.5 rounded-xl bg-[#fff5f8] border border-[#f3dbe4] focus:border-[#ff4d80] text-sm text-[#5b2a47] outline-none shadow-inner"
-                placeholder="Nhập tên của bạn..."
+                placeholder="Enter your name..."
               />
             </div>
 
@@ -247,7 +247,7 @@ export default function ProfileModal({
                 placeholder="https://..."
               />
               <span className="text-[10px] text-[#a8556f] mt-1 block">
-                Hỗ trợ link ảnh trực tiếp PNG, JPG hoặc Dicebear avatar.
+                Supports direct image URLs (PNG, JPG) or Dicebear avatar.
               </span>
             </div>
 
@@ -261,10 +261,10 @@ export default function ProfileModal({
                 className="px-3.5 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-200 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <span>⎋</span>
-                <span>Đăng xuất tài khoản</span>
+                <span>Sign Out</span>
               </button>
               <Button type="submit" variant="primary" size="md" disabled={isSaving}>
-                {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
+                {isSaving ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
           </form>

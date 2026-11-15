@@ -4,11 +4,13 @@ import { importFiles } from '../core/parser/index.js';
 import { exportBeatmapFile } from '../core/parser/exportService.js';
 import { apiClient } from '../core/api/client.js';
 import { resolveDifficultyBeatmap } from '../core/beatmap/difficulty.js';
+import { normalizeMaimaiCategory, calculateMaimaiRating } from '../core/beatmap/maimaiDifficulty.js';
 import {
   Button,
   IconButton,
   Dropdown,
   StarRating,
+  DifficultyBadge,
   RankBadge,
   ContextMenu,
   ConfirmDialog,
@@ -37,11 +39,11 @@ export default function AstroSongSelect({
   const [groupBy, setGroupBy] = useState('none'); // 'none' | 'artist' | 'stars'
   const [selectedDiffIndex, setSelectedDiffIndex] = useState(0);
   const [isImporting, setIsImporting] = useState(false);
-  const [leaderboardTab, setLeaderboardTab] = useState('global'); // 'global' | 'local'
+  const [leaderboardTab, setLeaderboardTab] = useState(currentUser ? 'global' : 'local'); // 'global' | 'local'
   const [leaderboardScores, setLeaderboardScores] = useState([]);
   const [localScores, setLocalScores] = useState([]);
   const [isLoadingScores, setIsLoadingScores] = useState(false);
-  const [mobileTab, setMobileTab] = useState('list'); // 'list' | 'info' trên màn hình mobile
+  const [mobileTab, setMobileTab] = useState('list'); // 'list' | 'info' on mobile screen
 
   // History stack for Shift+F2 (Previous Random)
   const [historyStack, setHistoryStack] = useState([]);
@@ -49,6 +51,11 @@ export default function AstroSongSelect({
   // Context menu & Confirm dialog state
   const [contextMenu, setContextMenu] = useState({ isOpen: false, x: 0, y: 0, beatmap: null });
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, beatmap: null, deleteFromServer: false });
+
+  // Chế độ chọn hàng loạt & Bulk Delete
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedMapIds, setSelectedMapIds] = useState(new Set());
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState({ isOpen: false, count: 0, deleteFromServer: false });
 
   // Ngăn xếp hoàn tác xóa bài hát (Undo Ctrl+Z)
   const deletedStackRef = useRef([]);
@@ -138,23 +145,76 @@ export default function AstroSongSelect({
 
   const current = selectedBeatmap || filteredBeatmaps[0] || null;
 
-  // Extract difficulty list from current beatmap set
+  // Extract difficulty list from current beatmap set (excluding Utage per Maimai rules)
   const diffList = useMemo(() => {
     if (!current) return [];
     if (current.difficulties && current.difficulties.length > 0) {
-      return current.difficulties;
+      const list = current.difficulties
+        .filter((d) => {
+          const name = (d.difficultyName || '').toLowerCase();
+          return !name.includes('utage') && !name.includes('宴');
+        })
+        .map((d) => {
+          const category = normalizeMaimaiCategory(d.difficultyName);
+          const maimaiRating = calculateMaimaiRating(d.beatmap || current.beatmap);
+          const maimaiLevel = d.difficultyLevel || maimaiRating.levelString;
+          return {
+            ...d,
+            category,
+            maimaiLevel: String(maimaiLevel),
+            stars: parseFloat(d.stars || current.stars || 5.0)
+          };
+        });
+
+      // Sắp xếp đúng chuẩn thứ tự Maimai: Basic -> Advanced -> Expert -> Master -> Re:Master
+      const MAIMAI_ORDER = { 'basic': 1, 'advanced': 2, 'expert': 3, 'master': 4, 're:master': 5 };
+      list.sort((a, b) => {
+        const orderA = MAIMAI_ORDER[(a.category || '').toLowerCase()] || 99;
+        const orderB = MAIMAI_ORDER[(b.category || '').toLowerCase()] || 99;
+        if (orderA !== orderB) return orderA - orderB;
+        return (parseFloat(a.maimaiLevel) || a.stars || 0) - (parseFloat(b.maimaiLevel) || b.stars || 0);
+      });
+
+      return list;
     }
     const meta = current.metadata || current.beatmap?.metadata || {};
+    const name = current.difficultyName || meta.difficultyName || 'Normal';
+    const category = normalizeMaimaiCategory(name);
+    const maimaiRating = calculateMaimaiRating(current.beatmap);
+    const maimaiLevel = current.difficultyLevel || meta.difficultyLevel || maimaiRating.levelString;
     return [
       {
-        difficultyName: current.difficultyName || meta.difficultyName || 'Normal',
-        difficultyLevel: current.difficultyLevel || meta.difficultyLevel || '10',
-        stars: parseFloat(current.stars || meta.stars || 5),
+        difficultyName: name,
+        category,
+        difficultyLevel: String(maimaiLevel),
+        maimaiLevel: String(maimaiLevel),
+        stars: parseFloat(current.stars || meta.stars || 5.0),
         beatmap: current.beatmap,
         noteCount: current.beatmap?.notes?.length || 0
       }
     ];
   }, [current]);
+
+  // Keep selected difficulty in sync when switching beatmaps or returning from gameplay
+  useEffect(() => {
+    if (!current || !diffList.length) return;
+    if (current.difficultyName) {
+      const idx = diffList.findIndex(
+        (d) => d.difficultyName.trim().toLowerCase() === current.difficultyName.trim().toLowerCase()
+      );
+      if (idx >= 0) {
+        setSelectedDiffIndex(idx);
+        return;
+      }
+    }
+    // Mặc định ưu tiên chọn Master nếu có, hoặc độ khó cao nhất trong danh sách
+    const masterIdx = diffList.findIndex((d) => d.category === 'Master');
+    if (masterIdx >= 0) {
+      setSelectedDiffIndex(masterIdx);
+      return;
+    }
+    setSelectedDiffIndex(Math.max(0, diffList.length - 1));
+  }, [current?.id, current?.difficultyName, diffList]);
 
   const selectedDiff = diffList[selectedDiffIndex] || diffList[0] || null;
   const selectedChart = resolveDifficultyBeatmap(current, selectedDiff);
@@ -176,7 +236,6 @@ export default function AstroSongSelect({
 
   // Audio preview playback with smooth fade-in
   useEffect(() => {
-    setSelectedDiffIndex(0);
     if (!audioRef.current || !current) return;
 
     const audioUrl = current.audioSource || (current.audioBlob instanceof Blob ? URL.createObjectURL(current.audioBlob) : null);
@@ -208,9 +267,13 @@ export default function AstroSongSelect({
     apiClient.getMapLeaderboard(current.id, selectedDiff?.difficultyName)
       .then((res) => {
         if (!isCancelled && res?.scores) setLeaderboardScores(res.scores);
+        else if (!isCancelled) setLeaderboardScores([]);
       })
-      .catch(() => {
-        if (!isCancelled) setLeaderboardScores([]);
+      .catch((err) => {
+        if (!isCancelled) {
+          console.warn('Leaderboard API error:', err.message);
+          setLeaderboardScores([]);
+        }
       });
 
     // 2. Fetch Local scores
@@ -219,9 +282,12 @@ export default function AstroSongSelect({
       fetchLocal.call(dbManager, current.id)
         .then((scores) => {
           if (!isCancelled) {
-            const matching = (scores || []).filter(
-              (s) => !selectedDiff?.difficultyName || s.difficultyName === selectedDiff.difficultyName
-            );
+            const targetDiff = (selectedDiff?.difficultyName || '').trim().toLowerCase();
+            const matching = (scores || []).filter((s) => {
+              if (!targetDiff) return true;
+              const sDiff = (s.difficultyName || '').trim().toLowerCase();
+              return sDiff === targetDiff;
+            });
             matching.sort((a, b) => (b.score || 0) - (a.score || 0));
             setLocalScores(matching);
           }
@@ -314,7 +380,7 @@ export default function AstroSongSelect({
   const handlePlaySelected = () => {
     if (!current) return;
     if (!selectedChart) {
-      toast.error('Không tìm thấy chart hợp lệ cho độ khó đang chọn.');
+      toast.error('No valid chart found for the selected difficulty.');
       return;
     }
     playClick();
@@ -324,7 +390,7 @@ export default function AstroSongSelect({
       ...current,
       beatmap: selectedChart,
       difficultyName: selectedDiff?.difficultyName || 'Normal',
-      difficultyLevel: selectedDiff?.difficultyLevel || '10',
+      difficultyLevel: selectedDiff?.maimaiLevel || selectedDiff?.difficultyLevel || '10',
       stars: selectedDiff?.stars || current.stars,
       videoBlob: current.videoBlob,
       videoSource: current.videoSource,
@@ -344,10 +410,14 @@ export default function AstroSongSelect({
     try {
       const result = await importFiles(files, { preset: 'twoFingers', autoSlide: false, overwrite: true });
       if (onReloadBeatmaps) await onReloadBeatmaps();
+      if (result.status === 'bulk') {
+        toast.success(`Successfully imported ${result.count} beatmaps! 🎀`);
+      } else if (result.songEntry) {
+        toast.success(`Loaded "${result.songEntry.title || 'Beatmap'}"! 🎀`);
+      }
       if (onSelectBeatmap && result.songEntry) onSelectBeatmap(result.songEntry);
-      toast.success(`Đã nạp bài hát "${result.songEntry.title}" thành công!`);
     } catch (err) {
-      toast.error('Lỗi nạp file: ' + err.message);
+      toast.error('Error loading files: ' + err.message);
     } finally {
       setIsImporting(false);
       e.target.value = '';
@@ -365,6 +435,18 @@ export default function AstroSongSelect({
     });
   };
 
+  const handleCardActionsClick = (e, bm) => {
+    e.stopPropagation();
+    playClick();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setContextMenu({
+      isOpen: true,
+      x: rect.left,
+      y: rect.bottom,
+      beatmap: bm
+    });
+  };
+
   const handleExportBeatmap = async (bm) => {
     try {
       const { blob, filename } = await exportBeatmapFile(bm);
@@ -374,38 +456,137 @@ export default function AstroSongSelect({
       anchor.download = filename;
       anchor.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-      toast.success(`Đã xuất ${filename}`);
+      toast.success(`Exported ${filename}`);
     } catch (error) {
-      toast.error(`Không thể xuất map: ${error.message}`);
+      toast.error(`Could not export beatmap: ${error.message}`);
     }
   };
 
-  // Hoàn tác xóa bài hát vừa xóa (Undo / Ctrl+Z)
+  // Bulk Selection Helpers
+  const toggleSelectMap = (id) => {
+    setSelectedMapIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllMaps = () => {
+    const allIds = new Set(filteredBeatmaps.map((b) => b.id));
+    setSelectedMapIds(allIds);
+  };
+
+  const deselectAllMaps = () => {
+    setSelectedMapIds(new Set());
+  };
+
+  const handleOpenBulkDelete = (deleteFromServer = false) => {
+    if (selectedMapIds.size === 0) {
+      toast.info('Please select at least one beatmap to delete.');
+      return;
+    }
+    setBulkDeleteConfirm({
+      isOpen: true,
+      count: selectedMapIds.size,
+      deleteFromServer
+    });
+  };
+
+  const confirmBulkDelete = async () => {
+    const ids = Array.from(selectedMapIds);
+    if (ids.length === 0) return;
+    const deleteFromServer = Boolean(bulkDeleteConfirm.deleteFromServer);
+    setBulkDeleteConfirm({ isOpen: false, count: 0, deleteFromServer: false });
+
+    try {
+      const beatmapsToDelete = beatmaps.filter((b) => selectedMapIds.has(b.id));
+
+      if (typeof dbManager.softDeleteBeatmaps === 'function') {
+        await dbManager.softDeleteBeatmaps(ids);
+      } else {
+        await Promise.all(ids.map((id) => dbManager.softDeleteBeatmap(id)));
+      }
+
+      if (deleteFromServer) {
+        for (const id of ids) {
+          try {
+            await apiClient.deleteMap(id);
+          } catch (_) {}
+        }
+      }
+
+      if (onReloadBeatmaps) await onReloadBeatmaps();
+      setSelectedMapIds(new Set());
+      setIsSelectMode(false);
+      playBack();
+
+      const stackEntry = {
+        isBulk: true,
+        ids,
+        bulkBeatmaps: beatmapsToDelete,
+        deleteFromServer,
+        toastId: null
+      };
+      deletedStackRef.current.push(stackEntry);
+
+      const toastId = toast.undo(
+        `Deleted ${ids.length} beatmaps`,
+        () => handleUndoDelete(),
+        7000,
+        'UNDO (Ctrl+Z)'
+      );
+      stackEntry.toastId = toastId;
+    } catch (err) {
+      toast.error('Error during bulk delete: ' + err.message);
+    }
+  };
+
+  // Undo delete beatmap (Undo / Ctrl+Z)
   const handleUndoDelete = async () => {
     if (deletedStackRef.current.length === 0) {
-      toast.info('Không có bài hát nào gần đây để hoàn tác.');
+      toast.info('No recent beatmaps to undo.');
       return;
     }
 
     const last = deletedStackRef.current.pop();
-    if (!last || !last.beatmap) return;
+    if (!last) return;
+
+    if (last.toastId) {
+      toast.dismiss(last.toastId);
+    }
 
     try {
-      await dbManager.restoreBeatmap(last.beatmap.id);
-      if (last.deleteFromServer) {
-        try {
-          await apiClient.restoreMap(last.beatmap.id);
-        } catch (_) {}
+      if (last.isBulk && last.ids) {
+        if (typeof dbManager.restoreBeatmaps === 'function') {
+          await dbManager.restoreBeatmaps(last.ids);
+        } else {
+          await Promise.all(last.ids.map((id) => dbManager.restoreBeatmap(id)));
+        }
+        if (last.deleteFromServer) {
+          for (const id of last.ids) {
+            try {
+              await apiClient.restoreMap(id);
+            } catch (_) {}
+          }
+        }
+        if (onReloadBeatmaps) await onReloadBeatmaps();
+        playSelect();
+        toast.success(`Restored ${last.ids.length} beatmaps (Ctrl+Z)!`);
+      } else if (last.beatmap) {
+        await dbManager.restoreBeatmap(last.beatmap.id);
+        if (last.deleteFromServer) {
+          try {
+            await apiClient.restoreMap(last.beatmap.id);
+          } catch (_) {}
+        }
+        if (onReloadBeatmaps) await onReloadBeatmaps();
+        onSelectBeatmap(last.beatmap);
+        playSelect();
+        toast.success(`Restored "${last.beatmap.title || 'Untitled'}" (Ctrl+Z)!`);
       }
-      if (last.toastId) {
-        toast.dismiss(last.toastId);
-      }
-      if (onReloadBeatmaps) await onReloadBeatmaps();
-      onSelectBeatmap(last.beatmap);
-      playSelect();
-      toast.success(`Đã hoàn tác (Ctrl+Z): Đã khôi phục "${last.beatmap.title || 'Untitled'}"!`);
     } catch (err) {
-      toast.error('Không thể hoàn tác: ' + err.message);
+      toast.error('Could not undo: ' + err.message);
     }
   };
 
@@ -416,46 +597,46 @@ export default function AstroSongSelect({
     setDeleteConfirm({ isOpen: false, beatmap: null, deleteFromServer: false });
 
     try {
-      // 1. Soft delete an toàn trong IndexedDB (giữ nguyên Blobs)
+      // 1. Soft delete in IndexedDB (keeps Blobs intact)
       await dbManager.softDeleteBeatmap(bm.id);
 
-      // 2. Soft delete trên MySQL nếu có tùy chọn
+      // 2. Soft delete on MySQL if option enabled
       if (deleteFromServer) {
         try {
           await apiClient.deleteMap(bm.id);
         } catch (e) {
-          toast.error('Lỗi xoá trên server: ' + (e.message || 'Không thể kết nối'));
+          toast.error('Error deleting from server: ' + (e.message || 'Connection failed'));
         }
       }
 
       if (onReloadBeatmaps) await onReloadBeatmaps();
       playBack();
 
-      // 3. Đưa vào ngăn xếp Hoàn tác
+      // 3. Push to undo stack
       const stackEntry = { beatmap: bm, deleteFromServer, toastId: null };
       deletedStackRef.current.push(stackEntry);
 
-      // 4. Kích hoạt Toast với nút Hoàn tác và gợi ý phím tắt Ctrl+Z (7 giây)
+      // 4. Trigger Toast with Undo button (7s)
       const toastId = toast.undo(
-        `Đã xoá bài hát "${bm.title || 'Untitled'}"`,
+        `Deleted beatmap "${bm.title || 'Untitled'}"`,
         () => handleUndoDelete(),
         7000,
-        'HOÀN TÁC (Ctrl+Z)'
+        'UNDO (Ctrl+Z)'
       );
       stackEntry.toastId = toastId;
     } catch (err) {
-      toast.error('Lỗi khi xoá bài hát: ' + err.message);
+      toast.error('Error deleting beatmap: ' + err.message);
     }
   };
 
-  // Quản lý Thùng rác
+  // Trash management
   const handleOpenTrash = async () => {
     try {
       const trashed = await dbManager.getDeletedBeatmaps();
       setTrashMaps(trashed);
       setIsTrashOpen(true);
     } catch (err) {
-      toast.error('Lỗi tải thùng rác: ' + err.message);
+      toast.error('Error loading trash: ' + err.message);
     }
   };
 
@@ -468,9 +649,9 @@ export default function AstroSongSelect({
       if (onReloadBeatmaps) await onReloadBeatmaps();
       const updated = await dbManager.getDeletedBeatmaps();
       setTrashMaps(updated);
-      toast.success(`Đã khôi phục "${m.title}"!`);
+      toast.success(`Restored "${m.title}"!`);
     } catch (err) {
-      toast.error('Lỗi khôi phục: ' + err.message);
+      toast.error('Error restoring beatmap: ' + err.message);
     }
   };
 
@@ -482,9 +663,9 @@ export default function AstroSongSelect({
       } catch (_) {}
       const updated = await dbManager.getDeletedBeatmaps();
       setTrashMaps(updated);
-      toast.success(`Đã xóa vĩnh viễn "${m.title}"!`);
+      toast.success(`Permanently deleted "${m.title}"!`);
     } catch (err) {
-      toast.error('Lỗi xóa vĩnh viễn: ' + err.message);
+      toast.error('Error permanently deleting: ' + err.message);
     }
   };
 
@@ -493,9 +674,30 @@ export default function AstroSongSelect({
       const count = await dbManager.clearTrash();
       setTrashMaps([]);
       setIsTrashOpen(false);
-      toast.success(`Đã dọn sạch ${count} bài hát trong thùng rác!`);
+      toast.success(`Emptied ${count} beatmaps from trash!`);
     } catch (err) {
-      toast.error('Lỗi dọn thùng rác: ' + err.message);
+      toast.error('Error emptying trash: ' + err.message);
+    }
+  };
+
+  const handleRestoreAllTrash = async () => {
+    if (trashMaps.length === 0) return;
+    try {
+      const ids = trashMaps.map((m) => m.id);
+      if (typeof dbManager.restoreBeatmaps === 'function') {
+        await dbManager.restoreBeatmaps(ids);
+      } else {
+        await Promise.all(ids.map((id) => dbManager.restoreBeatmap(id)));
+      }
+      for (const id of ids) {
+        try { await apiClient.restoreMap(id); } catch (_) {}
+      }
+      if (onReloadBeatmaps) await onReloadBeatmaps();
+      setTrashMaps([]);
+      setIsTrashOpen(false);
+      toast.success(`Restored all ${ids.length} beatmaps from trash!`);
+    } catch (err) {
+      toast.error('Error restoring trash: ' + err.message);
     }
   };
 
@@ -523,7 +725,7 @@ export default function AstroSongSelect({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Tìm kiếm bài hát, ca sĩ... 🎀"
+            placeholder="Search song, artist... 🎀"
             className="w-full bg-white border border-[#f3dbe4] focus:border-[#ff4d80] rounded-full pl-9 pr-4 py-1.5 text-xs text-[#5b2a47] placeholder-[#a8556f] outline-none transition-all focus:shadow-[0_2px_12px_rgba(255,77,128,0.2)]"
           />
           {searchQuery && (
@@ -539,32 +741,51 @@ export default function AstroSongSelect({
         {/* Sort & Action controls */}
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           <div className="flex items-center gap-1.5 text-xs text-[#5b2a47] font-bold">
-            <span className="hidden xs:inline">Sắp xếp:</span>
+            <span className="hidden xs:inline">Sort:</span>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               className="bg-white border border-[#f3dbe4] text-[#5b2a47] text-xs font-bold rounded-full px-3 py-1 outline-none cursor-pointer hover:border-[#ff85a2] transition-colors shadow-sm"
             >
-              <option value="title">Tên (A-Z)</option>
-              <option value="artist">Ca sĩ (A-Z)</option>
-              <option value="stars">Độ khó (★)</option>
+              <option value="title">Title (A-Z)</option>
+              <option value="artist">Artist (A-Z)</option>
+              <option value="stars">Difficulty</option>
               <option value="bpm">BPM</option>
-              <option value="length">Độ dài</option>
+              <option value="length">Length</option>
             </select>
           </div>
 
           <button
+            onClick={() => {
+              playClick();
+              setIsSelectMode((prev) => {
+                if (prev) setSelectedMapIds(new Set());
+                return !prev;
+              });
+            }}
+            className={`flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold transition-all border cursor-pointer hover:scale-105 shadow-sm ${
+              isSelectMode
+                ? 'bg-[#ff4d80] text-white border-[#ff4d80] shadow-[0_2px_12px_rgba(255,77,128,0.3)]'
+                : 'bg-white hover:bg-[#fff0f4] text-[#5b2a47] hover:text-[#ff4d80] border-[#f3dbe4] hover:border-[#ff85a2]'
+            }`}
+            title="Toggle select mode for bulk operations"
+          >
+            <span>📋</span>
+            <span className="hidden sm:inline">{isSelectMode ? 'Cancel' : 'Select'}</span>
+          </button>
+
+          <button
             onClick={handleOpenTrash}
             className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full bg-white hover:bg-[#fff0f4] text-[#5b2a47] hover:text-[#ff4d80] text-xs font-bold transition-all border border-[#f3dbe4] hover:border-[#ff85a2] cursor-pointer hover:scale-105 shadow-sm"
-            title="Thùng rác beatmap (khôi phục bài đã xóa)"
+            title="Beatmap trash (restore deleted maps)"
           >
             <span>🗑️</span>
-            <span className="hidden sm:inline">Thùng rác 🐰</span>
+            <span className="hidden sm:inline">Trash 🐰</span>
           </button>
 
           <label className="flex items-center gap-1 px-3 sm:px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] hover:from-[#ffaec9] hover:to-[#ff6b93] text-white text-xs font-bold cursor-pointer transition-all shadow-[0_2px_12px_rgba(255,77,128,0.25)] hover:scale-105">
             <span>{isImporting ? '⏳' : '🎀'}</span>
-            <span className="hidden sm:inline">{isImporting ? 'Đang thêm...' : 'Thêm bài (+)'}</span>
+            <span className="hidden sm:inline">{isImporting ? 'Importing...' : 'Add Song (+)'}</span>
             <span className="sm:hidden">{isImporting ? '...' : '+'}</span>
             <input
               type="file"
@@ -578,7 +799,64 @@ export default function AstroSongSelect({
         </div>
       </div>
 
-      {/* MOBILE TAB SWITCHER: Chuyển đổi giữa Danh sách và Chi tiết bài trên Mobile */}
+      {/* BULK ACTION TOOLBAR (VISIBLE WHEN IN SELECT MODE) */}
+      {isSelectMode && (
+        <div className="py-2 px-3 sm:px-6 bg-[#fff0f5] border-b border-[#f9c2ce] flex flex-wrap items-center justify-between gap-2 z-20 shadow-inner">
+          <div className="flex items-center gap-2 text-xs font-bold text-[#5b2a47]">
+            <span>🐰 Selected:</span>
+            <span className="px-2.5 py-0.5 rounded-full bg-[#ff4d80] text-white text-[11px] font-black">
+              {selectedMapIds.size} / {filteredBeatmaps.length}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={selectAllMaps}
+              className="px-2.5 py-1 rounded-full bg-white text-[#5b2a47] border border-[#f3dbe4] hover:border-[#ff85a2] text-xs font-bold cursor-pointer transition-all hover:scale-105 shadow-sm"
+            >
+              Select All
+            </button>
+            <button
+              onClick={deselectAllMaps}
+              className="px-2.5 py-1 rounded-full bg-white text-[#5b2a47] border border-[#f3dbe4] hover:border-[#ff85a2] text-xs font-bold cursor-pointer transition-all hover:scale-105 shadow-sm"
+            >
+              Deselect
+            </button>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => handleOpenBulkDelete(false)}
+              disabled={selectedMapIds.size === 0}
+              icon="🗑"
+              className="text-xs"
+            >
+              Delete Selected ({selectedMapIds.size})
+            </Button>
+            {currentUser && (
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => handleOpenBulkDelete(true)}
+                disabled={selectedMapIds.size === 0}
+                icon="⚠"
+                className="text-xs"
+              >
+                Delete Server ({selectedMapIds.size})
+              </Button>
+            )}
+            <button
+              onClick={() => {
+                setIsSelectMode(false);
+                setSelectedMapIds(new Set());
+              }}
+              className="px-2.5 py-1 rounded-full bg-white text-[#a8556f] border border-[#f3dbe4] hover:text-[#5b2a47] text-xs font-bold cursor-pointer"
+            >
+              ✕ Done
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* MOBILE TAB SWITCHER */}
       <div className="flex md:hidden items-center justify-center gap-2 py-1.5 px-3 bg-[#fff1f5] border-b border-[#f3dbe4] shrink-0">
         <button
           onClick={() => { playHover(); setMobileTab('list'); }}
@@ -589,7 +867,7 @@ export default function AstroSongSelect({
           }`}
         >
           <span>🐰</span>
-          <span>Danh sách ({filteredBeatmaps.length})</span>
+          <span>Song List ({filteredBeatmaps.length})</span>
         </button>
         <button
           onClick={() => { playHover(); setMobileTab('info'); }}
@@ -600,7 +878,7 @@ export default function AstroSongSelect({
           }`}
         >
           <span>🎀</span>
-          <span>Chi tiết & BXH</span>
+          <span>Details & Leaderboard</span>
         </button>
       </div>
 
@@ -616,7 +894,7 @@ export default function AstroSongSelect({
         {/* Blurred background cover image */}
         {coverUrl && (
           <div
-            className="absolute inset-0 bg-cover bg-center filter blur-3xl opacity-15 pointer-events-none scale-105"
+            className="absolute inset-0 bg-cover bg-center opacity-10 pointer-events-none will-change-transform"
             style={{ backgroundImage: `url(${coverUrl})` }}
           />
         )}
@@ -629,7 +907,7 @@ export default function AstroSongSelect({
             <div className="flex items-center justify-between text-[10px] font-black text-[#ff4d80] uppercase tracking-wider">
               <span className="flex items-center gap-1">
                 <span>🎀</span>
-                <span>BÀI HÁT ĐANG CHỌN</span>
+                <span>SELECTED TRACK</span>
                 <span>🐰</span>
               </span>
               <span className="px-2.5 py-0.5 rounded-full bg-[#fff0f4] text-[#ff4d80] border border-[#f3dbe4] text-[10px] font-bold">
@@ -637,9 +915,15 @@ export default function AstroSongSelect({
               </span>
             </div>
 
-            {/* Top row: StarRating + BPM */}
-            <div className="flex items-center justify-between">
-              <StarRating stars={currentStars} size="md" />
+            {/* Top row: DifficultyBadge (Maimai Level + optional osu! Stars side by side) + BPM */}
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <DifficultyBadge
+                category={selectedDiff?.category || 'Expert'}
+                level={selectedDiff?.maimaiLevel || '10'}
+                osuStars={selectedDiff?.stars || currentStars}
+                showOsuStars={Boolean(current?.source === 'osu' || current?.keys || current?.rawOsu || current?.metadata?.source === 'osu')}
+                size="md"
+              />
               <div className="flex items-center gap-2 text-xs font-mono font-bold text-[#5b2a47]">
                 <span className="px-2.5 py-0.5 rounded-full bg-[#fff1f5] border border-[#f3dbe4]">{currentBpm} BPM</span>
               </div>
@@ -693,7 +977,7 @@ export default function AstroSongSelect({
             <div className="flex items-center justify-between pb-3 mb-2 border-b border-[#f3dbe4]">
               <div className="text-xs font-black text-[#5b2a47] uppercase tracking-wider flex items-center gap-1.5">
                 <span>🏆</span>
-                <span>Bảng xếp hạng 🎀 ({selectedDiff?.difficultyName || 'All'})</span>
+                <span>Leaderboard 🎀 ({selectedDiff?.difficultyName || 'All'})</span>
               </div>
               <div className="flex gap-1 bg-[#fff1f5] p-0.5 rounded-full border border-[#f3dbe4]">
                 <button
@@ -718,10 +1002,10 @@ export default function AstroSongSelect({
             {/* Scores List */}
             <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-1">
               {isLoadingScores ? (
-                <div className="text-center py-8 text-xs text-[#a8556f]">Đang tải bảng điểm...</div>
+                <div className="text-center py-8 text-xs text-[#a8556f]">Loading leaderboard...</div>
               ) : (leaderboardTab === 'global' ? leaderboardScores : localScores).length === 0 ? (
                 <div className="text-center py-8 text-xs text-[#a8556f]">
-                  Chưa có điểm nào được ghi nhận cho độ khó này. Hãy là người đầu tiên!
+                  No scores recorded for this difficulty yet. Be the first!
                 </div>
               ) : (
                 (leaderboardTab === 'global' ? leaderboardScores : localScores).map((s, idx) => (
@@ -739,7 +1023,7 @@ export default function AstroSongSelect({
                           {s.user?.name || s.username || 'Player'}
                         </span>
                         <span className="text-[10px] text-[#a8556f] font-mono">
-                          {Number(s.accuracy || 0).toFixed(2)}% • {s.max_combo || s.maxCombo || 0}x
+                          {Number(s.accuracy || s.achievement || 0).toFixed(2)}% • {s.max_combo || s.maxCombo || 0}x
                         </span>
                       </div>
                     </div>
@@ -764,26 +1048,38 @@ export default function AstroSongSelect({
         {/* RIGHT PANE: Vertical Carousel of Beatmap Cards */}
         <div
           ref={carouselRef}
-          className={`flex-1 h-full overflow-y-auto custom-scrollbar p-3 sm:p-6 space-y-3 z-10 ${mobileTab === 'list' ? 'block' : 'hidden md:block'}`}
+          className={`flex-1 h-full overflow-y-auto custom-scrollbar p-3 sm:p-6 space-y-3 z-10 [contain:content] ${mobileTab === 'list' ? 'block' : 'hidden md:block'}`}
         >
           {filteredBeatmaps.map((bm, index) => {
             const isSelected = current?.id === bm.id;
+            const isChecked = selectedMapIds.has(bm.id);
             const meta = bm.metadata || bm.beatmap?.metadata || {};
             const title = bm.title || meta.title || 'Untitled';
             const artist = bm.artist || meta.artist || 'Unknown';
             const stars = parseFloat(bm.stars || meta.stars || bm.difficultyLevel || 5);
             const cardCover = bm.backgroundSource || bm.serverAssets?.coverUrl || null;
+            const isCardOsu = Boolean(bm.source === 'osu' || bm.keys || bm.rawOsu || bm.metadata?.source === 'osu');
+            const cardMaimaiRating = calculateMaimaiRating(bm.beatmap);
+            const cardCategory = normalizeMaimaiCategory(bm.difficultyName || meta.difficultyName);
+            const cardLevel = bm.difficultyLevel || meta.difficultyLevel || cardMaimaiRating.levelString;
 
             return (
               <div
                 key={bm.id}
                 onClick={() => {
-                  playSelect();
-                  onSelectBeatmap(bm);
+                  if (isSelectMode) {
+                    playClick();
+                    toggleSelectMap(bm.id);
+                  } else {
+                    playSelect();
+                    onSelectBeatmap(bm);
+                  }
                 }}
                 onContextMenu={(e) => handleCardContextMenu(e, bm)}
-                className={`relative rounded-3xl transition-all duration-200 cursor-pointer overflow-hidden border ${
-                  isSelected
+                className={`relative rounded-3xl transition-all duration-200 cursor-pointer overflow-hidden border [content-visibility:auto] [contain-intrinsic-size:100px] ${
+                  isChecked
+                    ? 'border-[#ff4d80] bg-[#fff0f5] shadow-[0_6px_24px_rgba(255,77,128,0.22)] ring-2 ring-[#ff4d80]/30'
+                    : isSelected
                     ? 'border-[#ff4d80] shadow-[0_8px_30px_rgba(255,77,128,0.22)] scale-[1.01] bg-[#fff5f8]'
                     : 'border-[#f3dbe4] hover:border-[#ff85a2] bg-white/95 hover:bg-[#fffafc] shadow-[0_4px_16px_rgba(126,47,79,0.04)]'
                 }`}
@@ -792,6 +1088,25 @@ export default function AstroSongSelect({
                 <div className="flex items-center justify-between p-3.5 gap-4 relative">
                   {/* Left: Thumbnail & Song Info */}
                   <div className="flex items-center gap-3.5 min-w-0">
+                    {isSelectMode && (
+                      <button
+                        type="button"
+                        aria-label={isChecked ? `Deselect ${title}` : `Select ${title}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          playClick();
+                          toggleSelectMap(bm.id);
+                        }}
+                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all shrink-0 cursor-pointer ${
+                          isChecked
+                            ? 'bg-[#ff4d80] border-[#ff4d80] text-white shadow-sm scale-110'
+                            : 'bg-white border-[#f3dbe4] text-transparent hover:border-[#ff85a2]'
+                        }`}
+                      >
+                        <span className="text-xs font-black leading-none">✓</span>
+                      </button>
+                    )}
+
                     <div className="w-14 h-14 rounded-2xl overflow-hidden bg-[#fff1f5] shrink-0 border border-[#f3dbe4] flex items-center justify-center shadow-sm">
                       {cardCover ? (
                         <img src={cardCover} alt="" className="w-full h-full object-cover" />
@@ -815,9 +1130,24 @@ export default function AstroSongSelect({
                     </div>
                   </div>
 
-                  {/* Right: StarRating + Diff count */}
-                  <div className="flex items-center gap-3 shrink-0">
-                    <StarRating stars={stars} size="sm" />
+                  {/* Right: DifficultyBadge (Maimai + osu! stars if osu) + Diff count */}
+                  <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                    <button
+                      type="button"
+                      aria-label={`More actions for ${title}`}
+                      title="Beatmap actions"
+                      onClick={(e) => handleCardActionsClick(e, bm)}
+                      className="w-8 h-8 rounded-full bg-[#fff1f5] hover:bg-[#ffe5ec] border border-[#f3dbe4] text-[#5b2a47] hover:text-[#ff4d80] flex items-center justify-center text-lg leading-none transition-colors cursor-pointer shrink-0"
+                    >
+                      ⋯
+                    </button>
+                    <DifficultyBadge
+                      category={cardCategory}
+                      level={cardLevel}
+                      osuStars={stars}
+                      showOsuStars={isCardOsu}
+                      size="sm"
+                    />
                     <span className="text-xs text-[#ff4d80] font-mono font-bold px-2.5 py-0.5 rounded-full bg-[#fff1f5] border border-[#f3dbe4]">
                       {bm.difficulties?.length || 1} diffs
                     </span>
@@ -829,7 +1159,7 @@ export default function AstroSongSelect({
                   <div className="px-4 py-2.5 bg-[#fffafc] border-t border-[#f3dbe4] flex items-center gap-2 overflow-x-auto custom-scrollbar">
                     <span className="text-[11px] font-black text-[#ff4d80] uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
                       <span>🎀</span>
-                      <span>Độ khó:</span>
+                      <span>Difficulties:</span>
                     </span>
                     {diffList.map((d, dIdx) => {
                       const isDiffActive = selectedDiffIndex === dIdx;
@@ -849,8 +1179,9 @@ export default function AstroSongSelect({
                               : 'bg-white text-[#5b2a47] hover:text-[#ff4d80] border border-[#f3dbe4]'
                           }`}
                         >
-                          <span>{d.difficultyName}</span>
-                          <span className="text-[10px] opacity-90">★{dStars.toFixed(1)}</span>
+                          <span className="font-bold">{d.category || normalizeMaimaiCategory(d.difficultyName)}</span>
+                          <span>{d.maimaiLevel || d.difficultyLevel || '10'}</span>
+                          {isCardOsu && <span className="text-[10px] opacity-90">★{dStars.toFixed(1)}</span>}
                         </button>
                       );
                     })}
@@ -863,7 +1194,7 @@ export default function AstroSongSelect({
       </div>
 
       {/* BOTTOM ACTION BAR */}
-      <div className="h-14 sm:h-16 px-3 sm:px-6 bg-[#fffafc]/90 backdrop-blur-md border-t border-[#f3dbe4] flex items-center justify-between z-30 shrink-0 gap-2 shadow-[0_-4px_20px_rgba(126,47,79,0.04)]">
+      <div className="h-auto min-h-14 sm:h-16 px-3 sm:px-6 py-2 sm:py-0 bg-[#fffafc]/90 backdrop-blur-md border-t border-[#f3dbe4] flex flex-wrap items-center justify-between z-30 shrink-0 gap-2 shadow-[0_-4px_20px_rgba(126,47,79,0.04)]">
         {/* Left: Back */}
         <Button variant="ghost" size="sm" onClick={() => window.history.back()} icon="←" className="px-2.5 sm:px-4 text-xs">
           <span className="hidden sm:inline">Back (Esc) 🐰</span>
@@ -877,18 +1208,18 @@ export default function AstroSongSelect({
             onClick={onToggleAutoplay}
             icon="⚡"
             className="px-2 sm:px-3 text-xs"
-            title="Chế độ Autoplay"
+            title="Autoplay Mode"
           >
             <span className="hidden sm:inline">Mods: {isAutoplay ? 'Autoplay ON' : 'None'}</span>
             <span className="sm:hidden">{isAutoplay ? 'Auto' : 'Mods'}</span>
           </Button>
 
-          <Button variant="ghost" size="sm" onClick={handleRandomSelect} icon="🎲" className="px-2 sm:px-3 text-xs" title="Chọn ngẫu nhiên">
+          <Button variant="ghost" size="sm" onClick={handleRandomSelect} icon="🎲" className="px-2 sm:px-3 text-xs" title="Select Random Track">
             <span className="hidden sm:inline">Random (F2) 🎀</span>
             <span className="sm:hidden">Random</span>
           </Button>
 
-          <Button variant="ghost" size="sm" onClick={onOpenSettings} icon="⚙" className="px-2 sm:px-3 text-xs" title="Cài đặt">
+          <Button variant="ghost" size="sm" onClick={onOpenSettings} icon="⚙" className="px-2 sm:px-3 text-xs" title="Settings">
             <span className="hidden sm:inline">Options</span>
           </Button>
         </div>
@@ -898,10 +1229,10 @@ export default function AstroSongSelect({
           variant="primary"
           size="lg"
           onClick={handlePlaySelected}
-          className="px-4 sm:px-10 py-2 sm:py-3 text-sm sm:text-base font-black shadow-[0_4px_24px_rgba(255,77,128,0.4)] hover:shadow-[0_6px_32px_rgba(255,77,128,0.6)] hover:scale-105 active:scale-95 shrink-0"
+          className="w-full sm:w-auto justify-center px-4 sm:px-10 py-2 sm:py-3 text-sm sm:text-base font-black shadow-[0_4px_24px_rgba(255,77,128,0.4)] hover:shadow-[0_6px_32px_rgba(255,77,128,0.6)] hover:scale-105 active:scale-95 shrink-0"
           icon="🐰"
         >
-          <span>CHƠI NGAY 🎀</span>
+          <span>PLAY NOW 🎀</span>
         </Button>
       </div>
 
@@ -913,7 +1244,7 @@ export default function AstroSongSelect({
         onClose={() => setContextMenu({ isOpen: false, x: 0, y: 0, beatmap: null })}
         items={[
           {
-            label: 'Chơi bài hát này',
+            label: 'Play this track',
             icon: '▶',
             onClick: () => {
               if (contextMenu.beatmap) {
@@ -926,14 +1257,14 @@ export default function AstroSongSelect({
           {
             label: contextMenu.beatmap?.source === 'maimai'
               || contextMenu.beatmap?.beatmap?.metadata?.source === 'maimai'
-              ? 'Xuất maidata.txt'
-              : 'Xuất map .osz (osu!)',
+              ? 'Export .zip package (maimai)'
+              : 'Export .osz package (osu!)',
             icon: '⬇',
             onClick: () => handleExportBeatmap(contextMenu.beatmap)
           },
           { divider: true },
           {
-            label: 'Xoá khỏi máy (IndexedDB)',
+            label: 'Delete from device (IndexedDB)',
             icon: '🗑',
             danger: true,
             onClick: () => {
@@ -945,7 +1276,7 @@ export default function AstroSongSelect({
             }
           },
           ...(currentUser ? [{
-            label: 'Xoá khỏi Server & Máy',
+            label: 'Delete from Server & Device',
             icon: '⚠',
             danger: true,
             onClick: () => {
@@ -964,33 +1295,54 @@ export default function AstroSongSelect({
         isOpen={deleteConfirm.isOpen}
         onClose={() => setDeleteConfirm({ isOpen: false, beatmap: null, deleteFromServer: false })}
         onConfirm={confirmDeleteBeatmap}
-        title="Xác nhận xoá Beatmap?"
-        message={`Bạn có chắc muốn xoá "${deleteConfirm.beatmap?.title || 'bài hát'}"? Bài hát sẽ được chuyển vào Thùng rác tạm và có thể Hoàn tác ngay lập tức (Ctrl+Z hoặc nút Hoàn tác).`}
-        confirmText={deleteConfirm.deleteFromServer ? 'Xoá cả Server & Máy' : 'Xoá khỏi máy'}
+        title="Confirm Delete Beatmap?"
+        message={`Are you sure you want to delete "${deleteConfirm.beatmap?.title || 'this beatmap'}"? The track will be moved to temporary Trash and can be undone immediately (Ctrl+Z).`}
+        confirmText={deleteConfirm.deleteFromServer ? 'Delete from Server & Device' : 'Delete from device'}
         confirmVariant="danger"
       />
 
-      {/* TRASH BIN MODAL (Thùng rác Beatmap) */}
+      {/* Confirm Bulk Delete Dialog */}
+      <ConfirmDialog
+        isOpen={bulkDeleteConfirm.isOpen}
+        onClose={() => setBulkDeleteConfirm({ isOpen: false, count: 0, deleteFromServer: false })}
+        onConfirm={confirmBulkDelete}
+        title="Confirm Bulk Delete?"
+        message={`Are you sure you want to delete ${bulkDeleteConfirm.count} beatmaps? They will be moved to temporary Trash and can be undone immediately (Ctrl+Z).`}
+        confirmText={bulkDeleteConfirm.deleteFromServer ? `Delete ${bulkDeleteConfirm.count} from Server & Device` : `Delete ${bulkDeleteConfirm.count} beatmaps`}
+        confirmVariant="danger"
+      />
+
+      {/* TRASH BIN MODAL */}
       <Modal
         isOpen={isTrashOpen}
         onClose={() => setIsTrashOpen(false)}
-        title="Thùng rác Beatmap (Đã xóa tạm thời)"
+        title="Beatmap Trash (Temporarily Deleted)"
         size="lg"
       >
         <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <p className="text-xs text-[#a8556f]">
-              Các bài hát bị xóa được lưu trữ an toàn tại đây để khôi phục bất cứ lúc nào.
+              Deleted beatmaps are stored safely here and can be restored at any time.
             </p>
             {trashMaps.length > 0 && (
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={handleClearAllTrash}
-                icon="🗑"
-              >
-                Dọn sạch thùng rác
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleRestoreAllTrash}
+                  icon="⤺"
+                >
+                  Restore All
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={handleClearAllTrash}
+                  icon="🗑"
+                >
+                  Empty Trash
+                </Button>
+              </div>
             )}
           </div>
 
@@ -1015,7 +1367,7 @@ export default function AstroSongSelect({
                       <span className="text-[10px] text-[#a8556f] truncate max-w-xs">{m.artist}</span>
                       {m.deletedAt && (
                         <span className="text-[9px] font-mono text-[#ff4d80] font-bold">
-                          Đã xóa: {new Date(m.deletedAt).toLocaleString()}
+                          Deleted: {new Date(m.deletedAt).toLocaleString()}
                         </span>
                       )}
                     </div>
@@ -1028,7 +1380,7 @@ export default function AstroSongSelect({
                       onClick={() => handleRestoreFromTrash(m)}
                       icon="⤺"
                     >
-                      Khôi phục
+                      Restore
                     </Button>
                     <Button
                       size="sm"
@@ -1036,14 +1388,14 @@ export default function AstroSongSelect({
                       onClick={() => handlePermanentDelete(m)}
                       icon="✕"
                     >
-                      Xóa vĩnh viễn
+                      Delete Permanently
                     </Button>
                   </div>
                 </div>
               ))
             ) : (
               <div className="p-8 text-center text-[#a8556f] text-xs font-bold">
-                Thùng rác trống. Không có bài hát nào bị xóa.
+                Trash is empty. No deleted beatmaps.
               </div>
             )}
           </div>

@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\PpCalculator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ScoreController extends Controller
 {
@@ -57,62 +58,68 @@ class ScoreController extends Controller
             ], 401);
         }
 
-        // Tìm beatmap và độ khó để lấy stars và noteCount chuẩn
-        $map = Map::where('song_id', $validated['song_id'])->first();
-        $stars = (float)($validated['stars'] ?? 0);
-        $noteCount = (int)($validated['note_count'] ?? 0);
-
-        if ($map && is_array($map->difficulties)) {
-            foreach ($map->difficulties as $diff) {
-                if (($diff['difficultyName'] ?? '') === $validated['difficulty_name']) {
-                    if (isset($diff['stars']) && (float)$diff['stars'] > 0) {
-                        $stars = (float)$diff['stars'];
-                    }
-                    if (isset($diff['noteCount']) && (int)$diff['noteCount'] > 0) {
-                        $noteCount = (int)$diff['noteCount'];
-                    }
-                    break;
-                }
-            }
-        }
-
-        if ($stars <= 0) {
-            $stars = (float)($validated['stars'] ?? 5.0);
-        }
-
         $missCount = (int)($validated['miss'] ?? 0);
         $accuracy = (float)$validated['accuracy'];
+        $serverCalculatedPP = 0.0;
+        $stars = 0.0;
 
-        // Tính toán PP độc lập trên server bằng PpCalculator (không tin tưởng hoàn toàn client)
-        $serverCalculatedPP = PpCalculator::calculatePP($stars, $accuracy, $missCount, $noteCount);
+        DB::transaction(function () use (
+            $validated,
+            $user,
+            $missCount,
+            $accuracy,
+            &$serverCalculatedPP,
+            &$stars,
+            &$score
+        ): void {
+            $map = Map::where('song_id', $validated['song_id'])->lockForUpdate()->first();
+            $user = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
 
-        $score = Score::create([
-            'user_id' => $user->id,
-            'song_id' => $validated['song_id'],
-            'difficulty_name' => $validated['difficulty_name'],
-            'stars' => $stars,
-            'score' => $validated['score'],
-            'accuracy' => $accuracy,
-            'max_combo' => $validated['max_combo'],
-            'rank' => $validated['rank'],
-            'critical_perfect' => $validated['critical_perfect'] ?? 0,
-            'perfect' => $validated['perfect'] ?? 0,
-            'great' => $validated['great'] ?? 0,
-            'good' => $validated['good'] ?? 0,
-            'miss' => $missCount,
-            'pp' => $serverCalculatedPP,
-            'mods' => $validated['mods'] ?? [],
-        ]);
+            $noteCount = 0;
+            if ($map && is_array($map->difficulties)) {
+                foreach ($map->difficulties as $difficulty) {
+                    if (($difficulty['difficultyName'] ?? '') === $validated['difficulty_name']) {
+                        $candidateStars = (float)($difficulty['stars'] ?? 0);
+                        if ($candidateStars > 0) {
+                            $stars = $candidateStars;
+                            $noteCount = max(0, (int)($difficulty['noteCount'] ?? 0));
+                        }
+                        break;
+                    }
+                }
+            }
 
-        // Cập nhật thống kê người chơi
-        $user->increment('play_count');
-        $user->increment('total_score', $validated['score']);
+            // Client stars/note_count are informational only; absent server
+            // chart data preserves the score but awards no PP.
+            if ($stars > 0) {
+                $serverCalculatedPP = PpCalculator::calculatePP($stars, $accuracy, $missCount, $noteCount);
+            }
 
-        // Tính lại Total PP theo top 100 điểm với trọng số suy giảm 0.95^i chuẩn osu!
-        $newTotalPP = $user->recalculateTotalPP();
+            $score = Score::create([
+                'user_id' => $user->id,
+                'song_id' => $validated['song_id'],
+                'difficulty_name' => $validated['difficulty_name'],
+                'stars' => $stars,
+                'score' => $validated['score'],
+                'accuracy' => $accuracy,
+                'max_combo' => $validated['max_combo'],
+                'rank' => $validated['rank'],
+                'critical_perfect' => $validated['critical_perfect'] ?? 0,
+                'perfect' => $validated['perfect'] ?? 0,
+                'great' => $validated['great'] ?? 0,
+                'good' => $validated['good'] ?? 0,
+                'miss' => $missCount,
+                'pp' => $serverCalculatedPP,
+                'mods' => $validated['mods'] ?? [],
+            ]);
 
-        // Tăng play_count của beatmap nếu có
-        Map::where('song_id', $validated['song_id'])->increment('play_count');
+            if ($map) {
+                $map->increment('play_count');
+            }
+
+            $user->recalculateStats();
+        });
+        $user = $user->fresh();
 
         // Lấy thứ hạng trên bảng xếp hạng của bài hát này
         $rankPosition = Score::where('song_id', $validated['song_id'])

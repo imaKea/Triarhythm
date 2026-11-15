@@ -327,7 +327,7 @@ export class AudioEngine {
 
   pauseMusic() {
     if (!this.isPlaying) return;
-    this.pausedAt = this.audioCtx.currentTime - this.startTime;
+    this.pausedAt = this.getSongTimeMs() / 1000;
     if (this.musicSource) {
       try {
         this.musicSource.stop();
@@ -342,7 +342,11 @@ export class AudioEngine {
   resumeMusic() {
     if (!this.isPaused) return;
     // Tiếp tục sau Pause: không thêm lead-in nữa
-    this.startMusic(Math.max(0, this.pausedAt), 0);
+    const hardwareLatencySec = this.audioCtx
+      ? (this.audioCtx.baseLatency || 0) + (this.audioCtx.outputLatency || 0)
+      : 0;
+    const audioOffset = this.pausedAt - (this.userOffsetMs / 1000) + hardwareLatencySec;
+    this.startMusic(Math.max(0, audioOffset), Math.max(0, -audioOffset));
   }
 
   stopMusic() {

@@ -27,11 +27,13 @@ export class GameEngine {
     // Dữ liệu bài hát hiện tại
     this.beatmap = null;
     this.notes = [];
+    this.chartNotes = [];
     this.totalDuration = 0;
 
     // Trạng thái vòng lặp
     this.animFrameId = null;
     this.isRunning = false;
+    this.lifecycleVersion = 0;
     this.isPaused = false;
     this.lastFramePerfTime = 0;
     this.resyncIntervalMs = 1500;
@@ -41,6 +43,7 @@ export class GameEngine {
     this.resumeCountdown = 0;
     this.isCountdown = false;
     this.countdownType = null; // 'START' | 'RESUME'
+    this.pausedCountdownType = null;
     this.countdownStartOffset = 0;
     this.lastCountdownStep = -1;
     this.enableStartCountdown = true;
@@ -62,11 +65,17 @@ export class GameEngine {
     this.inputManager.onLaneDown = this.handleLaneDown.bind(this);
     this.inputManager.onLaneUp = this.handleLaneUp.bind(this);
     this.inputManager.onSpaceDown = this.handleSpaceDown.bind(this);
+    this.inputManager.onSpaceUp = this.handleSpaceUp.bind(this);
     this.inputManager.onTypingKey = this.handleTypingKey.bind(this);
     this.inputManager.onPause = this.togglePause.bind(this);
 
+    // Bind loop một lần duy nhất để tránh tạo function mới mỗi frame (perf optimization)
+    this.boundLoop = this.loop.bind(this);
+
     // Chế độ tự động chơi (Autoplay) để test
     this.isAutoplay = false;
+    this.isMaimaiChart = false;
+    this.maimaiSpinAssist = true;
 
     // Trạng thái skip đoạn nghỉ (Break / Intro)
     this.canSkip = false;
@@ -200,10 +209,23 @@ export class GameEngine {
     this.beatmap = beatmap;
 
     const beatLength = beatmap.timingPoints?.[0]?.beatLength || (60000 / (beatmap.timingPoints?.[0]?.bpm || 140));
-    const isMaimai = beatmap.metadata?.source === 'maimai' || beatmap.source === 'maimai';
+    const isMaimai = Boolean(
+      beatmap.metadata?.source === 'maimai' ||
+      beatmap.source === 'maimai' ||
+      beatmap.format === 'maimai' ||
+      beatmap.rawMaidata !== undefined
+    );
+    this.isMaimaiChart = isMaimai;
 
     // Maimai giữ 100% nốt theo chuẩn chart gốc; osu mania áp dụng bộ lọc 2 ngón tay
-    const rawNotes = isMaimai ? (beatmap.notes || []) : this.enforceTwoFingerConstraint(beatmap.notes || [], beatLength);
+    const isOsu = Boolean(
+      beatmap.rawOsu ||
+      beatmap.source === 'osu' ||
+      beatmap.metadata?.source === 'osu' ||
+      beatmap.keys ||
+      (beatmap.metadata?.difficultyName && /^\d+k$/i.test(beatmap.metadata.difficultyName))
+    );
+    const rawNotes = (isMaimai || !isOsu) ? (beatmap.notes || []) : this.enforceTwoFingerConstraint(beatmap.notes || [], beatLength);
     // Sắp xếp các nốt theo trình tự thời gian tăng dần
     const sanitizedNotes = [...rawNotes].sort((a, b) => (a.time || 0) - (b.time || 0));
 
@@ -237,6 +259,7 @@ export class GameEngine {
         state: 'PENDING',
         isHolding: false,
         isHoldingDropped: false,
+        resumeHoldThroughPause: false,
         headJudged: false,
         tailJudged: false,
         onTrackDurationMs: 0,
@@ -248,7 +271,8 @@ export class GameEngine {
       };
     });
 
-    this.notes = processed;
+    this.chartNotes = processed;
+    this.notes = this.cloneChartNotes();
     this.scoreManager.initChart(this.notes);
 
     // Tính tổng thời lượng bài dựa trên nốt kết thúc muộn nhất
@@ -323,7 +347,9 @@ export class GameEngine {
     // Chống start đôi khi nhấn phím hoặc click nhiều lần
     if (this.isRunning && (this.isCountdown || !this.isPaused)) return;
 
+    const lifecycleVersion = ++this.lifecycleVersion;
     await this.audioEngine.init();
+    if (lifecycleVersion !== this.lifecycleVersion) return;
     this.inputManager.attach();
 
     // Lắng nghe tương tác ngón tay (Touch / Pointer) trên Canvas cho Mobile & Desktop
@@ -348,11 +374,13 @@ export class GameEngine {
     }
 
     const useCountdown = withCountdown && (this.enableStartCountdown !== false);
+    this.pausedCountdownType = null;
 
     if (useCountdown) {
       this.isRunning = true;
       this.isPaused = false;
       this.isCountdown = true;
+      this.hasStartedAudio = false;
       this.countdownType = 'START';
       this.countdownStartOffset = startOffsetSec;
       this.resumeCountdown = 3.4; // 3.0s (3, 2, 1) + 0.4s ("GO!")
@@ -449,6 +477,7 @@ export class GameEngine {
 
       this.renderer.render(gameState, this.particleSystem);
 
+      // Optimization: short-circuit on length first, then simple counter-based check instead of .every()
       const allNotesDone = this.notes.length === 0 || this.notes.every(n => n.state === 'JUDGED' || n.state === 'MISSED');
       if ((allNotesDone && songTime >= this.totalDuration) || (songTime >= this.totalDuration + 2000)) {
         this.finishGame();
@@ -482,7 +511,7 @@ export class GameEngine {
     }
 
     if (typeof requestAnimationFrame !== 'undefined') {
-      this.animFrameId = requestAnimationFrame(this.loop.bind(this));
+      this.animFrameId = requestAnimationFrame(this.boundLoop);
     }
   }
 
@@ -514,6 +543,47 @@ export class GameEngine {
       gameEvents.emit('resume');
     }
     this.countdownType = null;
+    this.pausedCountdownType = null;
+  }
+
+  cloneChartNotes() {
+    return this.chartNotes.map(note => ({
+      ...note,
+      state: 'PENDING',
+      isHolding: false,
+      isHoldingDropped: false,
+      headJudged: false,
+      tailJudged: false,
+      onTrackDurationMs: 0,
+      lastSampleTime: null,
+      hasReachedEnd: false,
+      startRippleSpawned: false,
+      startSamplePlayed: false,
+      isFinished: false,
+      chars: note.chars?.map(char => ({
+        ...char,
+        state: 'PENDING',
+        judgement: null,
+        deltaMs: 0
+      }))
+    }));
+  }
+
+  resetRun() {
+    this.audioEngine.stopMusic();
+    this.notes = this.cloneChartNotes();
+    this.scoreManager.initChart(this.notes);
+    this.holdingNotes.clear();
+    this.activeTouchPointers.clear();
+    this.inputManager.reset();
+    this.particleSystem.clear();
+    this.hasStartedAudio = false;
+    this.hasPassedIntro = false;
+    this.canSkip = false;
+    this.isCountdown = false;
+    this.countdownType = null;
+    this.pausedCountdownType = null;
+    this.resumeCountdown = 0;
   }
 
   /**
@@ -524,17 +594,33 @@ export class GameEngine {
     this.resumeCountdown = 0;
     this.lastCountdownStep = -1;
     this.countdownType = null;
-    this.hasStartedAudio = false;
+  }
+
+  /**
+   * Kiểm tra người chơi có đang giữ phím Space hoặc bất kỳ nút nào trên bàn phím (hoặc chạm cảm ứng) cho nốt Ring
+   */
+  isRingHolding() {
+    if (!this.inputManager) return false;
+    return Boolean(
+      this.inputManager.isAnyKeyDown ||
+      this.inputManager.isSpaceDown ||
+      (this.inputManager.heldKeyCodes && this.inputManager.heldKeyCodes.size > 0) ||
+      (this.inputManager.activeHeldCodes && this.inputManager.activeHeldCodes.size > 0) ||
+      (this.inputManager.isKeyDown && this.inputManager.isKeyDown.some(Boolean)) ||
+      this.inputManager.isPointerDown
+    );
   }
 
   updateNotes(songTime) {
     const travelTime = this.renderer.getTravelTime();
+    const ringTravelTime = this.renderer.getRingTravelTime ? this.renderer.getRingTravelTime() : travelTime;
     const originPix = layoutToPixels(TRI_RING_LAYOUT.origin.x, TRI_RING_LAYOUT.origin.y, this.canvas.width, this.canvas.height);
 
     for (const note of this.notes) {
       if (note.state === 'JUDGED' || note.state === 'MISSED') continue;
 
-      if (note.state === 'PENDING' && songTime >= note.time - travelTime) {
+      const noteTravelTime = (note.type === 'ring' || note.type === 'slide') ? ringTravelTime : travelTime;
+      if (note.state === 'PENDING' && songTime >= note.time - noteTravelTime) {
         note.state = 'ACTIVE';
       }
 
@@ -669,70 +755,51 @@ export class GameEngine {
         } else if (note.type === 'ring' || note.type === 'slide') {
           const isHoldRing = Boolean(note.isHold && note.endTime && note.endTime > note.time);
           if (!isHoldRing) {
-            // Người chơi giữ phím SPACE: tự động phán định nốt Ring hoàn hảo khi nốt tới tâm receptor
-            if (this.inputManager?.isSpaceDown && songTime >= note.time && Math.abs(songTime - note.time) <= 50) {
+            // Người chơi giữ phím SPACE hoặc bất kỳ phím nào: tự động phán định nốt Ring hoàn hảo khi nốt tới tâm receptor
+            if (this.isRingHolding() && songTime >= note.time && Math.abs(songTime - note.time) <= 50) {
               this.judgeRingNote(note, note.time, originPix);
               continue;
             }
 
-            // Nốt Ring tự động MISS nếu quá hạn missWindow mà người chơi không nhấn SPACE
+            // Nốt Ring tự động MISS nếu quá hạn missWindow mà người chơi không nhấn SPACE / bất kỳ phím nào
             if (songTime > note.time + missWindow) {
               note.state = 'MISSED';
-              this.scoreManager.registerJudgement('MISS', 'ring', missWindow);
+              const res = this.scoreManager.registerJudgement('MISS', 'ring', missWindow);
               this.renderer.addJudgementPopup('MISS', missWindow, originPix.x, originPix.y - 30);
+              this.emitJudgement(note, 'MISS', missWindow, res);
             }
           } else {
-            // Xử lý nốt Hold Ring (Spacebar hold với hiệu ứng viền cầu vồng như Rhythm Typer)
+            // Xử lý nốt Hold Ring (Giữ phím Space hoặc bất kỳ nút nào trên bàn phím với hiệu ứng viền cầu vồng như Rhythm Typer)
             if (!note.headJudged) {
-              // Bắt đầu bấm hoặc giữ Space khi nốt tới
-              if (this.inputManager?.isSpaceDown && songTime >= note.time - 50) {
+              // Bắt đầu bấm hoặc giữ Space / bất kỳ phím nào khi nốt tới
+              if (this.isRingHolding() && songTime >= note.time - 50 && songTime <= note.time + missWindow) {
                 note.headJudged = true;
                 note.isHolding = true;
-                const deltaMs = Math.round(songTime - note.time);
-                const judgement = getJudgement(deltaMs);
-                this.scoreManager.registerJudgement(judgement, 'ring', deltaMs);
-                this.renderer.addJudgementPopup(judgement, deltaMs, originPix.x, originPix.y - 30);
+                note.holdStartDeltaMs = Math.round(songTime - note.time);
                 this.audioEngine.playHitsound('ring-hold', 1.0);
                 this.particleSystem.spawnRipple(originPix.x, originPix.y, '#00e676', 120, 0.45, 4, true);
               } else if (songTime > note.time + missWindow) {
                 note.state = 'MISSED';
-                this.scoreManager.registerJudgement('MISS', 'ring', missWindow);
+                const res = this.scoreManager.registerJudgement('MISS', 'ring', missWindow);
                 this.renderer.addJudgementPopup('MISS', missWindow, originPix.x, originPix.y - 30);
+                this.emitJudgement(note, 'MISS', missWindow, res);
               }
             }
 
             if (note.isHolding) {
-              if (this.inputManager?.isSpaceDown) {
-                // Đang giữ Space: phát hiệu ứng hào quang & hạt lấp lánh xanh lá
+              if (this.isRingHolding() || note.resumeHoldThroughPause) {
+                // Đang giữ Space hoặc bất kỳ phím nào: phát hiệu ứng hào quang & hạt lấp lánh xanh lá
                 if (Math.random() < 0.35) {
                   this.particleSystem.spawnBurst(originPix.x, originPix.y, '#00e676', 2, 70, true);
                 }
 
-                // Giữ thành công tới hết nốt Hold Ring (kết thúc không phát lại sound effect)
-                if (songTime >= note.endTime - 80) {
-                  note.tailJudged = true;
-                  note.isHolding = false;
-                  note.state = 'JUDGED';
-                  const res = this.scoreManager.registerJudgement('PERFECT', 'ring', 0);
-                  this.renderer.addJudgementPopup('PERFECT', 0, originPix.x, originPix.y - 30);
-                  this.particleSystem.spawnRipple(originPix.x, originPix.y, '#00e676', 150, 0.5, 5, true);
-                  this.particleSystem.spawnBurst(originPix.x, originPix.y, '#ffffff', 25, 200, true);
-                  gameEvents.emit('judgement', {
-                    note,
-                    judgement: 'PERFECT',
-                    deltaMs: 0,
-                    combo: res.combo,
-                    achievement: res.achievement
-                  });
+                // Chỉ hoàn tất và chấm điểm sau khi giữ đủ toàn bộ thời lượng
+                if (songTime >= note.endTime) {
+                  this.finishRingHold(note, true);
                 }
               } else {
-                // Nhả phím Space sớm
-                if (songTime < note.endTime - 120) {
-                  note.isHolding = false;
-                  note.state = 'MISSED';
-                  this.scoreManager.registerJudgement('MISS', 'ring', 150);
-                  this.renderer.addJudgementPopup('MISS', 150, originPix.x, originPix.y - 30);
-                }
+                // Nhả phím sớm
+                this.finishRingHold(note, false);
               }
             }
           }
@@ -765,7 +832,7 @@ export class GameEngine {
 
     note.state = 'JUDGED';
     const deltaMs = Math.round(audioTime - note.time);
-    const judgement = getJudgement(deltaMs);
+    const judgement = 'CRITICAL_PERFECT';
 
     const res = this.scoreManager.registerJudgement(judgement, 'ring', deltaMs);
 
@@ -778,12 +845,16 @@ export class GameEngine {
       this.particleSystem.spawnBurst(targetOrigin.x, targetOrigin.y, '#ffffff', 25, 180, true);
     }
 
+    this.emitJudgement(note, judgement, deltaMs, res);
+  }
+
+  emitJudgement(note, judgement, deltaMs, result) {
     gameEvents.emit('judgement', {
       note,
       judgement,
       deltaMs,
-      combo: res.combo,
-      achievement: res.achievement
+      combo: result.combo,
+      achievement: result.achievement
     });
   }
 
@@ -824,7 +895,8 @@ export class GameEngine {
     for (const older of candidates) {
       if (older !== targetNote && older.time < targetNote.time) {
         older.state = 'MISSED';
-        this.scoreManager.registerJudgement('MISS', 'ring', 150);
+        const res = this.scoreManager.registerJudgement('MISS', 'ring', 150);
+        this.emitJudgement(older, 'MISS', 150, res);
       }
     }
 
@@ -832,16 +904,21 @@ export class GameEngine {
       if (!targetNote.headJudged) {
         targetNote.headJudged = true;
         targetNote.isHolding = true;
-        const deltaMs = Math.round(audioTime - targetNote.time);
-        const judgement = getJudgement(deltaMs);
-        this.scoreManager.registerJudgement(judgement, 'ring', deltaMs);
-        this.renderer.addJudgementPopup(judgement, deltaMs, originPix.x, originPix.y - 30);
+        targetNote.holdStartDeltaMs = Math.round(audioTime - targetNote.time);
         this.audioEngine.playHitsound('ring-hold', 1.0);
         this.particleSystem.spawnRipple(originPix.x, originPix.y, '#00e676', 120, 0.45, 4, true);
       }
     } else {
       this.judgeRingNote(targetNote, audioTime, originPix);
     }
+  }
+
+  handleSpaceUp(audioTime) {
+    if (this.isPaused || this.resumeCountdown > 0) return;
+    for (const note of this.notes) {
+      if (note.resumeHoldThroughPause) note.resumeHoldThroughPause = false;
+    }
+    this.resolveRingHoldRelease(audioTime);
   }
 
   /**
@@ -918,14 +995,75 @@ export class GameEngine {
     return true; // Phím được tiêu thụ trong khoảng typing section
   }
 
-  handleLaneDown(lane, audioTime, perfTime) {
+  getNearestCandidate(laneId, audioTime, maxWindow) {
+    const list = this.notes.filter(n =>
+      Number(n.lane) === Number(laneId) &&
+      n.state !== 'JUDGED' &&
+      n.state !== 'MISSED' &&
+      !n.headJudged &&
+      Math.abs(audioTime - n.time) <= maxWindow
+    );
+    if (list.length === 0) return null;
+    list.sort((a, b) => Math.abs(audioTime - a.time) - Math.abs(audioTime - b.time));
+    return list[0];
+  }
+
+  handleLaneDown(lane, audioTime, perfTime, code = null, key = null) {
     if (this.isPaused || this.resumeCountdown > 0) return;
 
+    let targetLane = lane;
     const maxWindow = JUDGEMENT_CONFIG.windows.good || 150;
 
-    // Tìm note ứng viên trong lane này (chưa bị phán định đầu nốt)
+    // Hỗ trợ xoay Maimai (Spin Assist):
+    // Khi chơi chart import từ Maimai, phím 6 và 7 ở giữa thay đổi thành có thể kích hoạt
+    // phím 5 (Lane 0) và phím 8 (Lane 2) để thuận tiện cho pattern spin của Maimai.
+    // Nếu là chart osu! thì giữ nguyên hoạt động bình thường.
+    if (this.isMaimaiChart && this.maimaiSpinAssist !== false && Number(lane) === 1) {
+      const cand0 = this.getNearestCandidate(0, audioTime, maxWindow);
+      const cand2 = this.getNearestCandidate(2, audioTime, maxWindow);
+
+      const firstLane1Key = this.inputManager?.keybinds?.[1]?.[0];
+      const secondLane1Key = this.inputManager?.keybinds?.[1]?.[1];
+
+      const isKey6 = code === 'Digit6' || code === 'Numpad6' || code === 'Key6' || key === '6' || (firstLane1Key && code === firstLane1Key);
+      const isKey7 = code === 'Digit7' || code === 'Numpad7' || code === 'Key7' || key === '7' || (secondLane1Key && code === secondLane1Key);
+
+      if (isKey6) {
+        // Nút 6 kích hoạt nút 5 (Lane 0); nếu Lane 0 không có nốt nhưng Lane 2 có nốt thì hỗ trợ Lane 2
+        targetLane = (cand0 || !cand2) ? 0 : 2;
+      } else if (isKey7) {
+        // Nút 7 kích hoạt nút 8 (Lane 2); nếu Lane 2 không có nốt nhưng Lane 0 có nốt thì hỗ trợ Lane 0
+        targetLane = (cand2 || !cand0) ? 2 : 0;
+      } else {
+        // Touch cảm ứng / click chuột trên Lane 1: ưu tiên Lane 1 nếu có nốt, nếu không hỗ trợ Lane 0 hoặc Lane 2
+        const cand1 = this.getNearestCandidate(1, audioTime, maxWindow);
+        if (cand1) {
+          targetLane = 1;
+        } else if (cand0 && cand2) {
+          targetLane = Math.abs(audioTime - cand0.time) <= Math.abs(audioTime - cand2.time) ? 0 : 2;
+        } else if (cand0) {
+          targetLane = 0;
+        } else if (cand2) {
+          targetLane = 2;
+        } else {
+          targetLane = 1;
+        }
+      }
+
+      // Visual feedback trên cả Lane 1 lẫn targetLane
+      if (this.renderer?.activeLanes) {
+        this.renderer.activeLanes[1] = true;
+        this.renderer.activeLanes[targetLane] = true;
+      }
+      if (this.inputManager?.isKeyDown) {
+        this.inputManager.isKeyDown[1] = true;
+        this.inputManager.isKeyDown[targetLane] = true;
+      }
+    }
+
+    // Tìm note ứng viên trong targetLane này (chưa bị phán định đầu nốt)
     const candidates = this.notes.filter(n =>
-      Number(n.lane) === Number(lane) &&
+      Number(n.lane) === Number(targetLane) &&
       n.state !== 'JUDGED' &&
       n.state !== 'MISSED' &&
       !n.headJudged &&
@@ -957,13 +1095,63 @@ export class GameEngine {
       } else if (note.type === 'hold') {
         note.headJudged = true;
         note.isHolding = true;
-        this.holdingNotes.set(lane, note);
+        this.holdingNotes.set(targetLane, note);
         this.triggerJudgement(note, judgement, deltaMs, false);
       }
     }
   }
 
-  handleLaneUp(lane, audioTime, perfTime) {
+  handleLaneUp(lane, audioTime, perfTime, code = null, isStillHeld = false) {
+    this.checkHoldRelease(lane, audioTime);
+
+    if (this.isMaimaiChart && this.maimaiSpinAssist !== false && Number(lane) === 1) {
+      const isKey6 = code === 'Digit6' || code === 'Numpad6' || code === 'Key6';
+      const isKey7 = code === 'Digit7' || code === 'Numpad7' || code === 'Key7';
+      if (isKey6) {
+        this.checkHoldRelease(0, audioTime);
+      } else if (isKey7) {
+        this.checkHoldRelease(2, audioTime);
+      } else {
+        this.checkHoldRelease(0, audioTime);
+        this.checkHoldRelease(2, audioTime);
+      }
+    }
+    this.resolveRingHoldRelease(audioTime);
+  }
+
+  finishRingHold(note, completed) {
+    if (!note || !note.isHolding || note.state === 'JUDGED' || note.state === 'MISSED') return;
+
+    note.isHolding = false;
+    note.state = completed ? 'JUDGED' : 'MISSED';
+    note.tailJudged = completed;
+    note.resumeHoldThroughPause = false;
+
+    const judgement = completed ? 'CRITICAL_PERFECT' : 'MISS';
+    const deltaMs = completed ? note.holdStartDeltaMs || 0 : 150;
+    const result = this.scoreManager.registerJudgement(judgement, 'ring', deltaMs);
+    const originPix = layoutToPixels(TRI_RING_LAYOUT.origin.x, TRI_RING_LAYOUT.origin.y, this.canvas.width, this.canvas.height);
+    this.renderer.addJudgementPopup(judgement, deltaMs, originPix.x, originPix.y - 30);
+
+    if (completed) {
+      this.particleSystem.spawnRipple(originPix.x, originPix.y, '#00e676', 150, 0.5, 5, true);
+      this.particleSystem.spawnBurst(originPix.x, originPix.y, '#ffffff', 25, 200, true);
+    }
+
+    this.emitJudgement(note, judgement, deltaMs, result);
+  }
+
+  resolveRingHoldRelease(audioTime) {
+    if (this.isPaused || this.resumeCountdown > 0 || this.isRingHolding()) return;
+
+    const releaseTime = Number.isFinite(audioTime) ? audioTime : this.audioEngine.getSongTimeMs();
+    for (const note of this.notes) {
+      if (note.type !== 'ring' || !note.isHold || !note.isHolding) continue;
+      this.finishRingHold(note, releaseTime >= note.endTime);
+    }
+  }
+
+  checkHoldRelease(lane, audioTime) {
     const holdNote = this.holdingNotes.get(lane);
     if (!holdNote) return;
 
@@ -1247,16 +1435,24 @@ export class GameEngine {
     if (this.activeTouchPointers.size === 0) {
       this.inputManager.isPointerDown = false;
       this.inputManager.isSpaceDown = false;
+      if (!this.isPaused && this.resumeCountdown <= 0) {
+        for (const note of this.notes) {
+          if (note.resumeHoldThroughPause) note.resumeHoldThroughPause = false;
+        }
+      }
     }
+    this.resolveRingHoldRelease(audioTime);
   }
 
   togglePause() {
     if (!this.isRunning) return;
 
     if (this.isCountdown) {
-      // Hủy countdown an toàn khi bấm Esc lúc đang đếm ngược
+      this.pausedCountdownType = this.countdownType;
       this.cancelCountdown();
       this.isPaused = true;
+      this.inputManager.reset();
+      this.activeTouchPointers.clear();
       gameEvents.emit('pause');
       return;
     }
@@ -1264,14 +1460,28 @@ export class GameEngine {
     if (this.isPaused) {
       this.isPaused = false;
       this.isCountdown = true;
-      this.countdownType = 'RESUME';
+      this.countdownType = this.pausedCountdownType || 'RESUME';
       this.resumeCountdown = 3.4;
       this.lastCountdownStep = -1;
-      gameEvents.emit('countdownStart', { type: 'RESUME' });
+      for (const note of this.notes) {
+        if ((note.type === 'ring' || note.type === 'slide') && note.isHolding) {
+          note.resumeHoldThroughPause = true;
+        }
+      }
+      gameEvents.emit('countdownStart', { type: this.countdownType });
     } else {
       this.isPaused = true;
       this.audioEngine.pauseMusic();
+      this.inputManager.reset();
+      this.activeTouchPointers.clear();
+      this.pausedCountdownType = null;
       gameEvents.emit('pause');
+    }
+  }
+
+  handleVisibilityChange(isHidden) {
+    if (isHidden && this.isRunning && !this.isPaused) {
+      this.togglePause();
     }
   }
 
@@ -1380,10 +1590,28 @@ export class GameEngine {
 
   getActiveNotes(songTime) {
     const travelTime = this.renderer.getTravelTime();
-    return this.notes.filter(n =>
-      (n.state === 'ACTIVE' || (n.state === 'PENDING' && songTime >= n.time - travelTime)) ||
-      (n.state === 'MISSED' && (songTime - (n.time - travelTime)) / travelTime <= 1.12)
-    );
+    const ringTravelTime = this.renderer.getRingTravelTime ? this.renderer.getRingTravelTime() : travelTime;
+    const maxTravelTime = Math.max(travelTime, ringTravelTime);
+    const spawnTime = songTime + maxTravelTime;
+    const active = [];
+    const notes = this.notes;
+    const len = notes.length;
+
+    for (let i = 0; i < len; i++) {
+      const n = notes[i];
+      // Note quá xa trong tương lai (chưa tới lúc spawn)
+      if (n.time > spawnTime + 100) {
+        // Nếu chart đã được sort theo time, có thể break sớm sau vùng spawn
+        continue;
+      }
+      const noteTravelTime = (n.type === 'ring' || n.type === 'slide') ? ringTravelTime : travelTime;
+      if (n.state === 'ACTIVE' || (n.state === 'PENDING' && songTime >= n.time - noteTravelTime)) {
+        active.push(n);
+      } else if (n.state === 'MISSED' && (songTime - (n.time - noteTravelTime)) / noteTravelTime <= 1.12) {
+        active.push(n);
+      }
+    }
+    return active;
   }
 
   getHoldingLanesArray() {
@@ -1401,6 +1629,7 @@ export class GameEngine {
   }
 
   stop() {
+    this.lifecycleVersion++;
     this.cancelCountdown();
     this.isRunning = false;
     this.isPaused = false;
@@ -1426,6 +1655,7 @@ export class GameEngine {
     this.activeTouchPointers.clear();
     this.audioEngine.stopMusic();
     this.inputManager.detach();
+    this.inputManager.reset();
     this.holdingNotes.clear();
   }
 }

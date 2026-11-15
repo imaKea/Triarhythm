@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { TRI_RING_LAYOUT, formatKeyCode } from '../config/layout.config.js';
 import {
   Button,
@@ -23,10 +23,13 @@ export default function AstroSettingsModal({
   onOpenAuthModal,
   onLogout
 }) {
+  if (!isOpen) return null;
+
   const [activeCategory, setActiveCategory] = useState('gameplay');
   const [searchQuery, setSearchQuery] = useState('');
   const [listeningSlot, setListeningSlot] = useState(null);
   const [uiSoundsActive, setUiSoundsActive] = useState(isUISoundEnabled());
+  const sliderDebounceRef = useRef(null);
 
   // Keybind capturing logic
   useEffect(() => {
@@ -49,25 +52,36 @@ export default function AstroSettingsModal({
 
       onUpdateSettings({ ...settings, customKeybinds: updatedKeybinds });
       setListeningSlot(null);
-      toast.success(`Đã gán phím ${e.code} cho ${laneKey === 'ring' ? 'Ring (Space)' : `Lane ${laneKey}`}`);
+      toast.success(`Assigned key ${e.code} to ${laneKey === 'ring' ? 'Ring (Space)' : `Lane ${laneKey}`}`);
     };
 
     window.addEventListener('keydown', handleKeyCapture, true);
     return () => window.removeEventListener('keydown', handleKeyCapture, true);
   }, [listeningSlot, isOpen, settings, onUpdateSettings]);
 
-  if (!isOpen) return null;
+  const update = useCallback((key, val) => {
+    onUpdateSettings({ ...settings, [key]: val });
+  }, [settings, onUpdateSettings]);
 
-  const update = (key, val) => onUpdateSettings({ ...settings, [key]: val });
+  // Debounced update for sliders (chỉ gọi khi dừng kéo 150ms)
+  const updateDebounced = useCallback((key, val) => {
+    if (sliderDebounceRef.current) clearTimeout(sliderDebounceRef.current);
+    sliderDebounceRef.current = setTimeout(() => {
+      onUpdateSettings({ ...settings, [key]: val });
+    }, 150);
+  }, [settings, onUpdateSettings]);
 
-  const categories = [
+  const categories = useMemo(
+    () => [
     { id: 'general', label: 'General', icon: '⚙' },
     { id: 'gameplay', label: 'Gameplay', icon: '🎯' },
     { id: 'audio', label: 'Audio', icon: '🔊' },
     { id: 'input', label: 'Input', icon: '⌨' },
     { id: 'graphics', label: 'Graphics', icon: '🖼' },
     { id: 'account', label: 'Account', icon: '👤' }
-  ];
+  ],
+    []
+  );
 
   // Export settings to JSON
   const handleExportSettings = () => {
@@ -79,7 +93,7 @@ export default function AstroSettingsModal({
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
-    toast.success('Đã xuất file cài đặt JSON thành công!');
+    toast.success('Exported settings JSON successfully!');
   };
 
   // Import settings from JSON
@@ -91,9 +105,9 @@ export default function AstroSettingsModal({
       try {
         const imported = JSON.parse(event.target.result);
         onUpdateSettings({ ...settings, ...imported });
-        toast.success('Đã nhập cài đặt từ file thành công!');
+        toast.success('Imported settings from file successfully!');
       } catch (err) {
-        toast.error('File cài đặt không hợp lệ: ' + err.message);
+        toast.error('Invalid settings file: ' + err.message);
       }
     };
     reader.readAsText(file);
@@ -105,7 +119,7 @@ export default function AstroSettingsModal({
     playClick();
     if (activeCategory === 'input') {
       onUpdateSettings({ ...settings, customKeybinds: { ...TRI_RING_LAYOUT.defaultKeybinds } });
-      toast.info('Đã khôi phục phím bấm mặc định.');
+      toast.info('Restored default keybinds.');
     } else if (activeCategory === 'audio') {
       onUpdateSettings({
         ...settings,
@@ -115,7 +129,7 @@ export default function AstroSettingsModal({
         uiVol: 80,
         userOffset: 0
       });
-      toast.info('Đã khôi phục âm lượng & offset mặc định.');
+      toast.info('Restored default audio volumes & offset.');
     } else if (activeCategory === 'graphics') {
       onUpdateSettings({
         ...settings,
@@ -124,18 +138,20 @@ export default function AstroSettingsModal({
         showVideo: true,
         showFpsCounter: false
       });
-      toast.info('Đã khôi phục đồ họa mặc định.');
+      toast.info('Restored graphics defaults.');
     } else if (activeCategory === 'gameplay') {
       onUpdateSettings({
         ...settings,
         noteSpeed: 10.0,
+        ringNoteSpeed: 10.0,
+        maimaiSpinAssist: true,
         countdownBeforeStart: true,
         showRayGuides: true,
         showURBar: true,
         showKeyOverlay: true,
         showCombo: true
       });
-      toast.info('Đã khôi phục cài đặt gameplay.');
+      toast.info('Restored gameplay settings defaults.');
     }
   };
 
@@ -143,13 +159,13 @@ export default function AstroSettingsModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title=""
-      maxWidth="max-w-4xl"
-      className="p-0 overflow-hidden h-[620px]"
+      title="Settings"
+      maxWidth="max-w-5xl"
+      className="p-0 overflow-hidden max-h-[calc(100dvh-2rem)]"
     >
-      <div className="flex h-full select-none">
+      <div className="flex h-full min-h-0 flex-col sm:flex-row select-none bg-white">
         {/* LEFT SIDEBAR */}
-        <div className="w-56 bg-[#fffafc] border-r border-[#f3dbe4] p-4 flex flex-col justify-between shrink-0">
+        <div className="w-full sm:w-60 max-h-none sm:max-h-full overflow-y-auto sm:overflow-visible bg-[#fffafc] border-b sm:border-b-0 sm:border-r border-[#f3dbe4] p-4 sm:p-6 flex flex-col shrink-0">
           <div className="flex flex-col gap-3">
             {/* Header */}
             <div className="px-2 pt-1">
@@ -158,7 +174,7 @@ export default function AstroSettingsModal({
                 <span>Settings</span>
               </span>
               <h2 className="text-lg font-black text-[#5b2a47] font-torus flex items-center gap-1.5">
-                <span>🐰 TÙY CHỈNH</span>
+                <span>🐰 SETTINGS</span>
               </h2>
             </div>
 
@@ -169,13 +185,13 @@ export default function AstroSettingsModal({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm cài đặt... 🎀"
+                placeholder="Search settings... 🎀"
                 className="w-full bg-white border border-[#f3dbe4] focus:border-[#ff4d80] focus:shadow-[0_2px_10px_rgba(255,77,128,0.2)] rounded-2xl pl-8 pr-3 py-1.5 text-xs text-[#5b2a47] placeholder-[#a8556f] outline-none transition-all font-bold"
               />
             </div>
 
             {/* Category Navigation Pills */}
-            <nav className="flex flex-col gap-1 mt-2">
+            <nav className="flex flex-row flex-wrap sm:flex-col gap-1 mt-2">
               {categories.map((cat) => {
                 const isActive = activeCategory === cat.id;
                 return (
@@ -215,7 +231,7 @@ export default function AstroSettingsModal({
         </div>
 
         {/* RIGHT CONTENT AREA */}
-        <div className="flex-1 bg-white/95 flex flex-col overflow-hidden">
+        <div className="flex-1 min-w-0 min-h-0 bg-white/95 flex flex-col overflow-hidden">
           {/* Header of Content */}
           <div className="h-14 px-6 border-b border-[#f3dbe4] flex items-center justify-between shrink-0 bg-[#fff8fa]">
             <div className="flex items-center gap-2">
@@ -226,12 +242,12 @@ export default function AstroSettingsModal({
             </div>
 
             <Button variant="ghost" size="sm" onClick={handleResetCategory} icon="↺">
-              Reset mục này
+              Reset this section
             </Button>
           </div>
 
           {/* Body with controls */}
-          <div className="flex-1 p-6 overflow-y-auto custom-scrollbar space-y-6">
+          <div className="flex-1 p-4 sm:p-6 overflow-y-auto custom-scrollbar space-y-6">
             {/* GENERAL */}
             {activeCategory === 'general' && (
               <div className="space-y-4">
@@ -240,15 +256,15 @@ export default function AstroSettingsModal({
                   onChange={(val) => {
                     setUiSoundsActive(val);
                     setUISoundEnabled(val);
-                    toast.info(`Âm thanh UI: ${val ? 'BẬT' : 'TẮT'}`);
+                    toast.info(`UI Sounds: ${val ? 'ON' : 'OFF'}`);
                   }}
-                  label="Âm thanh giao diện (UI Sounds)"
-                  description="Phát hiệu ứng âm thanh tổng hợp Web Audio khi hover, click, gạt toggle hoặc trượt slider"
+                  label="UI Sound Effects (UI Sounds)"
+                  description="Play Web Audio sound effects on hover, click, toggle, and slider actions"
                 />
 
                 <div className="p-4 rounded-2xl bg-[#fff8fa] border border-[#f3dbe4] text-xs text-[#5b2a47] space-y-2">
-                  <div className="font-bold text-[#5b2a47]">Ngôn ngữ hiển thị (Language)</div>
-                  <p>Hệ thống hiện đang hỗ trợ toàn diện Tiếng Việt (Vietnamese) với phông chữ Nunito / Be Vietnam Pro sắc nét.</p>
+                  <div className="font-bold text-[#5b2a47]">Display Language</div>
+                  <p>English is currently active across the application.</p>
                 </div>
               </div>
             )}
@@ -257,7 +273,7 @@ export default function AstroSettingsModal({
             {activeCategory === 'gameplay' && (
               <div className="space-y-5">
                 <Slider
-                  label="Tốc độ nốt bay (Note Speed)"
+                  label="Note Speed"
                   value={settings.noteSpeed || 10.0}
                   min={5.0}
                   max={15.0}
@@ -266,42 +282,59 @@ export default function AstroSettingsModal({
                   onChange={(val) => update('noteSpeed', val)}
                 />
 
+                <Slider
+                  label="Ring Note Speed"
+                  value={settings.ringNoteSpeed || settings.noteSpeed || 10.0}
+                  min={1.0}
+                  max={15.0}
+                  step={0.1}
+                  formatValue={(v) => `${v.toFixed(1)}x`}
+                  onChange={(val) => update('ringNoteSpeed', val)}
+                />
+
+                <Toggle
+                  checked={settings.maimaiSpinAssist !== false}
+                  onChange={(val) => update('maimaiSpinAssist', val)}
+                  label="Maimai Spin Assist"
+                  description="When playing Maimai charts, middle keys 6 & 7 can activate keys 5 & 8 (Lanes 0 & 2) for smooth spin patterns"
+                />
+
                 <Toggle
                   checked={(settings.enableStartCountdown ?? settings.countdownBeforeStart) !== false}
                   onChange={(val) => {
                     update('enableStartCountdown', val);
                     update('countdownBeforeStart', val);
                   }}
-                  label="Đếm ngược 3-2-1 trước khi bắt đầu bài hát"
-                  description="Hiển thị đếm nhịp 3-2-1 trước khi nốt nhạc đầu tiên xuất hiện để người chơi chuẩn bị"
+                  label="3-2-1 Countdown before track starts"
+                  description="Display a 3-2-1 count-in before the first note appears so you can prepare"
                 />
 
                 <Toggle
                   checked={settings.showRayGuides !== false}
                   onChange={(val) => update('showRayGuides', val)}
-                  label="Hiện vạch tia định hướng (Ray Guides)"
-                  description="Hiển thị các đường tia mỏng nối từ tâm ra các ô judgement"
+                  label="Show Ray Guides"
+                  description="Display thin ray lines connecting from origin to judgement zones"
                 />
 
                 <Toggle
                   checked={settings.showURBar !== false}
                   onChange={(val) => update('showURBar', val)}
-                  label="Hiện thanh Unstable Rate (UR Bar)"
-                  description="Hiển thị biểu đồ độ lệch ms phán định ở góc dưới màn hình"
+                  label="Show Unstable Rate (UR Bar)"
+                  description="Display judgement timing offset distribution at bottom of screen"
                 />
 
                 <Toggle
                   checked={settings.showKeyOverlay !== false}
                   onChange={(val) => update('showKeyOverlay', val)}
-                  label="Hiện Key Overlay (Bộ đếm phím bấm)"
-                  description="Hiển thị panel dọc đếm số lượt nhấn phím từng lane bên cạnh phải"
+                  label="Show Key Overlay"
+                  description="Display vertical panel counting key presses per lane on the right"
                 />
 
                 <Toggle
                   checked={settings.showCombo !== false}
                   onChange={(val) => update('showCombo', val)}
-                  label="Hiện Combo đếm nhịp ở góc dưới"
-                  description="Hiển thị chữ số combo nổi bật khi đánh trúng liên tiếp"
+                  label="Show Combo Counter"
+                  description="Display combo counter when landing consecutive hits"
                 />
               </div>
             )}
@@ -310,49 +343,49 @@ export default function AstroSettingsModal({
             {activeCategory === 'audio' && (
               <div className="space-y-5">
                 <Slider
-                  label="Âm lượng tổng (Master Volume)"
+                  label="Master Volume"
                   value={settings.masterVol !== undefined ? settings.masterVol : 100}
                   min={0}
                   max={100}
                   unit="%"
-                  onChange={(val) => update('masterVol', val)}
+                  onChange={(val) => updateDebounced('masterVol', val)}
                 />
 
                 <Slider
-                  label="Âm lượng nhạc nền (Music Volume)"
+                  label="Music Volume"
                   value={settings.musicVol !== undefined ? settings.musicVol : 85}
                   min={0}
                   max={100}
                   unit="%"
-                  onChange={(val) => update('musicVol', val)}
+                  onChange={(val) => updateDebounced('musicVol', val)}
                 />
 
                 <Slider
-                  label="Âm lượng Hitsound (Hiệu ứng gõ phím)"
+                  label="Hitsound Volume"
                   value={settings.hitVol !== undefined ? settings.hitVol : 95}
                   min={0}
                   max={100}
                   unit="%"
-                  onChange={(val) => update('hitVol', val)}
+                  onChange={(val) => updateDebounced('hitVol', val)}
                 />
 
                 <Slider
-                  label="Độ lệch âm thanh cá nhân (Audio Offset)"
+                  label="Audio Offset"
                   value={settings.userOffset || 0}
                   min={-200}
                   max={200}
                   step={5}
                   formatValue={(v) => `${v > 0 ? `+${v}` : v} ms`}
-                  onChange={(val) => update('userOffset', val)}
+                  onChange={(val) => updateDebounced('userOffset', val)}
                 />
 
                 <div className="p-3.5 rounded-2xl bg-[#fff8fa] border border-[#f3dbe4] flex items-center justify-between text-xs">
                   <div>
-                    <div className="font-bold text-[#5b2a47]">Hiệu chuẩn độ trễ âm thanh</div>
-                    <div className="text-[11px] text-[#a8556f]">Bấm nút kiểm tra để nghe thử nhịp metronome</div>
+                    <div className="font-bold text-[#5b2a47]">Audio Latency Calibration</div>
+                    <div className="text-[11px] text-[#a8556f]">Click test button to hear metronome tick</div>
                   </div>
                   <Button variant="ghost" size="sm" onClick={() => playClick()}>
-                    Thử nhịp (Test Tick)
+                    Test Tick
                   </Button>
                 </div>
               </div>
@@ -363,10 +396,10 @@ export default function AstroSettingsModal({
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <p className="text-xs text-[#a8556f] font-bold">
-                    Nhấp vào ô phím để bắt đầu gán phím mới (nhấn Esc để huỷ):
+                    Click a slot to rebind (press Esc to cancel):
                   </p>
                   <Button variant="ghost" size="sm" onClick={handleResetCategory} icon="↺">
-                    Phím mặc định
+                    Default Keys
                   </Button>
                 </div>
 
@@ -426,35 +459,35 @@ export default function AstroSettingsModal({
             {activeCategory === 'graphics' && (
               <div className="space-y-5">
                 <Slider
-                  label="Làm tối hình nền (Background Dim)"
+                  label="Background Dim"
                   value={Math.round((settings.backgroundDim !== undefined ? settings.backgroundDim : 0.75) * 100)}
                   min={0}
                   max={100}
                   unit="%"
-                  onChange={(val) => update('backgroundDim', val / 100)}
+                  onChange={(val) => updateDebounced('backgroundDim', val / 100)}
                 />
 
                 <Slider
-                  label="Độ mờ hậu cảnh (Background Blur)"
+                  label="Background Blur"
                   value={Math.round((settings.backgroundBlur !== undefined ? settings.backgroundBlur : 0.2) * 100)}
                   min={0}
                   max={100}
                   unit="%"
-                  onChange={(val) => update('backgroundBlur', val / 100)}
+                  onChange={(val) => updateDebounced('backgroundBlur', val / 100)}
                 />
 
                 <Toggle
                   checked={settings.showVideo !== false}
                   onChange={(val) => update('showVideo', val)}
-                  label="Bật video nền (Background Video)"
-                  description="Tự động đồng bộ và phát video kèm theo map nếu có"
+                  label="Background Video"
+                  description="Automatically synchronize and play background video if available"
                 />
 
                 <Toggle
                   checked={Boolean(settings.showFpsCounter)}
                   onChange={(val) => update('showFpsCounter', val)}
-                  label="Hiện bộ đếm FPS & khung hình"
-                  description="Hiển thị FPS counter thời gian thực ở góc màn hình"
+                  label="Show FPS Counter"
+                  description="Display real-time frame rate in corner of screen"
                 />
               </div>
             )}
@@ -469,16 +502,16 @@ export default function AstroSettingsModal({
                       <div className="text-xs text-[#a8556f] font-mono">{currentUser.email || `@${currentUser.username}`}</div>
                     </div>
                     <Button variant="danger" size="sm" onClick={onLogout}>
-                      Đăng xuất
+                      Sign Out
                     </Button>
                   </div>
                 ) : (
                   <div className="p-6 rounded-2xl bg-[#fff8fa] border border-[#f3dbe4] text-center space-y-3">
                     <p className="text-xs text-[#5b2a47]">
-                      Đăng nhập để đồng bộ điểm số lên Bảng xếp hạng toàn cầu và lưu cài đặt trên đám mây.
+                      Sign in to sync your scores to the Global Leaderboard and store cloud settings.
                     </p>
                     <Button variant="primary" size="md" onClick={onOpenAuthModal}>
-                      Đăng nhập / Đăng ký
+                      Sign In / Register
                     </Button>
                   </div>
                 )}

@@ -40,7 +40,7 @@ export default function ContextMenu({
   if (!isOpen || !items || items.length === 0) return null;
 
   // Tính vị trí để menu không bị tràn ra ngoài màn hình
-  const menuWidth = 190;
+  const menuWidth = 210;
   const menuHeight = items.length * 36;
   const adjustedX = typeof window !== 'undefined' && x + menuWidth > window.innerWidth ? window.innerWidth - menuWidth - 10 : x;
   const adjustedY = typeof window !== 'undefined' && y + menuHeight > window.innerHeight ? window.innerHeight - menuHeight - 10 : y;

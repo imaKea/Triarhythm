@@ -12,8 +12,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use League\Flysystem\UnableToDeleteDirectory;
 
 class AdminController extends Controller
 {
@@ -28,8 +30,8 @@ class AdminController extends Controller
         $totalBanned = User::where('is_banned', true)->count();
         $totalMaps = Map::count();
         $totalScores = Score::count();
-        $totalPlays = (int)User::sum('play_count');
-        $totalServerPP = (float)User::sum('total_pp');
+        $totalPlays = (int) User::sum('play_count');
+        $totalServerPP = (float) User::sum('total_pp');
 
         // Thống kê số lượt chơi theo ngày (7 ngày gần nhất)
         $sevenDaysAgo = now()->subDays(6)->startOfDay();
@@ -90,8 +92,8 @@ class AdminController extends Controller
         if ($search = $request->query('query')) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('username', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('username', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
@@ -151,7 +153,7 @@ class AdminController extends Controller
             $currentAdmin,
             'user.change_role',
             'user',
-            (string)$user->id,
+            (string) $user->id,
             ['old_role' => $oldRole, 'new_role' => $user->role, 'target_username' => $user->username],
             $request->ip()
         );
@@ -186,19 +188,20 @@ class AdminController extends Controller
             ], 400);
         }
 
-        $user->is_banned = !$user->is_banned;
+        $user->is_banned = ! $user->is_banned;
         $user->save();
 
         AdminLog::log(
             $currentAdmin,
             $user->is_banned ? 'user.ban' : 'user.unban',
             'user',
-            (string)$user->id,
+            (string) $user->id,
             ['username' => $user->username, 'is_banned' => $user->is_banned],
             $request->ip()
         );
 
         $actionText = $user->is_banned ? 'khóa' : 'mở khóa';
+
         return response()->json([
             'success' => true,
             'message' => "Đã {$actionText} tài khoản '{$user->username}' thành công!",
@@ -229,7 +232,7 @@ class AdminController extends Controller
             $currentAdmin,
             'user.reset_password',
             'user',
-            (string)$user->id,
+            (string) $user->id,
             ['username' => $user->username],
             $request->ip()
         );
@@ -271,7 +274,7 @@ class AdminController extends Controller
             $currentAdmin,
             'user.delete',
             'user',
-            (string)$id,
+            (string) $id,
             ['deleted_username' => $username],
             $request->ip()
         );
@@ -293,9 +296,9 @@ class AdminController extends Controller
         if ($search = $request->query('query')) {
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('artist', 'like', "%{$search}%")
-                  ->orWhere('creator', 'like', "%{$search}%")
-                  ->orWhere('song_id', 'like', "%{$search}%");
+                    ->orWhere('artist', 'like', "%{$search}%")
+                    ->orWhere('creator', 'like', "%{$search}%")
+                    ->orWhere('song_id', 'like', "%{$search}%");
             });
         }
 
@@ -342,14 +345,14 @@ class AdminController extends Controller
         $map = Map::findOrFail($id);
         $oldData = $map->only(['title', 'artist', 'creator', 'status', 'bpm']);
 
-        $map->fill(array_filter($validated, fn($v) => !is_null($v)));
+        $map->fill(array_filter($validated, fn ($v) => ! is_null($v)));
         $map->save();
 
         AdminLog::log(
             $request->user(),
             'map.update',
             'map',
-            (string)$map->id,
+            (string) $map->id,
             ['old' => $oldData, 'new' => $map->only(['title', 'artist', 'creator', 'status', 'bpm'])],
             $request->ip()
         );
@@ -367,25 +370,50 @@ class AdminController extends Controller
      */
     public function deleteMap(Request $request, $id): JsonResponse
     {
-        $map = Map::where('id', $id)->orWhere('song_id', $id)->firstOrFail();
-        $title = $map->title;
-        $songId = $map->song_id;
+        $deletedMap = DB::transaction(function () use ($id): array {
+            $map = Map::where('id', $id)->orWhere('song_id', $id)->lockForUpdate()->firstOrFail();
+            $songId = $map->song_id;
+            $affectedUserIds = Score::where('song_id', $songId)
+                ->distinct()
+                ->orderBy('user_id')
+                ->pluck('user_id');
+            $users = [];
+            foreach ($affectedUserIds as $userId) {
+                $user = User::whereKey($userId)->lockForUpdate()->first();
+                if ($user) {
+                    $users[] = $user;
+                }
+            }
 
-        // Dọn dẹp thư mục lưu trữ assets nếu nằm trong storage/maps/{song_id}
+            Score::where('song_id', $songId)->delete();
+            foreach ($users as $user) {
+                $user->recalculateStats();
+            }
+
+            $title = $map->title;
+            $map->delete();
+
+            return ['title' => $title, 'song_id' => $songId];
+        });
+        $title = $deletedMap['title'];
+        $songId = $deletedMap['song_id'];
+
         try {
-            Storage::disk('public')->deleteDirectory("maps/{$songId}");
-        } catch (\Throwable $e) {}
-
-        // Xóa điểm số liên quan
-        Score::where('song_id', $songId)->delete();
-
-        $map->delete();
+            if (! Storage::disk('public')->deleteDirectory("maps/{$songId}")) {
+                Log::warning('Failed to remove map assets after deleting the map.', ['song_id' => $songId]);
+            }
+        } catch (UnableToDeleteDirectory $error) {
+            Log::warning('Failed to remove map assets after deleting the map.', [
+                'song_id' => $songId,
+                'exception' => $error,
+            ]);
+        }
 
         AdminLog::log(
             $request->user(),
             'map.delete',
             'map',
-            (string)$id,
+            (string) $id,
             ['song_id' => $songId, 'title' => $title],
             $request->ip()
         );
@@ -417,13 +445,13 @@ class AdminController extends Controller
         }
 
         if ($minScore = $request->query('min_score')) {
-            $query->where('score', '>=', (int)$minScore);
+            $query->where('score', '>=', (int) $minScore);
         }
 
         if ($search = $request->query('query')) {
             $query->whereHas('user', function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('username', 'like', "%{$search}%");
+                    ->orWhere('username', 'like', "%{$search}%");
             })->orWhere('song_id', 'like', "%{$search}%");
         }
 
@@ -449,29 +477,40 @@ class AdminController extends Controller
      */
     public function deleteScore(Request $request, $id): JsonResponse
     {
-        $score = Score::findOrFail($id);
-        $userId = $score->user_id;
-        $scoreValue = $score->score;
-        $songId = $score->song_id;
+        $initialScore = Score::findOrFail($id);
+        $deletedScore = DB::transaction(function () use ($id, $initialScore): array {
+            $map = Map::withTrashed()
+                ->where('song_id', $initialScore->song_id)
+                ->lockForUpdate()
+                ->first();
+            $user = User::whereKey($initialScore->user_id)->lockForUpdate()->first();
+            $score = Score::whereKey($id)->lockForUpdate()->firstOrFail();
+            $details = [
+                'user_id' => $score->user_id,
+                'song_id' => $score->song_id,
+                'score' => $score->score,
+            ];
+            $score->delete();
 
-        $score->delete();
-
-        // Tự động tính lại tổng PP cho user nếu có
-        if ($userId) {
-            $user = User::find($userId);
             if ($user) {
-                $userScores = $user->scores()->orderByDesc('pp')->pluck('pp')->toArray();
-                $user->total_pp = PpCalculator::calculateTotalPP($userScores);
-                $user->save();
+                $user->recalculateStats();
             }
-        }
+            if ($map) {
+                $map->play_count = Score::where('song_id', $map->song_id)->count();
+                $map->save();
+            }
+
+            return $details;
+        });
+        $userId = $deletedScore['user_id'];
+        $songId = $deletedScore['song_id'];
 
         AdminLog::log(
             $request->user(),
             'score.delete',
             'score',
-            (string)$id,
-            ['user_id' => $userId, 'song_id' => $songId, 'score' => $scoreValue],
+            (string) $id,
+            $deletedScore,
             $request->ip()
         );
 
@@ -487,16 +526,35 @@ class AdminController extends Controller
      */
     public function recalculateAllPP(Request $request): JsonResponse
     {
+        $maps = Map::all()->keyBy('song_id');
         $scores = Score::all();
         $updatedScores = 0;
 
         foreach ($scores as $score) {
-            $stars = (float)($score->stars ?? 5.0);
-            $acc = (float)$score->accuracy;
-            $miss = (int)($score->miss_count ?? 0);
-            $notes = (int)($score->max_combo > 0 ? $score->max_combo : 500);
+            $stars = 0.0;
+            $noteCount = 0;
+            $map = $maps->get($score->song_id);
+            if ($map && is_array($map->difficulties)) {
+                foreach ($map->difficulties as $difficulty) {
+                    if (($difficulty['difficultyName'] ?? '') === $score->difficulty_name) {
+                        $candidateStars = (float) ($difficulty['stars'] ?? 0);
+                        if ($candidateStars > 0) {
+                            $stars = $candidateStars;
+                            $noteCount = (int) $score->critical_perfect
+                                + (int) $score->perfect
+                                + (int) $score->great
+                                + (int) $score->good
+                                + (int) $score->miss;
+                        }
+                        break;
+                    }
+                }
+            }
 
-            $newPP = PpCalculator::calculatePP($stars, $acc, $miss, $notes);
+            $newPP = $stars > 0
+                ? PpCalculator::calculatePP($stars, (float) $score->accuracy, (int) $score->miss, $noteCount)
+                : 0.0;
+            $score->stars = $stars;
             $score->pp = $newPP;
             $score->save();
             $updatedScores++;
@@ -507,9 +565,7 @@ class AdminController extends Controller
         $updatedUsers = 0;
 
         foreach ($users as $user) {
-            $userScores = $user->scores()->orderByDesc('pp')->pluck('pp')->toArray();
-            $user->total_pp = PpCalculator::calculateTotalPP($userScores);
-            $user->save();
+            $user->recalculateStats();
             $updatedUsers++;
         }
 

@@ -17,6 +17,8 @@ export { default as Skeleton } from './Skeleton.jsx';
 export { default as ProgressBar } from './ProgressBar.jsx';
 export { default as Avatar } from './Avatar.jsx';
 export { default as StarRating, getStarColor } from './StarRating.jsx';
+export { default as DifficultyBadge } from './DifficultyBadge.jsx';
+export { MAIMAI_CATEGORIES, MAIMAI_CATEGORY_COLORS, normalizeMaimaiCategory, formatMaimaiLevel, calculateMaimaiRating } from '../core/beatmap/maimaiDifficulty.js';
 export { default as RankBadge, getRankBadgeStyle } from './RankBadge.jsx';
 
 export * from './sound/uiAudio.js';

@@ -56,10 +56,10 @@ export default function AstroAuthModal({ isOpen, onClose, onLoginSuccess }) {
             </div>
             <div>
               <h3 className="font-bold text-base text-[#5b2a47] flex items-center gap-1.5 font-torus">
-                <span>{isRegister ? 'Tạo tài khoản' : 'Đăng nhập'}</span>
+                <span>{isRegister ? 'Create Account' : 'Sign In'}</span>
                 <span>🎀</span>
               </h3>
-              <p className="text-[10px] text-[#ff4d80] font-bold">Đồng bộ điểm số & bảng xếp hạng</p>
+              <p className="text-[10px] text-[#ff4d80] font-bold">Sync scores & leaderboards</p>
             </div>
           </div>
           <button
@@ -82,7 +82,7 @@ export default function AstroAuthModal({ isOpen, onClose, onLoginSuccess }) {
             required
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            placeholder="Tên người dùng hoặc email"
+            placeholder="Username or email"
             className={inputClass}
           />
 
@@ -93,14 +93,14 @@ export default function AstroAuthModal({ isOpen, onClose, onLoginSuccess }) {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Địa chỉ email"
+                placeholder="Email address"
                 className={inputClass}
               />
               <input
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Tên hiển thị (Nickname)"
+                placeholder="Display Name (Nickname)"
                 className={inputClass}
               />
             </>
@@ -111,7 +111,7 @@ export default function AstroAuthModal({ isOpen, onClose, onLoginSuccess }) {
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Mật khẩu"
+            placeholder="Password"
             className={inputClass}
           />
 
@@ -121,31 +121,31 @@ export default function AstroAuthModal({ isOpen, onClose, onLoginSuccess }) {
             className="w-full py-2.5 mt-1 rounded-full osu-btn text-sm font-black tracking-wide cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-[0_4px_18px_rgba(255,77,128,0.3)]"
           >
             <span>🐰</span>
-            <span>{loading ? 'Đang kết nối...' : (isRegister ? 'Tạo tài khoản 🎀' : 'Đăng nhập 🎀')}</span>
+            <span>{loading ? 'Connecting...' : (isRegister ? 'Create Account 🎀' : 'Sign In 🎀')}</span>
           </button>
         </form>
 
         <div className="mt-4 text-center text-xs text-[#a8556f] font-medium">
           {isRegister ? (
             <span>
-              Đã có tài khoản?{' '}
+              Already have an account?{' '}
               <button
                 type="button"
                 onClick={() => { setIsRegister(false); setErrorMsg(''); }}
                 className="text-[#ff4d80] hover:underline font-bold ml-1 cursor-pointer"
               >
-                Đăng nhập ngay
+                Sign In
               </button>
             </span>
           ) : (
             <span>
-              Chưa có tài khoản?{' '}
+              Don't have an account?{' '}
               <button
                 type="button"
                 onClick={() => { setIsRegister(true); setErrorMsg(''); }}
                 className="text-[#ff4d80] hover:underline font-bold ml-1 cursor-pointer"
               >
-                Đăng ký ngay
+                Register now
               </button>
             </span>
           )}

@@ -6,7 +6,6 @@ import GameplayView from './components/GameplayView.jsx';
 import AstroSettingsModal from './components/AstroSettingsModal.jsx';
 import AstroAuthModal from './components/AstroAuthModal.jsx';
 import RingPreview from './components/RingPreview.jsx';
-import UIKitScreen from './components/UIKitScreen.jsx';
 import PlayerLoader from './components/PlayerLoader.jsx';
 import ProfileModal from './components/ProfileModal.jsx';
 import AdminPanel from './components/AdminPanel.jsx';
@@ -29,7 +28,9 @@ export default function App() {
   // Người dùng & Cài đặt
   const [currentUser, setCurrentUser] = useState(null);
   const [settings, setSettings] = useState({
-    noteSpeed: 10.0, // Mặc định 10.0, cho phép chỉnh lên tới 15.0
+    noteSpeed: 10.0,
+    ringNoteSpeed: 10.0,
+    maimaiSpinAssist: true,
     isAutoplay: false,
     backgroundDim: 0.75,
     showRayGuides: true,
@@ -103,6 +104,7 @@ export default function App() {
           customKeybinds: mergedKeybinds
         }));
       }
+      return maps;
     } catch (err) {
       console.error('[App] Lỗi nạp dữ liệu:', err);
     } finally {
@@ -138,16 +140,16 @@ export default function App() {
     });
   };
 
-  // Đăng xuất
+  // Logout
   const handleLogout = async () => {
     try {
       await apiClient.logout();
     } catch (_) {}
     setCurrentUser(null);
-    toast.success('Đã đăng xuất tài khoản thành công!');
+    toast.success('Successfully logged out!');
   };
 
-  // Bắt đầu chơi game với bài đã chọn (chuyển qua PLAYER_LOADER trước)
+  // Start gameplay
   const handleStartGame = (chart) => {
     const target = chart || selectedBeatmap;
     if (target) setSelectedBeatmap(target);
@@ -155,19 +157,26 @@ export default function App() {
     setCurrentScreen('PLAYER_LOADER');
   };
 
-  // Nhập map qua một luồng duy nhất (importService)
+  // Import files
   const processFiles = async (fileList) => {
     if (!fileList || fileList.length === 0) return null;
 
     try {
       const result = await importFiles(fileList, { preset: 'twoFingers', autoSlide: false, overwrite: true });
 
-      await loadDatabase();
-      setSelectedBeatmap(result.songEntry);
-      alert(`Đã nạp thành công "${result.songEntry.title}" với ${result.difficultyCount} độ khó!`);
+      const updatedMaps = await loadDatabase();
+      if (result?.status === 'bulk') {
+        toast.success(`Successfully imported ${result.count} beatmaps! 🎀`);
+      } else if (result?.songEntry) {
+        toast.success(`Loaded "${result.songEntry.title || 'Beatmap'}"! 🎀`);
+      }
+      if (result?.songEntry) {
+        const found = updatedMaps?.find((m) => m.id === result.songEntry.id);
+        setSelectedBeatmap(found || result.songEntry);
+      }
       return result;
     } catch (err) {
-      alert('Lỗi nạp file: ' + err.message);
+      toast.error('Error loading files: ' + err.message);
       return null;
     }
   };
@@ -193,11 +202,9 @@ export default function App() {
     }
   };
 
-  const isViewportScreen = currentScreen === 'UI_KIT';
-
   return (
     <div
-      className={`${isViewportScreen ? 'h-dvh overflow-hidden' : 'min-h-screen'} text-white flex flex-col items-center justify-start select-none font-sans`}
+      className="min-h-screen text-white flex flex-col items-center justify-start select-none font-sans"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -215,15 +222,15 @@ export default function App() {
         />
       )}
 
-      {/* Overlay Drag & Drop toàn màn hình */}
+      {/* Drag & Drop full-screen overlay */}
       {isDraggingOver && (
         <div className="fixed inset-0 z-50 bg-[#0d0d1a]/95 backdrop-blur-md flex flex-col items-center justify-center p-6 border-4 border-dashed border-[#ff66ab] pointer-events-none animate-fadeIn">
           <div className="text-6xl mb-4 animate-bounce">📥</div>
           <h2 className="text-2xl font-torus font-black text-white mb-2 tracking-wider">
-            THẢ FILE .OSZ / .ZIP ĐỂ NẠP BÀI VÀO DATABASE
+            DROP .OSZ / .ZIP TO IMPORT TRACKS
           </h2>
           <p className="text-sm font-sans text-[#b8c0d4] max-w-md text-center leading-relaxed">
-            Hỗ trợ file nén <strong className="text-[#ff66ab]">.osz</strong>, <strong className="text-[#ff66ab]">.zip</strong> (Maimai maidata.txt) hoặc file <strong className="text-[#ff66ab]">.osu + .mp3</strong>!
+            Supports compressed <strong className="text-[#ff66ab]">.osz</strong>, <strong className="text-[#ff66ab]">.zip</strong> (Maimai maidata.txt) or <strong className="text-[#ff66ab]">.osu + .mp3</strong>!
           </p>
         </div>
       )}
@@ -233,14 +240,14 @@ export default function App() {
         <div className="fixed inset-0 z-40 bg-[#0d0d1a] flex flex-col items-center justify-center gap-4">
           <div className="w-12 h-12 rounded-full border-4 border-[#ff66ab]/20 border-t-[#ff66ab] animate-spin" />
           <p className="font-torus font-black tracking-widest text-sm text-[#b8c0d4]">
-            TRIARHYTHM ĐANG KHỞI ĐỘNG DATABASE...
+            TRIARHYTHM IS INITIALIZING DATABASE...
           </p>
         </div>
       )}
 
       {/* Main Screen Router */}
-      <main className={`w-full flex-1 min-h-0 flex flex-col items-center justify-start ${isViewportScreen ? 'overflow-hidden' : ''}`}>
-        {/* MÀN HÌNH 1: SONG SELECT (RhythmTyper Beatmap Browser) */}
+      <main className="w-full flex-1 min-h-0 flex flex-col items-center justify-start">
+        {/* SCREEN 1: SONG SELECT */}
         {currentScreen === 'SONG_SELECT' && (
           <AstroSongSelect
             beatmaps={beatmaps}
@@ -256,7 +263,7 @@ export default function App() {
           />
         )}
 
-        {/* MÀN HÌNH 2: LEADERBOARD TOÀN CẦU */}
+        {/* SCREEN 2: GLOBAL LEADERBOARD */}
         {currentScreen === 'LEADERBOARD' && (
           <LeaderboardView
             currentUser={currentUser}
@@ -265,7 +272,7 @@ export default function App() {
           />
         )}
 
-        {/* MÀN HÌNH PRE-LOADER (1.2s trước gameplay) */}
+        {/* SCREEN 3: PRE-LOADER */}
         {currentScreen === 'PLAYER_LOADER' && (
           <PlayerLoader
             chart={loadingChart}
@@ -274,7 +281,7 @@ export default function App() {
           />
         )}
 
-        {/* MÀN HÌNH 3: GAMEPLAY (Arcade Triangle View) */}
+        {/* SCREEN 4: GAMEPLAY */}
         {currentScreen === 'GAMEPLAY' && (
           <GameplayView
             initialChart={selectedBeatmap}
@@ -286,27 +293,20 @@ export default function App() {
           />
         )}
 
-        {/* MÀN HÌNH 5: LAYOUT PREVIEW (DEBUG TAM GIÁC) */}
+        {/* SCREEN 5: LAYOUT PREVIEW */}
         {currentScreen === 'LAYOUT' && (
           <div className="w-full flex flex-col items-center">
             <button
               onClick={() => setCurrentScreen('SONG_SELECT')}
               className="mb-4 px-4 py-2 rounded-xl bg-[#141824] hover:bg-[#1e2538] text-slate-200 border border-[#27324c] font-mono text-xs cursor-pointer"
             >
-              ← Quay lại Chọn bài
+              ← Back to Song Select
             </button>
             <RingPreview />
           </div>
         )}
 
-        {/* MÀN HÌNH 6: UI KIT (DEBUG OSU! LAZER DESIGN SYSTEM) */}
-        {currentScreen === 'UI_KIT' && (
-          <div className="mt-[50px] h-[calc(100dvh-50px)] min-h-0 w-full sm:mb-6 sm:mt-[54px] sm:h-[calc(100dvh-78px)]">
-            <UIKitScreen onBack={() => setCurrentScreen('SONG_SELECT')} />
-          </div>
-        )}
-
-        {/* MÀN HÌNH 7: ADMIN PANEL (Quản trị viên) */}
+        {/* SCREEN 6: ADMIN PANEL */}
         {currentScreen === 'ADMIN' && (
           currentUser?.role === 'admin' ? (
             <AdminPanel
@@ -316,13 +316,13 @@ export default function App() {
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-8 gap-4 text-center">
               <span className="text-5xl">🔒</span>
-              <h2 className="text-xl font-torus font-black text-white">TRUY CẬP BỊ TỪ CHỐI</h2>
-              <p className="text-xs text-[#8890a4]">Bạn cần có quyền Quản trị viên (Admin) để truy cập trang này.</p>
+              <h2 className="text-xl font-torus font-black text-white">ACCESS DENIED</h2>
+              <p className="text-xs text-[#8890a4]">You need Administrator privileges to access this page.</p>
               <button
                 onClick={() => setCurrentScreen('SONG_SELECT')}
                 className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#ff66ab] to-[#cc5289] text-white text-xs font-bold shadow-lg cursor-pointer"
               >
-                Quay lại Chọn bài
+                Back to Song Select
               </button>
             </div>
           )

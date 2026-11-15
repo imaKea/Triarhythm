@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { dbManager } from '../core/storage/db.js';
 import { calculatePPBreakdown } from '../core/pp/ppCalculator.js';
-import { Button, StarRating, RankBadge, Avatar } from '../ui/index.js';
+import { normalizeMaimaiCategory, calculateMaimaiRating } from '../core/beatmap/maimaiDifficulty.js';
+import { Button, StarRating, DifficultyBadge, RankBadge, Avatar } from '../ui/index.js';
 import { playHover, playClick, playResultFanfare } from '../ui/sound/uiAudio.js';
 
 /**
@@ -311,12 +312,16 @@ export default function AstroResultScreen({
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 text-xs text-[#a8556f] font-medium truncate mt-0.5">
+            <div className="flex items-center gap-2 text-xs text-[#a8556f] font-medium truncate mt-0.5 flex-wrap">
               <span>{artist}</span>
               <span>•</span>
-              <span className="text-[#ff4d80] font-bold">[{diffName}]</span>
-              <span>•</span>
-              <StarRating stars={stars} size="sm" />
+              <DifficultyBadge
+                category={normalizeMaimaiCategory(diffName)}
+                level={initialChart?.difficultyLevel || calculateMaimaiRating(beatmap || initialChart?.beatmap).levelString}
+                osuStars={stars}
+                showOsuStars={Boolean(initialChart?.source === 'osu' || initialChart?.keys || initialChart?.rawOsu || initialChart?.metadata?.source === 'osu')}
+                size="sm"
+              />
               <span>•</span>
               <span className="text-[#a8556f]">mapped by {creator} 🐰</span>
             </div>
@@ -586,12 +591,12 @@ export default function AstroResultScreen({
       </main>
 
       {/* Bottom Action Footer Bar */}
-      <footer className="relative z-10 flex items-center justify-between px-8 py-4 border-t border-[#f3dbe4] bg-[#fffafc]/90 backdrop-blur-md shadow-[0_-4px_20px_rgba(126,47,79,0.04)]">
-        <div className="flex items-center gap-2 text-xs font-mono text-[#a8556f] font-bold">
-          <span className="px-2 py-0.5 rounded-full bg-[#fff1f5] text-[#5b2a47] border border-[#f3dbe4]">Esc</span> Quay lại chọn bài 🐰
+      <footer className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-3 sm:px-8 py-2 sm:py-4 border-t border-[#f3dbe4] bg-[#fffafc]/90 backdrop-blur-md shadow-[0_-4px_20px_rgba(126,47,79,0.04)]">
+        <div className="flex items-center justify-center sm:justify-start gap-2 text-xs font-mono text-[#a8556f] font-bold">
+          <span className="px-2 py-0.5 rounded-full bg-[#fff1f5] text-[#5b2a47] border border-[#f3dbe4]">Esc</span> Return to Song Select 🐰
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
           <Button
             variant="ghost"
             size="md"
@@ -601,7 +606,7 @@ export default function AstroResultScreen({
             }}
             icon="←"
           >
-            Chọn bài hát 🐰
+            Song Select 🐰
           </Button>
 
           <Button
@@ -613,7 +618,7 @@ export default function AstroResultScreen({
             }}
             icon="▶"
           >
-            Xem lại 🎀
+            Replay 🎀
           </Button>
 
           <Button
@@ -625,7 +630,7 @@ export default function AstroResultScreen({
             }}
             icon="↺"
           >
-            Chơi lại 🎀
+            Retry 🎀
           </Button>
         </div>
       </footer>

@@ -25,7 +25,7 @@ export const toast = {
   info(msg, opts) {
     return this.show(msg, { ...opts, type: 'info' });
   },
-  undo(msg, onUndo, duration = 7000, label = 'HOÀN TÁC (Ctrl+Z)') {
+  undo(msg, onUndo, duration = 7000, label = 'UNDO (Ctrl+Z)') {
     return this.show(msg, {
       type: 'info',
       duration,

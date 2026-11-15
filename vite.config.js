@@ -5,7 +5,11 @@ export default defineConfig({
   // `public/` là web-root của Laravel (index.php, .htaccess). Asset tĩnh của game
   // nằm ở `static/` để Vite không copy file PHP/nặng vào dist khi build.
   publicDir: 'static',
-  plugins: [react()],
+  plugins: [
+    react(),
+    // Visualizer cho phân tích bundle size (chỉ khi cần)
+    // process.env.ANALYZE && visualizer()
+  ],
   server: {
     port: 3000,
     open: true,
@@ -26,5 +30,18 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node'
-  }
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    minify: 'esbuild',
+    rollupOptions: {
+      output: {
+        // Tách vendor ra chunk riêng để cache hiệu quả hơn
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'idb', 'jszip'],
+        },
+      },
+    },
+  },
 });

@@ -22,11 +22,13 @@ export class InputManager {
     this.keyDownTime = new Array(9).fill(0);
     this.isSpaceDown = false; // Trạng thái giữ phím Space cho nốt Ring
     this.activeHeldCodes = new Set(); // Theo dõi từng mã phím cụ thể để hỗ trợ nhiều phím trên cùng 1 lane (ví dụ 6 và 7)
+    this.heldKeyCodes = new Set(); // Theo dõi tất cả các phím đang được giữ trên bàn phím (hỗ trợ giữ nút bất kỳ cho Ring)
 
     // Callbacks
     this.onLaneDown = null; // (lane, audioTime, perfTime) => {}
     this.onLaneUp = null;   // (lane, audioTime, perfTime) => {}
     this.onSpaceDown = null;// (audioTime, perfTime) => {}
+    this.onSpaceUp = null;
     this.onTypingKey = null;// (key, audioTime) => boolean
     this.onPause = null;    // () => {}
 
@@ -88,11 +90,19 @@ export class InputManager {
     this.isAttached = false;
   }
 
+  get isAnyKeyDown() {
+    return this.isSpaceDown || this.heldKeyCodes.size > 0 || this.isKeyDown.some(Boolean) || this.isPointerDown;
+  }
+
   handleKeyDown(e) {
     // Esc để Pause game
     if (e.code === 'Escape') {
       if (this.onPause) this.onPause();
       return;
+    }
+
+    if (!e.repeat) {
+      this.heldKeyCodes.add(e.code);
     }
 
     const perfTime = e.timeStamp;
@@ -138,16 +148,20 @@ export class InputManager {
       this.keyDownTime[lane] = audioTime;
 
       if (this.onLaneDown) {
-        this.onLaneDown(lane, audioTime, perfTime);
+        this.onLaneDown(lane, audioTime, perfTime, e.code, e.key);
       }
     }
   }
 
   handleKeyUp(e) {
+    this.heldKeyCodes.delete(e.code);
     const isRingKey = this.ringCodes.has(e.code) || (this.ringCodes.has('Space') && (e.key === ' ' || e.code === 'Space'));
     if (isRingKey) {
       e.preventDefault();
       this.isSpaceDown = false;
+      const perfTime = e.timeStamp || performance.now();
+      const audioTime = this.audioEngine ? this.audioEngine.perfToAudioTime(perfTime) : performance.now();
+      if (this.onSpaceUp) this.onSpaceUp(audioTime, perfTime);
       return;
     }
 
@@ -157,19 +171,20 @@ export class InputManager {
     }
     if (lane !== undefined) {
       e.preventDefault();
-      this.activeHeldCodes.delete(e.code);
+      const wasHeld = this.activeHeldCodes.delete(e.code);
+      if (!wasHeld) return;
 
-      // Nếu vẫn còn phím khác cùng map vào lane này (ví dụ đang giữ 6 mà nhả 7) thì không ngắt hold
+      const perfTime = e.timeStamp;
+      const audioTime = this.audioEngine ? this.audioEngine.perfToAudioTime(perfTime) : performance.now();
+
+      // Nếu vẫn còn phím khác cùng map vào lane này (ví dụ đang giữ 6 mà nhả 7) thì không ngắt hold toàn lane
       const isStillHeld = (this.keybinds[lane] || []).some(c => this.activeHeldCodes.has(c));
       if (!isStillHeld) {
         this.isKeyDown[lane] = false;
+      }
 
-        const perfTime = e.timeStamp;
-        const audioTime = this.audioEngine ? this.audioEngine.perfToAudioTime(perfTime) : performance.now();
-
-        if (this.onLaneUp) {
-          this.onLaneUp(lane, audioTime, perfTime);
-        }
+      if (this.onLaneUp) {
+        this.onLaneUp(lane, audioTime, perfTime, e.code, isStillHeld);
       }
     }
   }
@@ -179,6 +194,7 @@ export class InputManager {
     this.keyDownTime.fill(0);
     this.isSpaceDown = false;
     this.activeHeldCodes.clear();
+    this.heldKeyCodes.clear();
     this.isPointerDown = false;
   }
 }
