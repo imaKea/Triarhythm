@@ -15,12 +15,14 @@ import {
   ContextMenu,
   ConfirmDialog,
   Modal,
+  SlideBar,
   toast,
   playHover,
   playClick,
   playSelect,
   playBack
 } from '../ui/index.js';
+import MajdataModal from './MajdataModal.jsx';
 
 export default function AstroSongSelect({
   beatmaps = [],
@@ -39,6 +41,7 @@ export default function AstroSongSelect({
   const [groupBy, setGroupBy] = useState('none'); // 'none' | 'artist' | 'stars'
   const [selectedDiffIndex, setSelectedDiffIndex] = useState(0);
   const [isImporting, setIsImporting] = useState(false);
+  const [isMajdataOpen, setIsMajdataOpen] = useState(false);
   const [leaderboardTab, setLeaderboardTab] = useState(currentUser ? 'global' : 'local'); // 'global' | 'local' | 'online'
   const [leaderboardScores, setLeaderboardScores] = useState([]);
   const [localScores, setLocalScores] = useState([]);
@@ -968,178 +971,196 @@ export default function AstroSongSelect({
   const coverUrl = current?.backgroundSource || current?.serverAssets?.coverUrl || null;
 
   return (
-    <div className="w-full h-[calc(100vh-50px)] sm:h-[calc(100vh-52px-24px)] mt-[50px] sm:mt-[52px] mb-0 sm:mb-6 flex flex-col select-none overflow-hidden osu-screen-transition">
+    <div className="w-full h-[calc(100dvh-50px)] sm:h-[calc(100dvh-52px-24px)] mt-[50px] sm:mt-[52px] mb-0 sm:mb-6 flex flex-col select-none overflow-hidden osu-screen-transition">
       {/* Hidden audio element for preview */}
       {current?.audioSource && (
         <audio ref={audioRef} src={current.audioSource} />
       )}
 
       {/* TOP BAR: Search + Filters + Sort */}
-      <div className="min-h-12 py-2 px-3 sm:px-6 bg-[#fffafc]/85 backdrop-blur-md border-b border-[#f3dbe4] flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 sm:gap-4 shrink-0 z-20 shadow-sm">
-        {activeCollection && (
-          <button
-            type="button"
-            onClick={() => setActiveCollectionId(null)}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-[#fff0f5] text-[#5b2a47] hover:text-[#ff4d80] border border-[#f3dbe4] text-xs font-bold cursor-pointer shrink-0"
-            title="Return to all beatmaps"
-          >
-            ← <span className="max-w-32 truncate">{activeCollection.name}</span>
-          </button>
-        )}
+      <div className="min-h-12 py-2 px-3 sm:px-6 bg-[#fffafc]/85 backdrop-blur-md border-b border-[#f3dbe4] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-4 shrink-0 z-20 shadow-sm">
         {/* Search with syntax hints */}
-        <div className="relative flex-1 min-w-[180px] max-w-md">
-          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#ff4d80] text-xs">🐰</span>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search song, artist... 🎀"
-            className="w-full bg-white border border-[#f3dbe4] focus:border-[#ff4d80] rounded-full pl-9 pr-4 py-1.5 text-xs text-[#5b2a47] placeholder-[#a8556f] outline-none transition-all focus:shadow-[0_2px_12px_rgba(255,77,128,0.2)]"
-          />
-          {searchQuery && (
+        <div className="flex items-center gap-2 w-full sm:max-w-md">
+          {activeCollection && (
             <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#a8556f] hover:text-[#ff4d80]"
+              type="button"
+              onClick={() => setActiveCollectionId(null)}
+              className="flex items-center gap-1 min-h-[44px] sm:min-h-0 px-2.5 py-1.5 rounded-full bg-[#fff0f5] text-[#5b2a47] hover:text-[#ff4d80] border border-[#f3dbe4] text-xs font-bold cursor-pointer shrink-0"
+              title="Return to all beatmaps"
             >
-              ✕
+              ← <span className="max-w-24 sm:max-w-32 truncate">{activeCollection.name}</span>
             </button>
           )}
+          <div className="relative flex-1 min-w-0">
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#ff4d80] text-xs">🐰</span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search song, artist... 🎀"
+              className="w-full min-h-[44px] sm:min-h-0 bg-white border border-[#f3dbe4] focus:border-[#ff4d80] rounded-full pl-9 pr-7 py-2 sm:py-1.5 text-xs text-[#5b2a47] placeholder-[#a8556f] outline-none transition-all focus:shadow-[0_2px_12px_rgba(255,77,128,0.2)]"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-xs text-[#a8556f] hover:text-[#ff4d80]"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Sort & Action controls */}
-        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-          <div className="flex items-center gap-1.5 text-xs text-[#5b2a47] font-bold">
-            <span className="hidden xs:inline">Sort:</span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="bg-white border border-[#f3dbe4] text-[#5b2a47] text-xs font-bold rounded-full px-3 py-1 outline-none cursor-pointer hover:border-[#ff85a2] transition-colors shadow-sm"
+        {/* Sort & Action controls in a smooth SlideBar on mobile */}
+        <div className="w-full sm:w-auto min-w-0">
+          <SlideBar itemGap="gap-2 sm:gap-3" autoCenterActive={false}>
+            <div className="flex items-center gap-1.5 text-xs text-[#5b2a47] font-bold shrink-0">
+              <span className="hidden xs:inline">Sort:</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="bg-white border border-[#f3dbe4] text-[#5b2a47] text-xs font-bold rounded-full min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1 outline-none cursor-pointer hover:border-[#ff85a2] transition-colors shadow-sm"
+              >
+                <option value="title">Title (A-Z)</option>
+                <option value="artist">Artist (A-Z)</option>
+                <option value="stars">Difficulty</option>
+                <option value="bpm">BPM</option>
+                <option value="length">Length</option>
+              </select>
+            </div>
+
+            <button
+              onClick={() => {
+                playClick();
+                setIsSelectMode((prev) => {
+                  if (prev) setSelectedMapIds(new Set());
+                  return !prev;
+                });
+              }}
+              className={`flex items-center justify-center gap-1 min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-full text-xs font-bold transition-all border cursor-pointer hover:scale-105 shadow-sm shrink-0 ${
+                isSelectMode
+                  ? 'bg-[#ff4d80] text-white border-[#ff4d80] shadow-[0_2px_12px_rgba(255,77,128,0.3)]'
+                  : 'bg-white hover:bg-[#fff0f4] text-[#5b2a47] hover:text-[#ff4d80] border-[#f3dbe4] hover:border-[#ff85a2]'
+              }`}
+              title="Toggle select mode for bulk operations"
             >
-              <option value="title">Title (A-Z)</option>
-              <option value="artist">Artist (A-Z)</option>
-              <option value="stars">Difficulty</option>
-              <option value="bpm">BPM</option>
-              <option value="length">Length</option>
-            </select>
-          </div>
+              <span>📋</span>
+              <span className="hidden sm:inline">{isSelectMode ? 'Cancel' : 'Select'}</span>
+              <span className="sm:hidden">{isSelectMode ? 'Done' : 'Select'}</span>
+            </button>
 
-          <button
-            onClick={() => {
-              playClick();
-              setIsSelectMode((prev) => {
-                if (prev) setSelectedMapIds(new Set());
-                return !prev;
-              });
-            }}
-            className={`flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold transition-all border cursor-pointer hover:scale-105 shadow-sm ${
-              isSelectMode
-                ? 'bg-[#ff4d80] text-white border-[#ff4d80] shadow-[0_2px_12px_rgba(255,77,128,0.3)]'
-                : 'bg-white hover:bg-[#fff0f4] text-[#5b2a47] hover:text-[#ff4d80] border-[#f3dbe4] hover:border-[#ff85a2]'
-            }`}
-            title="Toggle select mode for bulk operations"
-          >
-            <span>📋</span>
-            <span className="hidden sm:inline">{isSelectMode ? 'Cancel' : 'Select'}</span>
-          </button>
+            <button
+              onClick={handleOpenTrash}
+              className="flex items-center justify-center gap-1 min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-full bg-white hover:bg-[#fff0f4] text-[#5b2a47] hover:text-[#ff4d80] text-xs font-bold transition-all border border-[#f3dbe4] hover:border-[#ff85a2] cursor-pointer hover:scale-105 shadow-sm shrink-0"
+              title="Beatmap trash (restore deleted maps)"
+            >
+              <span>🗑️</span>
+              <span className="hidden sm:inline">Trash 🐰</span>
+              <span className="sm:hidden">Trash</span>
+            </button>
 
-          <button
-            onClick={handleOpenTrash}
-            className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full bg-white hover:bg-[#fff0f4] text-[#5b2a47] hover:text-[#ff4d80] text-xs font-bold transition-all border border-[#f3dbe4] hover:border-[#ff85a2] cursor-pointer hover:scale-105 shadow-sm"
-            title="Beatmap trash (restore deleted maps)"
-          >
-            <span>🗑️</span>
-            <span className="hidden sm:inline">Trash 🐰</span>
-          </button>
+            <button
+              type="button"
+              onClick={handleOpenCollections}
+              className="flex items-center justify-center gap-1 min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-full bg-white hover:bg-[#fff0f4] text-[#5b2a47] hover:text-[#ff4d80] text-xs font-bold transition-all border border-[#f3dbe4] hover:border-[#ff85a2] cursor-pointer hover:scale-105 shadow-sm shrink-0"
+              title="View your beatmap collections"
+            >
+              <span>📚</span>
+              <span>Collections ({collections.length})</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={handleOpenCollections}
-            className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full bg-white hover:bg-[#fff0f4] text-[#5b2a47] hover:text-[#ff4d80] text-xs font-bold transition-all border border-[#f3dbe4] hover:border-[#ff85a2] cursor-pointer hover:scale-105 shadow-sm"
-            title="View your beatmap collections"
-          >
-            <span>📚</span>
-            <span>Collections ({collections.length})</span>
-          </button>
+            <button
+              type="button"
+              onClick={handleOpenServerMapLibrary}
+              className="flex items-center justify-center gap-1 min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-full bg-white hover:bg-[#fff0f4] text-[#5b2a47] hover:text-[#ff4d80] text-xs font-bold transition-all border border-[#f3dbe4] hover:border-[#ff85a2] cursor-pointer hover:scale-105 shadow-sm shrink-0"
+              title="Download maps published to the project"
+            >
+              <span>⬇️</span>
+              <span>Download</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={handleOpenServerMapLibrary}
-            className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full bg-white hover:bg-[#fff0f4] text-[#5b2a47] hover:text-[#ff4d80] text-xs font-bold transition-all border border-[#f3dbe4] hover:border-[#ff85a2] cursor-pointer hover:scale-105 shadow-sm"
-            title="Download maps published to the project"
-          >
-            <span>⬇️</span>
-            <span>Download Maps</span>
-          </button>
+            <label className="flex items-center justify-center gap-1 min-h-[44px] sm:min-h-0 px-3.5 py-2 sm:py-1.5 rounded-full bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] hover:from-[#ffaec9] hover:to-[#ff6b93] text-white text-xs font-bold cursor-pointer transition-all shadow-[0_2px_12px_rgba(255,77,128,0.25)] hover:scale-105 shrink-0">
+              <span>{isImporting ? '⏳' : '🎀'}</span>
+              <span className="hidden sm:inline">{isImporting ? 'Importing...' : 'Add Song (+)'}</span>
+              <span className="sm:hidden">{isImporting ? '...' : '+ Song'}</span>
+              <input
+                type="file"
+                multiple
+                accept=".osz,.zip,.osu,.txt,audio/*,image/*"
+                onChange={handleFileUpload}
+                className="hidden"
+                disabled={isImporting}
+              />
+            </label>
 
-          <label className="flex items-center gap-1 px-3 sm:px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] hover:from-[#ffaec9] hover:to-[#ff6b93] text-white text-xs font-bold cursor-pointer transition-all shadow-[0_2px_12px_rgba(255,77,128,0.25)] hover:scale-105">
-            <span>{isImporting ? '⏳' : '🎀'}</span>
-            <span className="hidden sm:inline">{isImporting ? 'Importing...' : 'Add Song (+)'}</span>
-            <span className="sm:hidden">{isImporting ? '...' : '+'}</span>
-            <input
-              type="file"
-              multiple
-              accept=".osz,.zip,.osu,.txt,audio/*,image/*"
-              onChange={handleFileUpload}
-              className="hidden"
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setIsMajdataOpen(true)}
               disabled={isImporting}
-            />
-          </label>
+              className="shrink-0"
+            >
+              ⚡ Majdata ZIP
+            </Button>
+          </SlideBar>
         </div>
       </div>
 
       {/* BULK ACTION TOOLBAR (VISIBLE WHEN IN SELECT MODE) */}
       {isSelectMode && (
-        <div className="py-2 px-3 sm:px-6 bg-[#fff0f5] border-b border-[#f9c2ce] flex flex-wrap items-center justify-between gap-2 z-20 shadow-inner">
+        <div className="py-2 px-3 sm:px-6 bg-[#fff0f5] border-b border-[#f9c2ce] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 z-20 shadow-inner">
           <div className="flex items-center gap-2 text-xs font-bold text-[#5b2a47]">
             <span>🐰 Selected:</span>
             <span className="px-2.5 py-0.5 rounded-full bg-[#ff4d80] text-white text-[11px] font-black">
               {selectedMapIds.size} / {filteredBeatmaps.length}
             </span>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={selectAllMaps}
-              className="px-2.5 py-1 rounded-full bg-white text-[#5b2a47] border border-[#f3dbe4] hover:border-[#ff85a2] text-xs font-bold cursor-pointer transition-all hover:scale-105 shadow-sm"
-            >
-              Select All
-            </button>
-            <button
-              onClick={deselectAllMaps}
-              className="px-2.5 py-1 rounded-full bg-white text-[#5b2a47] border border-[#f3dbe4] hover:border-[#ff85a2] text-xs font-bold cursor-pointer transition-all hover:scale-105 shadow-sm"
-            >
-              Deselect
-            </button>
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={() => handleOpenBulkDelete(false)}
-              disabled={selectedMapIds.size === 0}
-              icon="🗑"
-              className="text-xs"
-            >
-              Delete Selected ({selectedMapIds.size})
-            </Button>
-            {currentUser && (
+          <div className="w-full sm:w-auto min-w-0">
+            <SlideBar itemGap="gap-2" autoCenterActive={false}>
+              <button
+                onClick={selectAllMaps}
+                className="min-h-[44px] sm:min-h-0 px-3 py-1.5 rounded-full bg-white text-[#5b2a47] border border-[#f3dbe4] hover:border-[#ff85a2] text-xs font-bold cursor-pointer transition-all hover:scale-105 shadow-sm shrink-0"
+              >
+                Select All
+              </button>
+              <button
+                onClick={deselectAllMaps}
+                className="min-h-[44px] sm:min-h-0 px-3 py-1.5 rounded-full bg-white text-[#5b2a47] border border-[#f3dbe4] hover:border-[#ff85a2] text-xs font-bold cursor-pointer transition-all hover:scale-105 shadow-sm shrink-0"
+              >
+                Deselect
+              </button>
               <Button
                 variant="danger"
                 size="sm"
-                onClick={() => handleOpenBulkDelete(true)}
+                onClick={() => handleOpenBulkDelete(false)}
                 disabled={selectedMapIds.size === 0}
-                icon="⚠"
-                className="text-xs"
+                icon="🗑"
+                className="text-xs shrink-0"
               >
-                Delete Server ({selectedMapIds.size})
+                Delete ({selectedMapIds.size})
               </Button>
-            )}
-            <button
-              onClick={() => {
-                setIsSelectMode(false);
-                setSelectedMapIds(new Set());
-              }}
-              className="px-2.5 py-1 rounded-full bg-white text-[#a8556f] border border-[#f3dbe4] hover:text-[#5b2a47] text-xs font-bold cursor-pointer"
-            >
-              ✕ Done
-            </button>
+              {currentUser && (
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => handleOpenBulkDelete(true)}
+                  disabled={selectedMapIds.size === 0}
+                  icon="⚠"
+                  className="text-xs shrink-0"
+                >
+                  Delete Server ({selectedMapIds.size})
+                </Button>
+              )}
+              <button
+                onClick={() => {
+                  setIsSelectMode(false);
+                  setSelectedMapIds(new Set());
+                }}
+                className="min-h-[44px] sm:min-h-0 px-3 py-1.5 rounded-full bg-white text-[#a8556f] border border-[#f3dbe4] hover:text-[#5b2a47] text-xs font-bold cursor-pointer shrink-0"
+              >
+                ✕ Done
+              </button>
+            </SlideBar>
           </div>
         </div>
       )}
@@ -1148,7 +1169,7 @@ export default function AstroSongSelect({
       <div className="flex md:hidden items-center justify-center gap-2 py-1.5 px-3 bg-[#fff1f5] border-b border-[#f3dbe4] shrink-0">
         <button
           onClick={() => { playHover(); setMobileTab('list'); }}
-          className={`flex-1 py-1.5 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+          className={`flex-1 min-h-[44px] py-2 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
             mobileTab === 'list'
               ? 'bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] text-white shadow-[0_2px_10px_rgba(255,77,128,0.25)]'
               : 'bg-white text-[#5b2a47] border border-[#f3dbe4]'
@@ -1159,14 +1180,14 @@ export default function AstroSongSelect({
         </button>
         <button
           onClick={() => { playHover(); setMobileTab('info'); }}
-          className={`flex-1 py-1.5 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+          className={`flex-1 min-h-[44px] py-2 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
             mobileTab === 'info'
               ? 'bg-gradient-to-r from-[#ff85a2] to-[#ff4d80] text-white shadow-[0_2px_10px_rgba(255,77,128,0.25)]'
               : 'bg-white text-[#5b2a47] border border-[#f3dbe4]'
           }`}
         >
           <span>🎀</span>
-          <span>Details & Leaderboard</span>
+          <span>Details & Scores</span>
         </button>
       </div>
 
@@ -1456,35 +1477,43 @@ export default function AstroSongSelect({
 
                 {/* Expanded Difficulties Bar if selected */}
                 {isSelected && diffList.length > 0 && (
-                  <div className="px-4 py-2.5 bg-[#fffafc] border-t border-[#f3dbe4] flex items-center gap-2 overflow-x-auto custom-scrollbar">
-                    <span className="text-[11px] font-black text-[#ff4d80] uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
-                      <span>🎀</span>
-                      <span>Difficulties:</span>
-                    </span>
-                    {diffList.map((d, dIdx) => {
-                      const isDiffActive = selectedDiffIndex === dIdx;
-                      const dStars = parseFloat(d.stars || d.difficultyLevel || 5);
-                      return (
-                        <button
-                          key={dIdx}
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            playHover();
-                            setSelectedDiffIndex(dIdx);
-                          }}
-                          className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
-                            isDiffActive
-                              ? 'bg-gradient-to-r from-[#ff85a2] via-[#ff6b93] to-[#ff4d80] text-white shadow-[0_2px_10px_rgba(255,77,128,0.3)] scale-105'
-                              : 'bg-white text-[#5b2a47] hover:text-[#ff4d80] border border-[#f3dbe4]'
-                          }`}
-                        >
-                          <span className="font-bold">{d.category || normalizeMaimaiCategory(d.difficultyName)}</span>
-                          <span>{d.maimaiLevel || d.difficultyLevel || '10'}</span>
-                          {isCardOsu && <span className="text-[10px] opacity-90">★{dStars.toFixed(1)}</span>}
-                        </button>
-                      );
-                    })}
+                  <div className="px-4 py-2.5 bg-[#fffafc] border-t border-[#f3dbe4]">
+                    <SlideBar
+                      itemGap="gap-2"
+                      autoCenterActive={true}
+                      activeSelector="[data-active='true']"
+                      className="w-full"
+                    >
+                      <span className="text-[11px] font-black text-[#ff4d80] uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
+                        <span>🎀</span>
+                        <span>Difficulties:</span>
+                      </span>
+                      {diffList.map((d, dIdx) => {
+                        const isDiffActive = selectedDiffIndex === dIdx;
+                        const dStars = parseFloat(d.stars || d.difficultyLevel || 5);
+                        return (
+                          <button
+                            key={dIdx}
+                            type="button"
+                            data-active={isDiffActive ? "true" : "false"}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              playHover();
+                              setSelectedDiffIndex(dIdx);
+                            }}
+                            className={`min-h-[44px] sm:min-h-0 px-3.5 sm:px-3.5 py-2 sm:py-1.5 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
+                              isDiffActive
+                                ? 'bg-gradient-to-r from-[#ff85a2] via-[#ff6b93] to-[#ff4d80] text-white shadow-[0_2px_10px_rgba(255,77,128,0.3)] scale-105'
+                                : 'bg-white text-[#5b2a47] hover:text-[#ff4d80] border border-[#f3dbe4]'
+                            }`}
+                          >
+                            <span className="font-bold">{d.category || normalizeMaimaiCategory(d.difficultyName)}</span>
+                            <span>{d.maimaiLevel || d.difficultyLevel || '10'}</span>
+                            {isCardOsu && <span className="text-[10px] opacity-90">★{dStars.toFixed(1)}</span>}
+                          </button>
+                        );
+                      })}
+                    </SlideBar>
                   </div>
                 )}
               </div>
@@ -1501,34 +1530,38 @@ export default function AstroSongSelect({
       </div>
 
       {/* BOTTOM ACTION BAR */}
-      <div className="h-auto min-h-14 sm:h-16 px-3 sm:px-6 py-2 sm:py-0 bg-[#fffafc]/90 backdrop-blur-md border-t border-[#f3dbe4] flex flex-wrap items-center justify-between z-30 shrink-0 gap-2 shadow-[0_-4px_20px_rgba(126,47,79,0.04)]">
-        {/* Left: Back */}
-        <Button variant="ghost" size="sm" onClick={() => window.history.back()} icon="←" className="px-2.5 sm:px-4 text-xs">
-          <span className="hidden sm:inline">Back (Esc) 🐰</span>
-        </Button>
+      <div className="h-auto min-h-14 sm:h-16 px-3 sm:px-6 py-2 sm:py-0 bg-[#fffafc]/90 backdrop-blur-md border-t border-[#f3dbe4] flex flex-col sm:flex-row items-stretch sm:items-center justify-between z-30 shrink-0 gap-2 shadow-[0_-4px_20px_rgba(126,47,79,0.04)]">
+        {/* Mobile controls slide bar: Back, Mods, Random, Options */}
+        <div className="w-full sm:w-auto min-w-0">
+          <SlideBar itemGap="gap-2 sm:gap-3" autoCenterActive={false}>
+            {/* Left: Back */}
+            <Button variant="ghost" size="sm" onClick={() => window.history.back()} icon="←" className="px-3 sm:px-4 text-xs shrink-0">
+              <span className="hidden sm:inline">Back (Esc) 🐰</span>
+              <span className="sm:hidden">Back</span>
+            </Button>
 
-        {/* Center: Controls */}
-        <div className="flex items-center gap-1.5 sm:gap-3">
-          <Button
-            variant={isAutoplay ? 'primary' : 'ghost'}
-            size="sm"
-            onClick={onToggleAutoplay}
-            icon="⚡"
-            className="px-2 sm:px-3 text-xs"
-            title="Autoplay Mode"
-          >
-            <span className="hidden sm:inline">Mods: {isAutoplay ? 'Autoplay ON' : 'None'}</span>
-            <span className="sm:hidden">{isAutoplay ? 'Auto' : 'Mods'}</span>
-          </Button>
+            <Button
+              variant={isAutoplay ? 'primary' : 'ghost'}
+              size="sm"
+              onClick={onToggleAutoplay}
+              icon="⚡"
+              className="px-2.5 sm:px-3 text-xs shrink-0"
+              title="Autoplay Mode"
+            >
+              <span className="hidden sm:inline">Mods: {isAutoplay ? 'Autoplay ON' : 'None'}</span>
+              <span className="sm:hidden">{isAutoplay ? 'Auto' : 'Mods'}</span>
+            </Button>
 
-          <Button variant="ghost" size="sm" onClick={handleRandomSelect} icon="🎲" className="px-2 sm:px-3 text-xs" title="Select Random Track">
-            <span className="hidden sm:inline">Random (F2) 🎀</span>
-            <span className="sm:hidden">Random</span>
-          </Button>
+            <Button variant="ghost" size="sm" onClick={handleRandomSelect} icon="🎲" className="px-2.5 sm:px-3 text-xs shrink-0" title="Select Random Track">
+              <span className="hidden sm:inline">Random (F2) 🎀</span>
+              <span className="sm:hidden">Random</span>
+            </Button>
 
-          <Button variant="ghost" size="sm" onClick={onOpenSettings} icon="⚙" className="px-2 sm:px-3 text-xs" title="Settings">
-            <span className="hidden sm:inline">Options</span>
-          </Button>
+            <Button variant="ghost" size="sm" onClick={onOpenSettings} icon="⚙" className="px-2.5 sm:px-3 text-xs shrink-0" title="Settings">
+              <span className="hidden sm:inline">Options</span>
+              <span className="sm:hidden">Options</span>
+            </Button>
+          </SlideBar>
         </div>
 
         {/* Right: PLAY Button */}
@@ -1536,7 +1569,7 @@ export default function AstroSongSelect({
           variant="primary"
           size="lg"
           onClick={handlePlaySelected}
-          className="w-full sm:w-auto justify-center px-4 sm:px-10 py-2 sm:py-3 text-sm sm:text-base font-black shadow-[0_4px_24px_rgba(255,77,128,0.4)] hover:shadow-[0_6px_32px_rgba(255,77,128,0.6)] hover:scale-105 active:scale-95 shrink-0"
+          className="w-full sm:w-auto justify-center px-4 sm:px-10 py-2.5 sm:py-3 text-sm sm:text-base font-black shadow-[0_4px_24px_rgba(255,77,128,0.4)] hover:shadow-[0_6px_32px_rgba(255,77,128,0.6)] hover:scale-105 active:scale-95 shrink-0"
           icon="🐰"
         >
           <span>PLAY NOW 🎀</span>
@@ -1926,6 +1959,13 @@ export default function AstroSongSelect({
           </div>
         </div>
       </Modal>
+
+      {isMajdataOpen && (
+        <MajdataModal
+          isOpen={isMajdataOpen}
+          onClose={() => setIsMajdataOpen(false)}
+        />
+      )}
     </div>
   );
 }

@@ -36,22 +36,23 @@ export default function LeaderboardView({ currentUser, onBack }) {
   });
 
   return (
-    <div className="w-full max-w-5xl h-[calc(100vh-52px-24px)] mt-[52px] mb-6 flex flex-col overflow-x-auto overflow-y-hidden select-none osu-screen-transition p-3 sm:p-6">
+    <div className="w-full max-w-5xl h-[calc(100dvh-50px)] sm:h-[calc(100dvh-52px-24px)] mt-[50px] sm:mt-[52px] mb-0 sm:mb-6 flex flex-col overflow-hidden select-none osu-screen-transition p-2.5 sm:p-6">
       {/* Top Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 mb-4 border-b border-[#f3dbe4] shrink-0">
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 sm:gap-3 pb-3 sm:pb-4 mb-2 sm:mb-4 border-b border-[#f3dbe4] shrink-0">
+        <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-3">
           <Button variant="ghost" size="sm" onClick={onBack} icon="←">
-            Back (Esc) 🐰
+            <span className="hidden xs:inline">Back (Esc) 🐰</span>
+            <span className="xs:hidden">Back</span>
           </Button>
-          <div className="flex items-center gap-2">
-            <span className="text-xl">🏆</span>
-            <h1 className="font-torus font-black text-xl text-[#5b2a47] tracking-wide">
-              GLOBAL LEADERBOARD 🎀
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <span className="text-lg sm:text-xl">🏆</span>
+            <h1 className="font-torus font-black text-base sm:text-xl text-[#5b2a47] tracking-wide truncate">
+              LEADERBOARD 🎀
             </h1>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto mobile-slide-bar pb-1 sm:pb-0">
           <Tabs
             activeTab={type}
             onChange={(tab) => {
@@ -59,9 +60,10 @@ export default function LeaderboardView({ currentUser, onBack }) {
               setType(tab);
             }}
             tabs={[
-              { id: 'rating', label: 'Performance (PP)' },
+              { id: 'rating', label: 'Performance' },
               { id: 'score', label: 'Score' }
             ]}
+            className="shrink-0"
           />
 
           <input
@@ -69,29 +71,30 @@ export default function LeaderboardView({ currentUser, onBack }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search players... 🐰"
-            className="w-48 bg-white border border-[#f3dbe4] focus:border-[#ff4d80] rounded-full px-3.5 py-1.5 text-xs text-[#5b2a47] placeholder-[#a8556f] outline-none shadow-sm font-bold"
+            className="min-h-[44px] sm:min-h-0 w-36 sm:w-48 bg-white border border-[#f3dbe4] focus:border-[#ff4d80] rounded-full px-3.5 py-1.5 text-xs text-[#5b2a47] placeholder-[#a8556f] outline-none shadow-sm font-bold shrink-0"
           />
 
-          <Button variant="ghost" size="sm" onClick={fetchLeaderboard} icon="↻">
+          <Button variant="ghost" size="sm" onClick={fetchLeaderboard} icon="↻" className="shrink-0">
             Refresh
           </Button>
         </div>
       </div>
 
-      {/* Leaderboard Table Container */}
-      <div className="flex-1 min-h-0 min-w-[760px] bg-white/95 border border-[#f3dbe4] rounded-3xl overflow-hidden flex flex-col shadow-sm backdrop-blur-md">
-        {/* Table Header */}
-        <div className="grid grid-cols-12 px-6 py-3.5 bg-[#fff8fa] border-b border-[#f3dbe4] text-[11px] font-bold text-[#a8556f] uppercase tracking-wider font-mono">
-          <div className="col-span-1 text-center"># Rank</div>
-          <div className="col-span-4">Player</div>
-          <div className="col-span-2 text-right">Performance / Stars</div>
-          <div className="col-span-2 text-right">Accuracy</div>
-          <div className="col-span-2 text-right">Total Score</div>
-          <div className="col-span-1 text-right">Plays</div>
-        </div>
+      {/* Leaderboard Table Container - Horizontal scroll restricted to table only */}
+      <div className="flex-1 min-h-0 w-full bg-white/95 border border-[#f3dbe4] rounded-2xl sm:rounded-3xl overflow-x-auto overflow-y-hidden flex flex-col shadow-sm backdrop-blur-md custom-scrollbar">
+        <div className="min-w-[620px] sm:min-w-[760px] flex-1 flex flex-col">
+          {/* Table Header */}
+          <div className="grid grid-cols-12 px-4 sm:px-6 py-2.5 sm:py-3.5 bg-[#fff8fa] border-b border-[#f3dbe4] text-[10px] sm:text-[11px] font-bold text-[#a8556f] uppercase tracking-wider font-mono shrink-0">
+            <div className="col-span-1 text-center">#</div>
+            <div className="col-span-5 sm:col-span-4">Player</div>
+            <div className="col-span-2 text-right">Stars / PP</div>
+            <div className="col-span-2 text-right">Accuracy</div>
+            <div className="col-span-2 text-right">Total Score</div>
+            <div className="col-span-1 text-right hidden sm:block">Plays</div>
+          </div>
 
-        {/* Table Rows */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-[#f3dbe4]">
+          {/* Table Rows */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-[#f3dbe4]">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-20 text-xs text-[#a8556f] gap-3">
               <div className="w-8 h-8 rounded-full border-2 border-[#ff85a2]/30 border-t-[#ff4d80] animate-spin" />
@@ -166,13 +169,14 @@ export default function LeaderboardView({ currentUser, onBack }) {
                   </div>
 
                   {/* Play count */}
-                  <div className="col-span-1 text-right font-mono text-[#a8556f]">
+                  <div className="col-span-1 text-right font-mono text-[#a8556f] hidden sm:block">
                     {Number(player.play_count || 0).toLocaleString()}
                   </div>
                 </div>
               );
             })
           )}
+        </div>
         </div>
       </div>
 

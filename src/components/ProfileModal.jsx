@@ -76,8 +76,8 @@ export default function ProfileModal({
       className="p-0 overflow-hidden"
     >
       {/* Profile Header Banner */}
-      <div className="relative p-6 bg-gradient-to-br from-[#ffd9e5] via-[#fff0f4] to-[#fff5f8] border-b border-[#f3dbe4] flex items-center gap-5">
-        <div className="relative">
+      <div className="relative p-4 sm:p-6 bg-gradient-to-br from-[#ffd9e5] via-[#fff0f4] to-[#fff5f8] border-b border-[#f3dbe4] flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-3 sm:gap-5">
+        <div className="relative shrink-0">
           <Avatar
             src={avatarUrl}
             name={name || user.username}
@@ -89,9 +89,9 @@ export default function ProfileModal({
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black text-[#5b2a47] truncate font-torus flex items-center gap-2">
-              <span>{name || user.username}</span>
+          <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+            <h1 className="text-xl sm:text-2xl font-black text-[#5b2a47] truncate font-torus flex items-center gap-1.5 sm:gap-2">
+              <span className="truncate">{name || user.username}</span>
               <span className="text-sm">🐰</span>
             </h1>
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#ff85a2]/20 text-[#e94270] border border-[#ff85a2]/40">
@@ -101,28 +101,28 @@ export default function ProfileModal({
           <p className="text-xs text-[#a8556f] font-mono mt-0.5">@{user.username}</p>
 
           {/* Core Stats Row */}
-          <div className="flex items-center gap-4 mt-3 text-xs font-mono">
+          <div className="grid grid-cols-2 xs:flex xs:items-center justify-center sm:justify-start gap-2.5 sm:gap-4 mt-3 text-xs font-mono">
             <div>
               <span className="text-[#a8556f] block text-[10px] font-bold">TOTAL PP</span>
-              <span className="text-base font-black text-[#5b2a47]">
+              <span className="text-sm sm:text-base font-black text-[#5b2a47]">
                 {Number(totalPP || 0).toLocaleString()}pp
               </span>
             </div>
             <div>
               <span className="text-[#a8556f] block text-[10px] font-bold">ACCURACY</span>
-              <span className="text-base font-black text-[#5b2a47]">
+              <span className="text-sm sm:text-base font-black text-[#5b2a47]">
                 {Number(user.rating ? (user.rating / 15 * 100) : 98.5).toFixed(2)}%
               </span>
             </div>
             <div>
               <span className="text-[#a8556f] block text-[10px] font-bold">PLAYS</span>
-              <span className="text-base font-black text-[#5b2a47]">
+              <span className="text-sm sm:text-base font-black text-[#5b2a47]">
                 {Number(user.play_count || scores.length).toLocaleString()}
               </span>
             </div>
             <div>
               <span className="text-[#a8556f] block text-[10px] font-bold">SCORE</span>
-              <span className="text-base font-black text-[#e94270]">
+              <span className="text-sm sm:text-base font-black text-[#e94270]">
                 {Number(user.total_score || 0).toLocaleString()}
               </span>
             </div>
@@ -131,20 +131,20 @@ export default function ProfileModal({
       </div>
 
       {/* Tabs navigation */}
-      <div className="px-6 pt-4 pb-2 bg-[#fff5f8] flex items-center justify-between border-b border-[#f3dbe4]">
+      <div className="px-4 sm:px-6 pt-3 sm:pt-4 pb-2 bg-[#fff5f8] flex items-center justify-between border-b border-[#f3dbe4] overflow-x-auto mobile-slide-bar">
         <Tabs
           activeTab={activeTab}
           onChange={setActiveTab}
           tabs={[
             { id: 'best', label: 'Top PP 🐰', badge: bestScores.length },
-            { id: 'recent', label: 'Recent Plays 🎀', badge: scores.length },
-            { id: 'edit', label: 'Edit Profile' }
+            { id: 'recent', label: 'Recent 🎀', badge: scores.length },
+            { id: 'edit', label: 'Edit' }
           ]}
         />
       </div>
 
       {/* Tab Contents */}
-      <div className="p-6 bg-white/95 min-h-[320px] max-h-[420px] overflow-y-auto custom-scrollbar">
+      <div className="p-3 sm:p-6 bg-white/95 min-h-[220px] max-h-[360px] sm:max-h-[420px] overflow-y-auto custom-scrollbar">
         {/* TAB 1: BEST PERFORMANCES WITH 0.95^i */}
         {activeTab === 'best' && (
           <div className="space-y-2">

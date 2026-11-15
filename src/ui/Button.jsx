@@ -14,10 +14,10 @@ export default function Button({
   ...props
 }) {
   const sizeClasses = {
-    sm: 'px-4 py-1.5 text-xs gap-1.5',
-    md: 'px-6 py-2.5 text-sm gap-2',
-    lg: 'px-8 py-3.5 text-base gap-2.5'
-  }[size] || 'px-6 py-2.5 text-sm gap-2';
+    sm: 'min-h-[44px] sm:min-h-0 px-3.5 sm:px-4 py-2 sm:py-1.5 text-xs sm:text-xs gap-1.5',
+    md: 'min-h-[44px] sm:min-h-0 px-4 sm:px-6 py-2.5 sm:py-2.5 text-sm sm:text-sm gap-2',
+    lg: 'min-h-[48px] sm:min-h-0 px-6 sm:px-8 py-3 sm:py-3.5 text-sm sm:text-base gap-2.5'
+  }[size] || 'min-h-[44px] sm:min-h-0 px-4 sm:px-6 py-2.5 sm:py-2.5 text-sm sm:text-sm gap-2';
 
   const variantClasses = {
     primary:

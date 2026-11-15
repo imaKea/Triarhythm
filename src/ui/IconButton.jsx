@@ -13,10 +13,10 @@ export default function IconButton({
   ...props
 }) {
   const sizeClasses = {
-    sm: 'w-7 h-7 text-xs',
-    md: 'w-9 h-9 text-sm',
-    lg: 'w-11 h-11 text-base'
-  }[size] || 'w-9 h-9 text-sm';
+    sm: 'min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 sm:w-7 sm:h-7 text-xs',
+    md: 'min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 sm:w-9 sm:h-9 text-sm',
+    lg: 'min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 sm:w-11 sm:h-11 text-base'
+  }[size] || 'min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 sm:w-9 sm:h-9 text-sm';
 
   const variantClasses = {
     primary:

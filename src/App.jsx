@@ -204,7 +204,7 @@ export default function App() {
 
   return (
     <div
-      className="min-h-screen text-white flex flex-col items-center justify-start select-none font-sans"
+      className="min-h-screen min-h-[100dvh] w-full max-w-[100vw] overflow-x-hidden text-white flex flex-col items-center justify-start select-none font-sans"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}

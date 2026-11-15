@@ -19,7 +19,6 @@ Route::prefix('auth')->group(function () {
         Route::post('/profile', [AuthController::class, 'updateProfile']);
     });
 });
-
 // Maps Routes
 Route::prefix('maps')->group(function () {
     Route::get('/', [MapController::class, 'index']);

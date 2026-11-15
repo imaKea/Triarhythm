@@ -591,15 +591,15 @@ export default function GameplayView({
       </div>
 
       {/* 2. TOP HUD: Header cố định phía trên, không che các nút bấm của canvas */}
-      <div className="h-12 sm:h-14 px-2.5 sm:px-5 flex items-center justify-between z-20 shrink-0 bg-gradient-to-b from-[#090912]/95 to-transparent">
+      <div className="h-12 sm:h-14 px-2 sm:px-5 flex items-center justify-between z-20 shrink-0 bg-gradient-to-b from-[#090912]/95 to-transparent gap-1.5 sm:gap-3">
         {/* Left: Back + Pause + Settings + Fullscreen + Map Info */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+        <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-1">
           <Button
             variant="ghost"
             size="sm"
             onClick={handleBack}
             icon="←"
-            className="shrink-0 px-2 sm:px-3 text-xs"
+            className="shrink-0 px-2 sm:px-3 text-xs min-h-[36px] sm:min-h-0"
           >
             <span className="hidden sm:inline">Back</span>
           </Button>
@@ -610,7 +610,7 @@ export default function GameplayView({
             size="sm"
             onClick={handlePauseToggle}
             icon={isPaused ? '▶' : '⏸'}
-            className="shrink-0 px-2 sm:px-3 text-xs"
+            className="shrink-0 px-2 sm:px-3 text-xs min-h-[36px] sm:min-h-0"
             title="Pause / Resume"
           >
             <span className="hidden sm:inline">{isPaused ? 'Resume' : 'Pause'}</span>
@@ -624,7 +624,7 @@ export default function GameplayView({
               if (onOpenSettings) onOpenSettings();
             }}
             icon="⚙"
-            className="shrink-0 px-2 sm:px-3 text-xs"
+            className="shrink-0 px-2 sm:px-3 text-xs min-h-[36px] sm:min-h-0"
           >
             <span className="hidden sm:inline">Settings</span>
           </Button>
@@ -638,27 +638,27 @@ export default function GameplayView({
                 document.exitFullscreen().catch(() => {});
               }
             }}
-            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-[#ffaec9] hover:text-white flex items-center justify-center text-xs shrink-0 cursor-pointer transition-colors"
+            className="w-8 h-8 sm:w-8 sm:h-8 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-[#ffaec9] hover:text-white flex items-center justify-center text-xs shrink-0 cursor-pointer transition-colors"
             title="Fullscreen"
           >
             ⛶
           </button>
 
-          <div className="h-5 w-px bg-white/10 mx-0.5 sm:mx-1 shrink-0" />
+          <div className="h-5 w-px bg-white/10 mx-0.5 sm:mx-1 shrink-0 hidden xs:block" />
 
           {/* Map Info with Thumbnail */}
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg overflow-hidden bg-white/5 border border-white/10 shrink-0 shadow-sm flex items-center justify-center">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+            <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg overflow-hidden bg-white/5 border border-white/10 shrink-0 shadow-sm flex items-center justify-center">
               {coverUrl ? (
                 <img src={coverUrl} alt="Cover" className="w-full h-full object-cover" />
               ) : (
-                <span className="text-[#ff4d80] text-sm font-bold">🐰</span>
+                <span className="text-[#ff4d80] text-xs sm:text-sm font-bold">🐰</span>
               )}
             </div>
 
             <div className="flex flex-col min-w-0">
-              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                <span className="text-white font-torus font-black text-xs sm:text-sm truncate max-w-[110px] xs:max-w-[160px] sm:max-w-[280px]">
+              <div className="flex items-center gap-1 sm:gap-2">
+                <span className="text-white font-torus font-black text-xs sm:text-sm truncate max-w-[80px] xs:max-w-[130px] sm:max-w-[280px]">
                   {activeChartName}
                 </span>
                 <DifficultyBadge
@@ -675,7 +675,7 @@ export default function GameplayView({
                 )}
               </div>
               {activeArtist && (
-                <span className="text-[10px] sm:text-[11px] text-[#7c849c] truncate max-w-[110px] xs:max-w-[160px] sm:max-w-[280px]">
+                <span className="text-[10px] sm:text-[11px] text-[#7c849c] truncate max-w-[80px] xs:max-w-[130px] sm:max-w-[280px]">
                   {activeArtist}
                 </span>
               )}

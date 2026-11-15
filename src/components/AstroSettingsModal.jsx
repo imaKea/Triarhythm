@@ -6,6 +6,7 @@ import {
   Slider,
   Dropdown,
   Modal,
+  SlideBar,
   toast,
   playHover,
   playClick,
@@ -190,31 +191,61 @@ export default function AstroSettingsModal({
               />
             </div>
 
-            {/* Category Navigation Pills */}
-            <nav className="flex flex-row flex-wrap sm:flex-col gap-1 mt-2">
-              {categories.map((cat) => {
-                const isActive = activeCategory === cat.id;
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => {
-                      playSelect();
-                      setActiveCategory(cat.id);
-                    }}
-                    onMouseEnter={() => !isActive && playHover()}
-                    className={`px-3 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer text-left ${
-                      isActive
-                        ? 'bg-gradient-to-r from-[#ff85a2] via-[#ff6b93] to-[#ff4d80] text-white shadow-[0_2px_10px_rgba(255,77,128,0.25)] scale-[1.02]'
-                        : 'text-[#5b2a47] hover:bg-[#fff0f4] hover:text-[#ff4d80]'
-                    }`}
-                  >
-                    <span>{cat.icon}</span>
-                    <span>{cat.label}</span>
-                  </button>
-                );
-              })}
-            </nav>
+            {/* Category Navigation: Vertical on desktop, Smooth SlideBar on mobile */}
+            <div className="w-full min-w-0 mt-2">
+              <div className="sm:hidden w-full">
+                <SlideBar itemGap="gap-1.5" autoCenterActive={true}>
+                  {categories.map((cat) => {
+                    const isActive = activeCategory === cat.id;
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        data-active={isActive ? "true" : "false"}
+                        onClick={() => {
+                          playSelect();
+                          setActiveCategory(cat.id);
+                        }}
+                        className={`min-h-[44px] px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
+                          isActive
+                            ? 'bg-gradient-to-r from-[#ff85a2] via-[#ff6b93] to-[#ff4d80] text-white shadow-[0_2px_10px_rgba(255,77,128,0.25)] scale-[1.02]'
+                            : 'text-[#5b2a47] bg-white border border-[#f3dbe4] hover:bg-[#fff0f4] hover:text-[#ff4d80]'
+                        }`}
+                      >
+                        <span>{cat.icon}</span>
+                        <span>{cat.label}</span>
+                      </button>
+                    );
+                  })}
+                </SlideBar>
+              </div>
+
+              <nav className="hidden sm:flex sm:flex-col gap-1">
+                {categories.map((cat) => {
+                  const isActive = activeCategory === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      data-active={isActive ? "true" : "false"}
+                      onClick={() => {
+                        playSelect();
+                        setActiveCategory(cat.id);
+                      }}
+                      onMouseEnter={() => !isActive && playHover()}
+                      className={`px-3 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer text-left ${
+                        isActive
+                          ? 'bg-gradient-to-r from-[#ff85a2] via-[#ff6b93] to-[#ff4d80] text-white shadow-[0_2px_10px_rgba(255,77,128,0.25)] scale-[1.02]'
+                          : 'text-[#5b2a47] hover:bg-[#fff0f4] hover:text-[#ff4d80]'
+                      }`}
+                    >
+                      <span>{cat.icon}</span>
+                      <span>{cat.label}</span>
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
           </div>
 
           {/* Bottom Backup & Export actions */}

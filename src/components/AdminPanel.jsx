@@ -335,9 +335,9 @@ export default function AdminPanel({ currentUser, onBack }) {
   }, [dashboardData]);
 
   return (
-    <div className="w-full h-[calc(100vh-52px-24px)] mt-[52px] mb-6 flex flex-col select-none overflow-hidden bg-[#090914] text-white">
+    <div className="w-full h-[calc(100dvh-50px)] sm:h-[calc(100dvh-52px-24px)] mt-[50px] sm:mt-[52px] mb-0 sm:mb-6 flex flex-col select-none overflow-hidden bg-[#090914] text-white">
       {/* 1. TOP ADMIN HEADER */}
-      <header className="h-auto min-h-14 px-2 sm:px-6 py-2 bg-[#111122]/90 border-b border-white/[0.08] flex flex-wrap items-center justify-between gap-y-2 shrink-0 z-20 backdrop-blur-md">
+      <header className="h-auto min-h-12 px-2 sm:px-6 py-2 bg-[#111122]/90 border-b border-white/[0.08] flex items-center justify-between gap-2 shrink-0 z-20 backdrop-blur-md">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <Button
             variant="ghost"
@@ -347,32 +347,32 @@ export default function AdminPanel({ currentUser, onBack }) {
               onBack();
             }}
             icon="←"
-            className="text-[#8890a4] hover:text-white"
+            className="text-[#8890a4] hover:text-white shrink-0 min-h-[36px] sm:min-h-0"
           >
             Back
           </Button>
-          <div className="h-5 w-px bg-white/10" />
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="text-xl">🛡️</span>
-            <h1 className="min-w-0 font-torus font-black text-sm sm:text-base tracking-wider uppercase bg-gradient-to-r from-white via-[#ff80bf] to-[#ff66ab] bg-clip-text text-transparent">
-              Triarhythm Administration Panel
+          <div className="h-5 w-px bg-white/10 shrink-0" />
+          <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+            <span className="text-lg sm:text-xl shrink-0">🛡️</span>
+            <h1 className="min-w-0 font-torus font-black text-xs sm:text-base tracking-wider uppercase bg-gradient-to-r from-white via-[#ff80bf] to-[#ff66ab] bg-clip-text text-transparent truncate">
+              Admin Panel
             </h1>
           </div>
-          <span className="px-2 py-0.5 rounded-full bg-[#ff66ab]/20 text-[#ff66ab] text-[10px] font-mono font-bold border border-[#ff66ab]/30">
-            ROOT ACCESS
+          <span className="hidden xs:inline px-2 py-0.5 rounded-full bg-[#ff66ab]/20 text-[#ff66ab] text-[10px] font-mono font-bold border border-[#ff66ab]/30 shrink-0">
+            ROOT
           </span>
         </div>
 
         {/* Admin User Info */}
-        <div className="ml-auto flex shrink-0 items-center gap-2.5">
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           <Avatar
             src={currentUser?.avatar}
             name={currentUser?.name || currentUser?.username}
             size="sm"
             status="online"
           />
-          <div className="flex flex-col text-right leading-none">
-            <span className="text-xs font-bold text-white">
+          <div className="hidden xs:flex flex-col text-right leading-none">
+            <span className="text-xs font-bold text-white truncate max-w-[80px] sm:max-w-[120px]">
               {currentUser?.name || currentUser?.username}
             </span>
             <span className="text-[10px] text-[#ff66ab] font-mono font-bold mt-0.5 uppercase">
@@ -384,24 +384,25 @@ export default function AdminPanel({ currentUser, onBack }) {
 
       {/* 2. ADMIN TABS NAVIGATION */}
       <nav className="h-auto min-h-11 px-2 sm:px-6 py-1 bg-[#0f0f1c] border-b border-white/[0.06] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 shrink-0">
-        <div className="flex w-full sm:w-auto items-center gap-2 overflow-x-auto">
+        <div className="flex w-full sm:w-auto items-center gap-1.5 overflow-x-auto mobile-slide-bar pb-0.5 sm:pb-0">
           {[
             { id: 'dashboard', label: '📊 Overview', badge: null },
             { id: 'users', label: '👥 Users', badge: dashboardData?.stats?.total_users },
             { id: 'maps', label: '🎵 Beatmaps', badge: dashboardData?.stats?.total_maps },
-            { id: 'scores', label: '🏆 Scores & Moderation', badge: dashboardData?.stats?.total_scores },
-            { id: 'logs', label: '📜 Activity Logs', badge: null },
+            { id: 'scores', label: '🏆 Scores', badge: dashboardData?.stats?.total_scores },
+            { id: 'logs', label: '📜 Logs', badge: null },
           ].map((tab) => {
             const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
+                data-active={isActive ? "true" : "false"}
                 onClick={() => {
                   playSelect();
                   setActiveTab(tab.id);
                 }}
                 onMouseEnter={() => !isActive && playHover()}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
+                className={`min-h-[44px] sm:min-h-0 px-3 sm:px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
                   isActive
                     ? 'bg-[#ff66ab] text-white shadow-[0_0_12px_rgba(255,102,171,0.4)]'
                     : 'text-[#8890a4] hover:text-white hover:bg-white/[0.04]'
@@ -423,16 +424,16 @@ export default function AdminPanel({ currentUser, onBack }) {
         </div>
 
         {/* Global Action for recalculating PP */}
-        <div className="w-full sm:w-auto flex items-center justify-end gap-2">
+        <div className="w-full sm:w-auto flex items-center justify-end gap-2 overflow-x-auto mobile-slide-bar">
           <Button
             variant="secondary"
             size="sm"
             onClick={handleRecalculateAllPP}
             disabled={isRecalculating}
-            className="text-xs font-bold text-[#ffdd57] border-[#ffdd57]/40 hover:bg-[#ffdd57]/10"
+            className="text-xs font-bold text-[#ffdd57] border-[#ffdd57]/40 hover:bg-[#ffdd57]/10 shrink-0"
             icon="⚡"
           >
-            {isRecalculating ? 'Recalculating...' : 'Recalculate All PP'}
+            {isRecalculating ? 'Recalculating...' : 'Recalculate PP'}
           </Button>
           <IconButton
             icon="↻"
@@ -442,6 +443,7 @@ export default function AdminPanel({ currentUser, onBack }) {
               playClick();
               loadTabContent();
             }}
+            className="shrink-0"
           />
         </div>
       </nav>

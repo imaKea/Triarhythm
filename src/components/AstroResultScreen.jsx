@@ -279,7 +279,7 @@ export default function AstroResultScreen({
   const isAP = result?.flags?.isAP || (isFC && counts.great === 0 && counts.good === 0 && counts.perfect === 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#fff5f8] text-[#5b2a47] select-none overflow-hidden animate-fadeIn font-sans">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[#fff5f8] text-[#5b2a47] select-none overflow-hidden animate-fadeIn font-sans h-[100dvh]">
       {/* Background Cover with Blur & Dim */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
         {coverUrl ? (
@@ -295,29 +295,29 @@ export default function AstroResultScreen({
       </div>
 
       {/* Top Header Wedge: Map Info */}
-      <header className="relative z-10 flex items-center justify-between px-8 py-4 border-b border-[#f3dbe4] bg-[#fffafc]/85 backdrop-blur-md shadow-sm">
-        <div className="flex items-center gap-4 min-w-0">
-          <div className="w-14 h-14 rounded-2xl overflow-hidden bg-[#fff1f5] border border-[#f3dbe4] flex-shrink-0 shadow-sm">
+      <header className="relative z-10 flex items-center justify-between px-3 sm:px-8 py-2.5 sm:py-4 border-b border-[#f3dbe4] bg-[#fffafc]/85 backdrop-blur-md shadow-sm shrink-0">
+        <div className="flex items-center gap-2.5 sm:gap-4 min-w-0">
+          <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl overflow-hidden bg-[#fff1f5] border border-[#f3dbe4] flex-shrink-0 shadow-sm">
             {coverUrl ? (
               <img src={coverUrl} alt="cover" className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-xl text-[#ff4d80]">🐰</div>
+              <div className="w-full h-full flex items-center justify-center text-base sm:text-xl text-[#ff4d80]">🐰</div>
             )}
           </div>
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-black text-[#5b2a47] truncate tracking-tight flex items-center gap-1.5 font-torus">
-                <span>{title}</span>
-                <span className="text-sm">🎀</span>
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <h1 className="text-sm sm:text-xl font-black text-[#5b2a47] truncate tracking-tight flex items-center gap-1.5 font-torus">
+                <span className="truncate">{title}</span>
+                <span className="text-xs sm:text-sm shrink-0">🎀</span>
               </h1>
               {isAutoplay && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#ff9800]/20 text-[#e65100] border border-[#ff9800]/40">
-                  AUTO PLAY
+                <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-mono font-bold bg-[#ff9800]/20 text-[#e65100] border border-[#ff9800]/40 shrink-0">
+                  AUTO
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 text-xs text-[#a8556f] font-medium truncate mt-0.5 flex-wrap">
-              <span>{artist}</span>
+            <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-[#a8556f] font-medium truncate mt-0.5 flex-wrap">
+              <span className="truncate max-w-[120px] sm:max-w-none">{artist}</span>
               <span>•</span>
               <DifficultyBadge
                 category={normalizeMaimaiCategory(diffName)}
@@ -326,36 +326,36 @@ export default function AstroResultScreen({
                 showOsuStars={Boolean(initialChart?.source === 'osu' || initialChart?.keys || initialChart?.rawOsu || initialChart?.metadata?.source === 'osu')}
                 size="sm"
               />
-              <span>•</span>
-              <span className="text-[#a8556f]">mapped by {creator} 🐰</span>
+              <span className="hidden sm:inline">•</span>
+              <span className="text-[#a8556f] hidden sm:inline">mapped by {creator} 🐰</span>
             </div>
           </div>
         </div>
 
         {/* User Card on Right */}
-        <div className="flex items-center gap-3 bg-white border border-[#f3dbe4] px-4 py-2 rounded-full shadow-sm">
+        <div className="flex items-center gap-2 sm:gap-3 bg-white border border-[#f3dbe4] px-2.5 sm:px-4 py-1 sm:py-2 rounded-full shadow-sm shrink-0">
           <div className="relative">
             <Avatar
               src={currentUser?.avatar}
               alt={currentUser?.name || 'Guest'}
-              size="md"
+              size="sm"
               status={currentUser ? 'online' : 'offline'}
             />
             <span className="absolute -top-1 -right-1 text-[10px]">🎀</span>
           </div>
-          <div className="text-right">
-            <div className="text-xs font-bold text-[#5b2a47] leading-tight">
+          <div className="text-right hidden xs:block">
+            <div className="text-xs font-bold text-[#5b2a47] leading-tight truncate max-w-[80px] sm:max-w-none">
               {currentUser?.name || 'Guest'}
             </div>
             <div className="text-[10px] text-[#ff4d80] font-mono font-bold">
-              {currentUser ? `#${currentUser.rank || 1} • ${(currentUser.pp || currentUser.rating || 0).toFixed(0)}pp` : 'Offline Play 🐰'}
+              {currentUser ? `#${currentUser.rank || 1} • ${(currentUser.pp || currentUser.rating || 0).toFixed(0)}pp` : 'Offline 🐰'}
             </div>
           </div>
         </div>
       </header>
 
       {/* Main Body: Two-Column osu!(lazer) Layout */}
-      <main className="relative z-10 flex-1 grid grid-cols-12 gap-8 px-10 py-6 overflow-y-auto max-w-7xl mx-auto w-full items-center">
+      <main className="relative z-10 flex-1 grid grid-cols-12 gap-4 sm:gap-8 px-3 sm:px-10 py-4 sm:py-6 overflow-y-auto max-w-7xl mx-auto w-full items-start lg:items-center custom-scrollbar">
         {/* Left Column (5 Cols): Rank Grade, Score, Accuracy, Personal Best */}
         <div className="col-span-12 lg:col-span-5 flex flex-col items-center lg:items-start gap-5">
           {/* Rank Badge with Radiant Halo */}
@@ -622,47 +622,54 @@ export default function AstroResultScreen({
       </main>
 
       {/* Bottom Action Footer Bar */}
-      <footer className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-3 sm:px-8 py-2 sm:py-4 border-t border-[#f3dbe4] bg-[#fffafc]/90 backdrop-blur-md shadow-[0_-4px_20px_rgba(126,47,79,0.04)]">
+      <footer className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-3 sm:px-8 py-2 sm:py-3.5 border-t border-[#f3dbe4] bg-[#fffafc]/90 backdrop-blur-md shadow-[0_-4px_20px_rgba(126,47,79,0.04)] shrink-0">
         <div className="flex items-center justify-center sm:justify-start gap-2 text-xs font-mono text-[#a8556f] font-bold">
-          <span className="px-2 py-0.5 rounded-full bg-[#fff1f5] text-[#5b2a47] border border-[#f3dbe4]">Esc</span> Return to Song Select 🐰
+          <span className="px-2 py-0.5 rounded-full bg-[#fff1f5] text-[#5b2a47] border border-[#f3dbe4]">Esc</span>
+          <span className="hidden xs:inline">Return to Song Select 🐰</span>
+          <span className="xs:hidden">Song Select 🐰</span>
         </div>
 
-        <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
-          <Button
-            variant="ghost"
-            size="md"
-            onClick={() => {
-              playClick();
-              if (onBack) onBack();
-            }}
-            icon="←"
-          >
-            Song Select 🐰
-          </Button>
+        <div className="w-full sm:w-auto min-w-0">
+          <div className="flex items-center justify-center gap-2 sm:gap-3 overflow-x-auto mobile-slide-bar pb-1 sm:pb-0">
+            <Button
+              variant="ghost"
+              size="md"
+              onClick={() => {
+                playClick();
+                if (onBack) onBack();
+              }}
+              icon="←"
+              className="shrink-0"
+            >
+              Song Select 🐰
+            </Button>
 
-          <Button
-            variant="secondary"
-            size="md"
-            onClick={() => {
-              playClick();
-              if (onReplay) onReplay();
-            }}
-            icon="▶"
-          >
-            Replay 🎀
-          </Button>
+            <Button
+              variant="secondary"
+              size="md"
+              onClick={() => {
+                playClick();
+                if (onReplay) onReplay();
+              }}
+              icon="▶"
+              className="shrink-0"
+            >
+              Replay 🎀
+            </Button>
 
-          <Button
-            variant="primary"
-            size="md"
-            onClick={() => {
-              playClick();
-              if (onRetry) onRetry();
-            }}
-            icon="↺"
-          >
-            Retry 🎀
-          </Button>
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => {
+                playClick();
+                if (onRetry) onRetry();
+              }}
+              icon="↺"
+              className="shrink-0"
+            >
+              Retry 🎀
+            </Button>
+          </div>
         </div>
       </footer>
     </div>

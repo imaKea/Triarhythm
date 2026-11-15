@@ -18,7 +18,7 @@ export default function Tabs({
 
   return (
     <div
-      className={`inline-flex items-center gap-1 p-1 bg-[#fff1f5] backdrop-blur-md rounded-full border border-[#f3dbe4] select-none ${className}`}
+      className={`inline-flex items-center gap-1 p-1 bg-[#fff1f5] backdrop-blur-md rounded-full border border-[#f3dbe4] select-none max-w-full overflow-x-auto mobile-slide-bar ${className}`}
       {...props}
     >
       {tabs.map((tab) => {
@@ -27,9 +27,10 @@ export default function Tabs({
           <button
             key={tab.id}
             type="button"
+            data-active={isActive ? "true" : "false"}
             onClick={() => handleTabClick(tab.id)}
             onMouseEnter={() => !isActive && playHover()}
-            className={`relative px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
+            className={`relative min-h-[44px] sm:min-h-0 px-3.5 sm:px-4 py-2 sm:py-1.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 shrink-0 ${
               isActive
                 ? 'bg-gradient-to-r from-[#ff85a2] via-[#ff6b93] to-[#ff4d80] text-white shadow-[0_2px_14px_rgba(255,77,128,0.25)] scale-[1.02]'
                 : 'text-[#5b2a47] hover:text-[#ff4d80] hover:bg-white'

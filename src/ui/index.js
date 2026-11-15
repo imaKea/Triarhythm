@@ -20,5 +20,6 @@ export { default as StarRating, getStarColor } from './StarRating.jsx';
 export { default as DifficultyBadge } from './DifficultyBadge.jsx';
 export { MAIMAI_CATEGORIES, MAIMAI_CATEGORY_COLORS, normalizeMaimaiCategory, formatMaimaiLevel, calculateMaimaiRating } from '../core/beatmap/maimaiDifficulty.js';
 export { default as RankBadge, getRankBadgeStyle } from './RankBadge.jsx';
+export { default as SlideBar } from './SlideBar.jsx';
 
 export * from './sound/uiAudio.js';
