@@ -16,6 +16,7 @@ export default function GameplayView({
   onOpenSettings = null,
   onUploadFiles = null
 }) {
+  const containerRef = useRef(null);
   const canvasRef = useRef(null);
   const videoRef = useRef(null);
   const videoObjectUrlRef = useRef(null);
@@ -25,6 +26,30 @@ export default function GameplayView({
   useEffect(() => {
     currentUserRef.current = currentUser;
   }, [currentUser]);
+
+  // Tự động mở rộng canvas phủ trọn vẹn màn hình thiết bị (loại bỏ vùng chết ở 2 bên mép trên mobile)
+  useEffect(() => {
+    const updateCanvasSize = () => {
+      const canvas = canvasRef.current;
+      const container = containerRef.current;
+      if (!canvas || !container) return;
+      const rect = container.getBoundingClientRect();
+      const w = Math.round(rect.width) || window.innerWidth || 960;
+      const h = Math.round(rect.height) || window.innerHeight || 640;
+      if (w > 0 && h > 0 && (canvas.width !== w || canvas.height !== h)) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+    };
+
+    updateCanvasSize();
+    window.addEventListener('resize', updateCanvasSize);
+    window.addEventListener('orientationchange', updateCanvasSize);
+    return () => {
+      window.removeEventListener('resize', updateCanvasSize);
+      window.removeEventListener('orientationchange', updateCanvasSize);
+    };
+  }, []);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -669,7 +694,7 @@ export default function GameplayView({
       </div>
 
       {/* 3. MAIN CANVAS GAMEPLAY AREA */}
-      <div className="flex-1 relative flex items-center justify-center overflow-hidden p-1 sm:p-2">
+      <div ref={containerRef} className="flex-1 relative flex items-center justify-center overflow-hidden w-full h-full p-0">
         {/* Rotate Phone Hint for Mobile Portrait */}
         {isPortrait && showRotateHint && (
           <div
@@ -696,12 +721,12 @@ export default function GameplayView({
           />
         )}
 
-        {/* Canvas */}
+        {/* Canvas bao phủ tối đa diện tích màn hình thiết bị */}
         <canvas
           ref={canvasRef}
-          width={720}
-          height={620}
-          className="block cursor-pointer relative z-10 max-h-full max-w-full aspect-[720/620] touch-none select-none"
+          width={1080}
+          height={720}
+          className="block cursor-pointer relative z-10 w-full h-full touch-none select-none"
           style={{ touchAction: 'none', WebkitUserSelect: 'none' }}
         />
 

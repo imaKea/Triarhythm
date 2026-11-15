@@ -79,6 +79,20 @@ export const TRI_RING_LAYOUT = {
   // Perimeter order: V F R (4/5) (6/7) (8/9) I J N
   perimeterOrder: [5, 4, 3, 0, 1, 2, 6, 7, 8],
 
+  // Phân vùng cánh quạt (Radial Sector Hitbox) chuẩn AstroDX / Maimai Mobile
+  // Bọc trọn 360 độ quanh tâm origin, mở rộng không giới hạn ra tận mép màn hình.
+  sectors: {
+    0: { lane: 0, label: '4·5', centerAngle: -2.230727, startAngle: -2.573901, endAngle: -1.900762 },
+    1: { lane: 1, label: '6·7', centerAngle: -1.570796, startAngle: -1.900762, endAngle: -1.240831 },
+    2: { lane: 2, label: '8·9', centerAngle: -0.910866, startAngle: -1.240831, endAngle: -0.567691 },
+    3: { lane: 3, label: 'R',   centerAngle: -2.917076, startAngle: 3.081076,  endAngle: -2.573901 },
+    4: { lane: 4, label: 'F',   centerAngle: 2.796043,  startAngle: 2.436975,  endAngle: 3.081076 },
+    5: { lane: 5, label: 'V',   centerAngle: 2.077907,  startAngle: 1.570796,  endAngle: 2.436975 },
+    6: { lane: 6, label: 'I',   centerAngle: -0.224517, startAngle: -0.567691, endAngle: 0.060517 },
+    7: { lane: 7, label: 'J',   centerAngle: 0.345550,  startAngle: 0.060517,  endAngle: 0.704618 },
+    8: { lane: 8, label: 'N',   centerAngle: 1.063686,  startAngle: 0.704618,  endAngle: 1.570796 }
+  },
+
   // Keybind mặc định (Hàng 1: 4/5, 6/7, 8/9; Hàng 2: R I; Hàng 3: F J; Hàng 4: V N)
   // Bổ sung các phím phụ công thái học (E, D, C, W, S, X, Numpad...) chống kẹt bộ gõ Unikey Telex
   defaultKeybinds: {
@@ -113,6 +127,16 @@ export const TRI_RING_LAYOUT = {
     guideRay: 'rgba(255, 255, 255, 0.15)'
   }
 };
+
+/**
+ * Chuẩn hóa góc về khoảng [-PI, PI]
+ */
+export function normalizeAngle(angle) {
+  let a = angle;
+  while (a > Math.PI) a -= 2 * Math.PI;
+  while (a < -Math.PI) a += 2 * Math.PI;
+  return a;
+}
 
 /**
  * Tính toán ma trận biến đổi fit vào vùng bao [-1.2, 1.2] x [-0.8, 1.35]

@@ -11,7 +11,7 @@ import { ScoreManager } from './scoreManager.js';
 import { ParticleSystem } from './particleSystem.js';
 import { gameEvents } from './eventBus.js';
 import { getJudgement, JUDGEMENT_CONFIG } from '../../config/judgement.config.js';
-import { TRI_RING_LAYOUT, layoutToPixels, getLayoutMetrics, getTapLane } from '../../config/layout.config.js';
+import { TRI_RING_LAYOUT, layoutToPixels, getLayoutMetrics, getTapLane, normalizeAngle } from '../../config/layout.config.js';
 import { SlideManager } from './slideManager.js';
 import { SLIDE_CONFIG, calculateSlideTiming } from '../../config/slide.config.js';
 
@@ -1221,27 +1221,73 @@ export class GameEngine {
   }
 
   /**
-   * Xác định Lane gần nhất theo tọa độ pixel canvas (có tính bán kính công thái học cho cảm ứng mobile)
+   * Xác định Lane gần nhất theo tọa độ pixel canvas với Hitbox mở rộng cho mobile chuẩn AstroDX / Maimai:
+   * 1. Ưu tiên điểm chạm trực tiếp vào nút hoặc gần nút.
+   * 2. Mở rộng vùng cảm ứng theo cánh quạt (Radial Sector) từ vòng trong kéo dài ra tới tận mép màn hình.
+   * 3. Vùng tâm (Center Touch / Ring zone) bán kính < 0.38 * scale không nhận lane để kích hoạt nốt Ring.
    */
   getLaneAtPos(px, py, width, height) {
-    let closestLane = -1;
-    let minDist = Infinity;
+    const originPix = layoutToPixels(TRI_RING_LAYOUT.origin.x, TRI_RING_LAYOUT.origin.y, width, height);
+    const { scale } = getLayoutMetrics(width, height);
+    const laneRadiusPx = TRI_RING_LAYOUT.tapDimensions.radius * scale;
+
+    // 1. Kiểm tra trực tiếp khoảng cách tới từng nút bấm (ưu tiên trúng nút trực tiếp)
+    let closestDirectLane = -1;
+    let minDirectDist = Infinity;
     for (let i = 0; i < TRI_RING_LAYOUT.tapLanes.length; i++) {
       const laneDef = TRI_RING_LAYOUT.tapLanes[i];
       const lanePix = layoutToPixels(laneDef.x, laneDef.y, width, height);
       const dist = Math.hypot(px - lanePix.x, py - lanePix.y);
-      if (dist < minDist) {
-        minDist = dist;
-        closestLane = i;
+      if (dist < minDirectDist) {
+        minDirectDist = dist;
+        closestDirectLane = i;
       }
     }
 
-    const { scale } = getLayoutMetrics(width, height);
-    const laneRadiusPx = TRI_RING_LAYOUT.tapDimensions.radius * scale;
-    // Bán kính chạm ngón tay mở rộng cho mobile (vùng xám mờ xung quanh nút)
-    const hitRadius = Math.max(laneRadiusPx * 2.6, 85);
+    // Nếu bấm rất gần tâm nút (<= laneRadiusPx * 2.2 hoặc <= 75px), kích hoạt ngay lane đó
+    if (closestDirectLane !== -1 && minDirectDist <= Math.max(laneRadiusPx * 2.2, 75)) {
+      return closestDirectLane;
+    }
 
-    return (closestLane !== -1 && minDist <= hitRadius) ? closestLane : null;
+    // 2. Phân vùng cánh quạt (Radial Sector Hitbox) chuẩn AstroDX / Maimai Mobile
+    const dx = px - originPix.x;
+    const dy = py - originPix.y;
+    const distFromOrigin = Math.hypot(dx, dy);
+
+    // Vùng tâm (Center Touch / Ring zone): bán kính nhỏ hơn 0.38 * scale
+    // Không nhận diện là lane để nhường cho nốt Ring / Center Touch
+    const innerRingRadius = 0.38 * scale;
+    if (distFromOrigin < innerRingRadius) {
+      return null;
+    }
+
+    // Bất kỳ điểm chạm nào từ innerRingRadius trở ra ngoài (kéo dài tới tận mép màn hình/canvas)
+    // đều được ánh xạ vào sector cánh quạt của lane tương ứng
+    const touchAngle = Math.atan2(dy, dx);
+
+    let bestLane = -1;
+    let minAngleDiff = Infinity;
+
+    for (let i = 0; i < TRI_RING_LAYOUT.tapLanes.length; i++) {
+      const laneDef = TRI_RING_LAYOUT.tapLanes[i];
+      const sector = TRI_RING_LAYOUT.sectors ? TRI_RING_LAYOUT.sectors[i] : null;
+      let laneAngle;
+      if (sector && sector.centerAngle !== undefined) {
+        laneAngle = sector.centerAngle;
+      } else {
+        const lanePix = layoutToPixels(laneDef.x, laneDef.y, width, height);
+        laneAngle = Math.atan2(lanePix.y - originPix.y, lanePix.x - originPix.x);
+      }
+
+      const diff = Math.abs(normalizeAngle ? normalizeAngle(touchAngle - laneAngle) : (touchAngle - laneAngle));
+
+      if (diff < minAngleDiff) {
+        minAngleDiff = diff;
+        bestLane = i;
+      }
+    }
+
+    return bestLane !== -1 ? bestLane : null;
   }
 
   /**

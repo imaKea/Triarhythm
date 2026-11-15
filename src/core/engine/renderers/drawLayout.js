@@ -78,6 +78,61 @@ export function drawPlayfield(renderer, gameState, width, height, scale, travelT
     ctx.restore();
   }
 
+  // 3b. Vùng Hitbox cánh quạt (Radial Sector Hitbox) chuẩn AstroDX / Maimai Mobile
+  const sectors = TRI_RING_LAYOUT.sectors;
+  if (sectors) {
+    const innerSectorR = 0.38 * scale;
+    const outerSectorR = Math.max(width, height) * 0.95;
+
+    ctx.save();
+    // Vẽ đường phân vùng mờ giữa các cánh quạt
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+    ctx.lineWidth = 1.0;
+    for (const key of Object.keys(sectors)) {
+      const s = sectors[key];
+      const startX = originPix.x + Math.cos(s.startAngle) * innerSectorR;
+      const startY = originPix.y + Math.sin(s.startAngle) * innerSectorR;
+      const endX = originPix.x + Math.cos(s.startAngle) * outerSectorR;
+      const endY = originPix.y + Math.sin(s.startAngle) * outerSectorR;
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      ctx.lineTo(endX, endY);
+      ctx.stroke();
+    }
+
+    // Khi chạm hoặc giữ nút: thắp sáng toàn bộ vùng quạt tương ứng (như ảnh AstroDX)
+    for (let i = 0; i < TRI_RING_LAYOUT.tapLanes.length; i++) {
+      const isKeyDown = gameState.activeLanes[i];
+      const isHolding = gameState.holdingLanes[i];
+      if (isKeyDown || isHolding) {
+        const s = sectors[i];
+        if (s) {
+          const hitOuterR = Math.min(outerSectorR, 1.45 * scale);
+          ctx.beginPath();
+          ctx.arc(originPix.x, originPix.y, hitOuterR, s.startAngle, s.endAngle);
+          ctx.arc(originPix.x, originPix.y, innerSectorR, s.endAngle, s.startAngle, true);
+          ctx.closePath();
+          // Vùng màu xanh lơ dịu đặc trưng chuẩn ảnh AstroDX
+          ctx.fillStyle = 'rgba(100, 185, 255, 0.20)';
+          ctx.fill();
+
+          ctx.strokeStyle = 'rgba(100, 185, 255, 0.70)';
+          ctx.lineWidth = 2.0;
+          ctx.stroke();
+
+          // Vòng tròn định vị phụ ở đỉnh ngoài cánh quạt
+          const midA = s.centerAngle;
+          const dotR = hitOuterR * 0.96;
+          ctx.beginPath();
+          ctx.arc(originPix.x + Math.cos(midA) * dotR, originPix.y + Math.sin(midA) * dotR, 8, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+          ctx.fill();
+        }
+      }
+    }
+    ctx.restore();
+  }
+
   // 4. 9 ô Tap hình tròn (Circular Judgement Targets) & Keycap Hint mờ trực tiếp tại tâm
   for (const lane of TRI_RING_LAYOUT.tapLanes) {
     const p = layoutToPixels(lane.x, lane.y, width, height);

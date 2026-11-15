@@ -1158,4 +1158,49 @@ describe('GĐ3 Unit Tests - Core Engine & Scoring', () => {
     engine.handlePointerUp({ pointerId: 99, audioTime: 1150, timeStamp: 1150 });
     expect(engine.inputManager.isKeyDown[2]).toBe(false);
   });
+
+  it('28. Hitbox mở rộng theo cánh quạt (Radial Sector) cho mobile: chạm xa nút ở mép ngoài màn hình vẫn kích hoạt đúng lane', async () => {
+    const dummyCanvas = { width: 1080, height: 720, getContext: () => ({}) };
+    const engine = new GameEngine(dummyCanvas);
+
+    const beatmap = {
+      timingPoints: [{ bpm: 120, beatLength: 500 }],
+      notes: [
+        { type: 'tap', lane: 4, time: 1000 }, // Lane 4 (F) ở bên trái
+        { type: 'tap', lane: 7, time: 2000 }  // Lane 7 (J) ở bên phải
+      ]
+    };
+
+    await engine.loadChart(beatmap);
+    engine.isRunning = true;
+
+    // 1. Chạm ở mép ngoài cùng bên trái (x = 40px, y = 450px) xa hẳn nút bấm Lane 4 (nút F)
+    // Theo cánh quạt góc của Lane 4, điểm chạm này phải kích hoạt đúng Lane 4
+    engine.handlePointerDown({
+      clientX: 40,
+      clientY: 450,
+      pointerId: 201,
+      audioTime: 1000,
+      timeStamp: 1000
+    });
+    expect(engine.inputManager.isKeyDown[4]).toBe(true);
+    expect(engine.notes[0].state).toBe('JUDGED');
+    expect(engine.scoreManager.combo).toBe(1);
+    engine.handlePointerUp({ pointerId: 201, audioTime: 1050, timeStamp: 1050 });
+    expect(engine.inputManager.isKeyDown[4]).toBe(false);
+
+    // 2. Chạm ở mép ngoài cùng bên phải (x = 1040px, y = 450px) xa hẳn nút bấm Lane 7 (nút J)
+    engine.handlePointerDown({
+      clientX: 1040,
+      clientY: 450,
+      pointerId: 202,
+      audioTime: 2000,
+      timeStamp: 2000
+    });
+    expect(engine.inputManager.isKeyDown[7]).toBe(true);
+    expect(engine.notes[1].state).toBe('JUDGED');
+    expect(engine.scoreManager.combo).toBe(2);
+    engine.handlePointerUp({ pointerId: 202, audioTime: 2050, timeStamp: 2050 });
+    expect(engine.inputManager.isKeyDown[7]).toBe(false);
+  });
 });
