@@ -154,7 +154,23 @@ class BackendIntegrityTest extends TestCase
 
         $this->getJson('/api/maps')
             ->assertOk()
+            ->assertJsonPath('maps.0.chart_available', true)
             ->assertJsonMissingPath('maps.0.difficulties.0.beatmap');
+    }
+
+    public function test_library_marks_metadata_only_maps_as_missing_their_chart(): void
+    {
+        [$owner] = $this->createUser();
+        Map::create([
+            'user_id' => $owner->id,
+            'song_id' => 'legacy_map_' . Str::random(8),
+            'title' => 'Legacy Map',
+            'difficulties' => [['difficultyName' => 'Expert', 'noteCount' => 100]],
+        ]);
+
+        $this->getJson('/api/maps')
+            ->assertOk()
+            ->assertJsonPath('maps.0.chart_available', false);
     }
 
     public function test_non_owner_cannot_replace_map_metadata_or_assets(): void

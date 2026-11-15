@@ -40,12 +40,18 @@ class MapController extends Controller
         $maps = $query->orderByDesc('created_at')->get();
         $maps->each(static function (Map $map): void {
             $difficulties = $map->difficulties ?? [];
-            $map->setAttribute('difficulties', array_map(static function ($difficulty) {
+            $hasChart = false;
+            $map->setAttribute('difficulties', array_map(static function ($difficulty) use (&$hasChart) {
                 if (is_array($difficulty)) {
+                    $chart = $difficulty['beatmap'] ?? $difficulty['chart'] ?? null;
+                    if (is_array($chart) && is_array($chart['notes'] ?? null)) {
+                        $hasChart = true;
+                    }
                     unset($difficulty['beatmap'], $difficulty['chart']);
                 }
                 return $difficulty;
             }, $difficulties));
+            $map->setAttribute('chart_available', $hasChart);
         });
 
         return response()->json([

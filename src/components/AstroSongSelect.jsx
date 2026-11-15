@@ -1653,6 +1653,7 @@ export default function AstroSongSelect({
             ) : filteredServerMaps.length > 0 ? (
               filteredServerMaps.map((map) => {
                 const isDownloaded = beatmaps.some((beatmap) => beatmap.id === map.song_id);
+                const hasChart = map.chart_available !== false;
                 return (
                   <div
                     key={map.song_id}
@@ -1666,15 +1667,22 @@ export default function AstroSongSelect({
                       <div className="mt-1 text-[10px] text-[#a8556f]">
                         {map.difficulties?.length || 0} difficulties · {map.source || 'beatmap'}
                       </div>
+                      {!hasChart && (
+                        <div className="mt-1 text-[10px] font-bold text-[#c33b5d]">
+                          Chart missing — upload this map again from PC.
+                        </div>
+                      )}
                     </div>
                     <Button
                       size="sm"
-                      variant={isDownloaded ? 'ghost' : 'primary'}
-                      disabled={downloadingMapId !== null}
+                      variant={isDownloaded || !hasChart ? 'ghost' : 'primary'}
+                      disabled={!hasChart || downloadingMapId !== null}
                       onClick={() => handleDownloadServerMap(map)}
                       className="shrink-0"
                     >
-                      {downloadingMapId === map.song_id
+                      {!hasChart
+                        ? 'Missing Chart'
+                        : downloadingMapId === map.song_id
                         ? 'Downloading...'
                         : isDownloaded
                           ? 'Download Again'
