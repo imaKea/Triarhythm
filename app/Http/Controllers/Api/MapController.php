@@ -12,6 +12,14 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class MapController extends Controller
 {
     /**
+     * Lấy tên disk lưu trữ media (mặc định lấy config filesystems.default: 's3' hoặc 'public').
+     */
+    private function mediaDisk(): string
+    {
+        return config('filesystems.default', 'public');
+    }
+
+    /**
      * Bỏ qua URL tạm (blob:) do trình duyệt sinh ra — không lưu vào MySQL.
      */
     private function cleanUrl(?string $url): ?string
@@ -147,7 +155,8 @@ class MapController extends Controller
             'video' => 'nullable|file|mimes:mp4,webm,mkv,mov|max:102400',
         ]);
 
-        $disk = Storage::disk('public');
+        $diskName = $this->mediaDisk();
+        $disk = Storage::disk($diskName);
         $folder = "beatmaps/{$song_id}";
         $updated = [];
 
@@ -164,15 +173,24 @@ class MapController extends Controller
 
             // Xoá file cũ nếu trước đó đã upload vào storage của app.
             $old = $map->{$column};
-            if (is_string($old) && str_starts_with($old, '/storage/')) {
-                $oldPath = substr($old, strlen('/storage/'));
-                if ($disk->exists($oldPath)) {
-                    $disk->delete($oldPath);
+            if (is_string($old)) {
+                if (str_starts_with($old, '/storage/')) {
+                    $oldPath = substr($old, strlen('/storage/'));
+                    if (Storage::disk('public')->exists($oldPath)) {
+                        Storage::disk('public')->delete($oldPath);
+                    }
+                } elseif (str_starts_with($old, 'beatmaps/')) {
+                    if ($disk->exists($old)) {
+                        $disk->delete($old);
+                    }
                 }
             }
 
-            $path = $request->file($input)->store($folder, 'public');
-            $url = '/storage/' . str_replace('\\', '/', $path);
+            $path = $request->file($input)->store($folder, $diskName);
+            $normalizedPath = str_replace('\\', '/', $path);
+            $url = $diskName === 'public'
+                ? '/storage/' . $normalizedPath
+                : $normalizedPath;
 
             $map->{$column} = $url;
             $updated[$column] = $url;
@@ -225,15 +243,32 @@ class MapController extends Controller
             default => null,
         };
         $url = $column ? $map->{$column} : null;
-        $expectedPrefix = "/storage/beatmaps/{$song_id}/";
-        if (!is_string($url) || !str_starts_with($url, $expectedPrefix)) {
+        if (!is_string($url)) {
             return response()->json(['success' => false, 'message' => 'Không tìm thấy file media'], 404);
         }
 
-        $path = substr($url, strlen('/storage/'));
-        $disk = Storage::disk('public');
+        // 1. Xác định đường dẫn tương đối trong storage
+        $path = null;
+        if (str_starts_with($url, '/storage/')) {
+            $path = substr($url, strlen('/storage/'));
+        } elseif (str_starts_with($url, 'beatmaps/')) {
+            $path = $url;
+        }
+
+        $expectedPrefix = "beatmaps/{$song_id}/";
+        if (!$path || !str_starts_with($path, $expectedPrefix)) {
+            return response()->json(['success' => false, 'message' => 'Đường dẫn file media không hợp lệ'], 404);
+        }
+
+        // 2. Tìm file trên disk hiện tại (S3) hoặc fallback public disk
+        $diskName = $this->mediaDisk();
+        $disk = Storage::disk($diskName);
         if (!$disk->exists($path)) {
-            return response()->json(['success' => false, 'message' => 'File media không còn trên server'], 404);
+            if ($diskName !== 'public' && Storage::disk('public')->exists($path)) {
+                $disk = Storage::disk('public');
+            } else {
+                return response()->json(['success' => false, 'message' => 'File media không còn trên server'], 404);
+            }
         }
 
         return $disk->response($path, basename($path), [
@@ -341,8 +376,12 @@ class MapController extends Controller
             ], 403);
         }
 
-        // Xóa asset files trên disk
-        Storage::disk('public')->deleteDirectory("beatmaps/{$song_id}");
+        // Xóa asset files trên disk cấu hình (S3/public)
+        $diskName = $this->mediaDisk();
+        Storage::disk($diskName)->deleteDirectory("beatmaps/{$song_id}");
+        if ($diskName !== 'public') {
+            Storage::disk('public')->deleteDirectory("beatmaps/{$song_id}");
+        }
 
         $map->forceDelete();
 
