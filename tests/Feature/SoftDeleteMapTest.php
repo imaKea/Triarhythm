@@ -74,6 +74,29 @@ class SoftDeleteMapTest extends TestCase
         $this->assertNull($activeMap->deleted_at);
     }
 
+    public function test_uploading_a_trashed_map_updates_and_restores_it(): void
+    {
+        [$user, $token, $map, $songId] = $this->createMapWithUser();
+
+        $this->withHeader('Authorization', "Bearer {$token}")
+            ->deleteJson("/api/maps/{$songId}")
+            ->assertOk();
+
+        $this->withHeader('Authorization', "Bearer {$token}")
+            ->postJson('/api/maps', [
+                'song_id' => $songId,
+                'title' => 'Restored Upload',
+                'artist' => 'Test Artist',
+                'difficulties' => [],
+            ])
+            ->assertCreated()
+            ->assertJsonPath('map.title', 'Restored Upload');
+
+        $activeMap = Map::where('song_id', $songId)->first();
+        $this->assertSame($map->id, $activeMap->id);
+        $this->assertNull($activeMap->deleted_at);
+    }
+
     public function test_get_trashed_maps_list(): void
     {
         [$user, $token, $map, $songId] = $this->createMapWithUser();

@@ -95,7 +95,7 @@ class MapController extends Controller
             }
         }
 
-        $map = Map::where('song_id', $validated['song_id'])->first();
+        $map = Map::withTrashed()->where('song_id', $validated['song_id'])->first();
         if ($map && (!$user || (!$user->isAdmin() && $map->user_id !== $user->id))) {
             return response()->json([
                 'success' => false,
@@ -121,6 +121,9 @@ class MapController extends Controller
             'metadata' => $validated['metadata'] ?? [],
         ]);
         $map->save();
+        if ($map->trashed()) {
+            $map->restore();
+        }
 
         return response()->json([
             'success' => true,
