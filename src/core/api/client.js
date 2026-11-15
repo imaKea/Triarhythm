@@ -82,6 +82,12 @@ class ApiClient {
       const data = await response.json().catch(() => null);
 
       if (!response.ok) {
+        if (response.status >= 500) {
+          const message = typeof data?.message === 'string' && !/^server error$/i.test(data.message)
+            ? `: ${data.message}`
+            : '';
+          throw new Error(`Server error (HTTP ${response.status})${message} while requesting ${endpoint}. Check the Laravel log for details.`);
+        }
         throw new Error(data?.message || `HTTP ${response.status}: ${response.statusText}`);
       }
 

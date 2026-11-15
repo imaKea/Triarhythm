@@ -41,3 +41,17 @@ describe('map asset uploads', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe('API request errors', () => {
+  it('includes the status and endpoint for generic server errors', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: false,
+      status: 500,
+      statusText: 'Server Error',
+      json: async () => ({ message: 'Server Error' })
+    })));
+
+    await expect(apiClient.saveMap({ song_id: 'broken-map' }))
+      .rejects.toThrow('Server error (HTTP 500) while requesting /maps. Check the Laravel log for details.');
+  });
+});
