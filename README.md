@@ -76,6 +76,8 @@ Asset của map (audio / background / video) được upload lên **Laravel Stor
 - File lưu tại `storage/app/public/beatmaps/{song_id}/`, phục vụ qua `/storage/...` (cần `php artisan storage:link`).
 - URL tương đối được lưu vào cột `audio_url`, `cover_url`, `video_url` của bảng `maps` và vào `serverAssets` trong IndexedDB.
 - URL tạm `blob:` của trình duyệt bị bỏ qua (`MapController::cleanUrl`) để không ghi dữ liệu chết vào MySQL.
+- Docker image đặt giới hạn PHP để phù hợp giới hạn từng file; frontend gửi từng asset riêng để tránh request gộp quá lớn.
+- Khi deploy trên Render, `storage/app/public` cần persistent disk hoặc object storage như S3/R2 nếu muốn file vẫn tồn tại sau khi service restart/redeploy.
 
 ## Test & build
 

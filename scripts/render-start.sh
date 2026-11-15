@@ -7,6 +7,9 @@ echo "=== Starting Triarhythm Backend on Render ==="
 echo "Running database migrations..."
 php artisan migrate --force || true
 php artisan db:seed --force || true
+if [ ! -L public/storage ]; then
+    php artisan storage:link
+fi
 
 # Cache configs and routes
 php artisan config:cache || true

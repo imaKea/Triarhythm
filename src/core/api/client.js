@@ -24,6 +24,12 @@ const ASSET_EXTENSIONS_BY_MIME = {
   'video/x-matroska': 'mkv',
 };
 
+const ASSET_MAX_SIZES = {
+  audio: 50 * 1024 * 1024,
+  background: 10 * 1024 * 1024,
+  video: 100 * 1024 * 1024,
+};
+
 function assetFilename(asset, field) {
   const name = typeof asset.name === 'string' ? asset.name : '';
   if (/\.[a-z0-9]+$/i.test(name)) return name;
@@ -172,26 +178,44 @@ class ApiClient {
    * Không set Content-Type để trình duyệt tự thêm boundary của multipart.
    */
   async uploadMapAssets(songId, { audio, background, video } = {}) {
-    const form = new FormData();
-    if (audio) form.append('audio', audio, assetFilename(audio, 'audio'));
-    if (background) form.append('background', background, assetFilename(background, 'background'));
-    if (video) form.append('video', video, assetFilename(video, 'video'));
-
     const headers = { Accept: 'application/json' };
     const token = this.getToken();
     if (token) headers.Authorization = `Bearer ${token}`;
 
-    const response = await fetch(`${API_BASE}/maps/${encodeURIComponent(songId)}/assets`, {
-      method: 'POST',
-      headers,
-      body: form,
-    });
+    const uploads = [
+      ['audio', audio],
+      ['background', background],
+      ['video', video],
+    ].filter(([, asset]) => asset);
+    const uploadedAssets = {};
 
-    const data = await response.json().catch(() => null);
-    if (!response.ok) {
-      throw new Error(data?.message || `HTTP ${response.status}: ${response.statusText}`);
+    for (const [field, asset] of uploads) {
+      if (asset.size > ASSET_MAX_SIZES[field]) {
+        throw new Error(`${field} exceeds the ${Math.round(ASSET_MAX_SIZES[field] / 1024 / 1024)} MB upload limit.`);
+      }
+
+      const form = new FormData();
+      form.append(field, asset, assetFilename(asset, field));
+
+      let response;
+      try {
+        response = await fetch(`${API_BASE}/maps/${encodeURIComponent(songId)}/assets`, {
+          method: 'POST',
+          headers,
+          body: form,
+        });
+      } catch (error) {
+        throw new Error(`Network error while uploading ${field}: ${error.message}. Check server upload limits and connectivity.`);
+      }
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.message || `Could not upload ${field} (HTTP ${response.status}: ${response.statusText}).`);
+      }
+      Object.assign(uploadedAssets, data?.assets || {});
     }
-    return data;
+
+    return { success: true, assets: uploadedAssets };
   }
 
   async deleteMap(songId) {

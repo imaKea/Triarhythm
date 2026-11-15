@@ -10,6 +10,13 @@ RUN apk add --no-cache \
     && update-ca-certificates \
     && docker-php-ext-install pdo pdo_mysql zip mbstring bcmath
 
+RUN printf '%s\n' \
+    'upload_max_filesize=100M' \
+    'post_max_size=110M' \
+    'max_execution_time=300' \
+    'max_input_time=300' \
+    > /usr/local/etc/php/conf.d/uploads.ini
+
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
